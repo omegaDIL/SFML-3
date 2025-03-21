@@ -6,8 +6,6 @@
 #include <optional>
 #include <iostream>
 
-#include <cstdint>
-
 
 using SafeSaves::Save;
 

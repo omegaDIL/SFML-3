@@ -3,6 +3,8 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
+project (SFML_3_Template VERSION 1.0)
+
 # Activez Rechargement à chaud pour les compilateurs MSVC si cela est pris en charge.
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
