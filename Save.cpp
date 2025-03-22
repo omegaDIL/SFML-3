@@ -7,7 +7,7 @@
 #include <sstream>
 #include <ios>
 #include "Save.hpp"
-#include "Utils.hpp" // For exceptions
+#include "Exceptions.hpp"
 
 using namespace SafeSaves;
 
@@ -158,12 +158,12 @@ ReadingStreamRAIIWrapper Save::openReadingStream(std::string const& path, std::o
 	catch (FileExceptionWhileOpening const& error)
 	{
 		errorMessage << error.what() << '\n';
-		errorMessage << "Fatal error: impossible to read the values: " + path << "\n\n";
+		errorMessage << "Fatal error: impossible to read the values" << "\n\n";
 	}
 	catch (std::exception const& error)
 	{
 		errorMessage << error.what() << '\n';
-		errorMessage << "Error: gravity and effects unknown, file: " + path << "\n\n";
+		errorMessage << "Error: gravity and effects unknown" << "\n\n";
 	}
 
 	return openStream;
@@ -182,12 +182,12 @@ WritingStreamRAIIWrapper Save::openWritingStream(std::string const& path, std::o
 	catch (FileExceptionWhileOpening const& error)
 	{
 		errorMessage << error.what() << '\n';
-		errorMessage << "Fatal error: impossible to read the values: " + path << "\n\n";
+		errorMessage << "Fatal error: impossible to read the values" << "\n\n";
 	}
 	catch (std::exception const& error)
 	{
 		errorMessage << error.what() << '\n';
-		errorMessage << "Error: gravity and effects unknown, file: " + path << "\n\n";
+		errorMessage << "Error: gravity and effects unknown" << "\n\n";
 	}
 
 	return openStream;
@@ -210,7 +210,7 @@ void Save::cleanUpFiles(std::string const& path)
 	catch (std::exception const&)
 	{	// If the program falls in this catch, the permanent file is not valid.
 		if (!checkFileExistence(path + ".tmp") || !checkFileWritable(path + "tmp"))
-			throw FileExceptionWhileOpening{ "No file avalailable to load the saves" };
+			throw FileExceptionWhileOpening{ "No file avalailable to load the saves: " + path };
 
 		// To remove the perm file, no stream can be openend to that same file.
 		if (fileWrapped.stream().has_value())
@@ -225,7 +225,7 @@ void Save::cleanUpFiles(std::string const& path)
 		// We don't need to check the validity of the pointer using has_value()
 		// The call to create() would have thrown an exception if badly instantiated
 		if (!checkingContentValdity(fileWrapped.stream().value())) 
-			throw FileExceptionWhileOpening{ "No valid file avalailable to load the saves" };
+			throw FileExceptionWhileOpening{ "No valid file avalailable to load the saves: " + path };
 	}
 }
 

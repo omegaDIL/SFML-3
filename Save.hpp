@@ -19,7 +19,7 @@
 #include <ios>
 
 
-/** @namespace SafeSaves
+/**
  * @brief Classes, functions and exceptions to safely handle files.
  * 
  * @note The relative folder is "saves/".
@@ -54,7 +54,7 @@ inline bool checkFileWritable(std::string const& path) noexcept
 }
 
 
-/** @class ReadingStreamRAIIWrapper
+/**
  * @brief Use RAII to ensure proper handling errors while reading data.
  *
  * @see std::ifstream, WritingStreamRAIIWrapper
@@ -119,7 +119,7 @@ private:
 	std::unique_ptr<std::ifstream> m_fileStream;
 };  // class ReadingStreamRAIIWrapper
 
-/** @class WritingStreamRAIIWrapper
+/**
  * @brief Use RAII to ensure proper handling errors while saving data.
  * 
  * @see std::ofstream, ReadingStreamRAIIWrapper
@@ -188,7 +188,7 @@ private:
 };  // class WritingStreamRAIIWrapper
 
 
-/** @struct Save
+/**
  * @brief Provides static functions for saving and loading data.
  *
  * @note Don't expect this structure to be fast: it interacts with files

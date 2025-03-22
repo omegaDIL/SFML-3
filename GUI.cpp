@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iomanip>
 #include "GUI.hpp"
+#include "Exceptions.hpp"
 
 static std::string const mediaPath{ "media/" }; // The path to load the media
 static float alignerCursorUI{ 0.99f };
@@ -27,26 +28,34 @@ size_t MenuInterface::m_pointingButton{ 0 };
 sf::Sprite MenuInterface::m_backgroundPointingButton{};
 
 
+
 //////////////////////////////////Interface classes//////////////////////////////////
 
-Interface::InterfaceText::InterfaceText(std::string const& content, sf::Vector2f pos, unsigned int characterSize) noexcept
-	: sf::Text{}
+std::optional<std::string> Interface::InterfaceText::loadFont() noexcept
 {
-	static std::unique_ptr<sf::Font> font{ nullptr };
-	if (!font)
+	if (m_font)
+		return std::nullopt;
+
+	try
 	{
-		font = std::make_unique<sf::Font>();
-		font->loadFromFile(mediaPath + "font.ttf");
-		font->setSmooth(true);
+		std::string path{ mediaPath + "font.ttf" };
+
+		if (!m_font->openFromFile(path))
+			throw LoadingUIRessourceException{ "Failed to load fon at: " + path };
+
+		m_font->setSmooth(true);
+	}
+	catch (LoadingUIRessourceException const& error)
+	{
+		std::ostringstream errorMessage{};
+		errorMessage << error.what() << '\n';
+		errorMessage << "Fatal error: Impossible to display without the font";
+		return std::optional<std::string>{ errorMessage.str() };
 	}
 
-	setCharacterSize(characterSize);
-	setFont(*font);
-	setString(content);
-	updatePos(pos);
-	float factor = std::min(windowSize.height, windowSize.width) / 720.f;
-	setScale(sf::Vector2f(factor, factor)); // The scaling factor must be the same. 
+	return std::nullopt;
 }
+
 
 Interface::Interface(sf::RenderWindow* window, std::string backgroundPath)
 	: m_window{ window }, m_spriteBackground{}, m_actualTextureBackground{}, m_textureBackground{}

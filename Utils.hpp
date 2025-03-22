@@ -10,110 +10,15 @@
 #define UTILS_HPP
 
 #include <SFML/Graphics.hpp>
+#include <concepts>
 #include <string>
 #include <vector>
-#include <stdexcept>
-#include <ios>
-#include <concepts>
 
-
-/** @namespace SafeSaves
- * @brief Classes, functions and exceptions to safely handle files.
- */
-namespace SafeSaves
-{
-/** @struct FileException
- * @brief Exception thrown for file-related errors.
- *
- * @see std::ios_base::failure.
- */
-struct FileException : public std::ios_base::failure
-{
-public:
-
-	/**
-	 * @brief Initializes the exception with a message.
-	 * @complexity O(1)
-	 *
-	 * @param[in] message: The error message.
-	 */
-	inline explicit FileException(const std::string& message) : std::ios_base::failure{ message }
-	{}
-
-
-	/**
-	 * @complexity O(1).
-	 *
-	 * @return the error message.
-	 */
-	inline virtual const char* what() const noexcept override
-	{
-		return std::ios_base::failure::what();
-	}
-};
-
-/** @struct FileExceptionWhileOpening
- * @brief Exception thrown for file-related errors when opening files.
- *
- * @see FileException, FileExceptionWhileInUse.
- */
-struct FileExceptionWhileOpening final : public FileException
-{
-public:
-
-	/**
-	 * @brief Initializes the exception with a message.
-	 * @complexity O(1)
-	 *
-	 * @param[in] message: The error message.
-	 */
-	inline explicit FileExceptionWhileOpening(const std::string& message) : FileException{ message }
-	{}
-
-
-	/**
-	 * @complexity O(1).
-	 *
-	 * @return the error message.
-	 */
-	inline virtual const char* what() const noexcept override
-	{
-		return FileException::what();
-	}
-};
-
-/** @struct FileExceptionWhileInUse
-  * @brief Exception thrown for file-related errors when using files (reading/writing).
-  *
-  * @see FileException, FileExceptionWhileOpening.
+ /**
+  * @brief Must be a numerical type.
+  * 
+  * @tparam T: The numerical type.
   */
-struct FileExceptionWhileInUse final : public FileException
-{
-public:
-
-	/**
-	 * @brief Initializes the exception with a message.
-	 * @complexity O(1)
-	 *
-	 * @param[in] message: The error message.
-	 */
-	inline explicit FileExceptionWhileInUse(const std::string& message) : FileException{ message }
-	{}
-
-
-	/**
-	 * @complexity O(1).
-	 *
-	 * @return the error message.
-	 */
-	inline virtual const char* what() const noexcept override
-	{
-		return FileException::what();
-	}
-};
-} // namespace SafeSaves
-
-
 template <typename T>
 concept NumericalTypes = std::is_same_v<T, int> || std::is_same_v<T, long> || std::is_same_v<T, long long> ||
 						 std::is_same_v<T, unsigned int> || std::is_same_v<T, unsigned long> || std::is_same_v<T, size_t> ||
@@ -170,7 +75,6 @@ inline std::vector<T> convertBackFromString(std::vector<std::string> const& toCo
 
 	return converted;
 }
-
 
 /**
  * @brief Analyzes a string to determine the size needed of the text when displayed.

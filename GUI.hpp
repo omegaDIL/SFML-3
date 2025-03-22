@@ -43,14 +43,13 @@ concept Ostreamable = requires(std::ostream & os, T t)
 	{ os << t } -> std::same_as<std::ostream&>;
 };
 
-
 /** @class Interface
  * @brief Manages a background for the window, creates a class for texts, and serves as a base class for other UI components.
  *
  * @note    The class uses the `windowSize` variable to adjust the proportions of its elements.
  * @warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *
- * @see sf::RenderWindow.
+ * @see sf::RenderWindow, InterfaceText.
  */
 class Interface
 {
@@ -60,10 +59,11 @@ public:
 	 * @brief A wrapper for `sf::Text` with additional custom properties.
 	 *
 	 * @note This class uses the `windowSize` variable to correctly adjust the proportions of the text.
+	 * @note Call loadFont() once before creating any instance of this class.
 	 *
 	 * @see sf::Text, Interface
 	 */
-	struct InterfaceText : private sf::Text
+	struct InterfaceText : public sf::Text
 	{
 	public:
 
@@ -82,12 +82,22 @@ public:
 		 * @param[in] pos: The position to place the text.
 		 * @param[in] characterSize: The size of the text characters.
 		 *
-		 * @warning This constructor initializes a static font for every text. In multi-threaded program, make you sure to construct
-		 *			one instance, then load the rest using parallelism if you want.
-		 *
-		 * @see sf::Text, sf::Font.
+		 * @see sf::Text, sf::Font, loadFont().
 		 **/
-		InterfaceText(std::string const& content, sf::Vector2f pos, unsigned int characterSize) noexcept;
+		inline InterfaceText(std::string const& content, sf::Vector2f pos, unsigned int characterSize) noexcept
+			: sf::Text{ *m_font, content, characterSize }
+		{
+			updatePos(pos);
+		}
+
+		/**
+		 * @brief Loads the font used for the text.
+		 * 
+		 * @return An optional string containing an error message if the font could not be loaded.
+		 * 
+		 * @note The font is loaded only once for all instances of this class.
+		 */
+		static std::optional<std::string> loadFont() noexcept;
 
 
 		/**
@@ -113,8 +123,6 @@ public:
 		 */
 		inline void resizingElements(sf::Vector2f scalingFactor) noexcept
 		{
-			float factor = std::min(windowSize.height, windowSize.width) / 720.f;
-			setScale(sf::Vector2f(factor, factor)); // The scaling factor must be the same.
 			updatePos(sf::Vector2f{ getPosition().x * scalingFactor.x, getPosition().y * scalingFactor.y });
 		}
 
@@ -140,9 +148,15 @@ public:
 		inline void updatePos(sf::Vector2f pos) noexcept
 		{
 			sf::FloatRect const textBounds{ getLocalBounds() }; // Cache bounds to avoid multiple calls.
-			setOrigin(textBounds.width / 2.f, textBounds.height / 2.f);
+			setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f });
+
+			float factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
+			setScale(sf::Vector2f{ factor, factor }); // The scaling factor must be the same.
+
 			setPosition(pos); // Update the position according to the new origin.
 		}
+
+		static std::unique_ptr<sf::Font> m_font; // The font used for the text.
 	};
 
 
@@ -733,7 +747,7 @@ inline void initializeSprite(sf::Sprite& sprite, sf::Texture const& texture, sf:
  * @complexity constant O(1).
  *
  * @param[out] menu: The interface in which the texts/buttons will be created.
- */
+ */ 
 void createElemForMainInterface(MenuInterface& menu, sf::RenderWindow& window) noexcept;
 
 /**
