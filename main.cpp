@@ -1,11 +1,7 @@
 ﻿#include <SFML/Graphics.hpp>
-#include "Save.hpp"
-#include "errorHandling.hpp"
-
 #include <string>
 #include <optional>
-#include <iostream>
-
+#include "Save.hpp"
 
 using SafeSaves::Save;
 
@@ -16,12 +12,6 @@ int main()
 	sf::CircleShape shape{ 100.f };
 	shape.setFillColor(sf::Color::Green);
 	shape.setOrigin({ shape.getRadius() / 2, shape.getRadius() / 2 });
-
-	std::vector<std::string> sauvegarde{};
-	sauvegarde.resize(2);
-	std::optional<std::string> message = Save::reading("teste.txt", sauvegarde);
-	if (message.has_value())
-		std::cout << message.value();
 
 	while (window.isOpen())
 	{
@@ -37,8 +27,4 @@ int main()
 		window.draw(shape);
 		window.display();
 	}
-
-	message = Save::writing("teste.txt", sauvegarde);
-	if (message.has_value())
-		std::cout << message.value();
 }

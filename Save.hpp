@@ -13,10 +13,10 @@
 #include <filesystem>
 #include <vector> 
 #include <string>
-#include <sstream>
 #include <optional>
-#include <ios>
 #include <memory>
+#include <sstream>
+#include <ios>
 
 
 /** @namespace SafeSaves
@@ -335,60 +335,5 @@ private:
 	// TODO: change the default key.
 }; // struct Save
 }  // namespace SafeSaves
-
-
-/**
- * @brief Converts a vector of size_t to a vector of strings.
- * @complexity O(N) where N is the number of elements in the vector.
- *
- * @param[in] toConvert: The vector of size_t to convert.
- *
- * @return A vector of strings representing the converted values.
- */
-inline std::vector<std::string> convertToString(std::vector<size_t> const& toConvert)
-{
-	std::vector<std::string> converted{};
-
-	for (auto const& nval : toConvert)
-		converted.push_back(std::to_string(nval));
-	
-	return converted;
-}
-
-/**
- * @brief Converts a vector of long long to a vector of strings.
- * @complexity O(N) where N is the number of elements in the vector.
- *
- * @param[in] toConvert: The vector of long long to convert.
- *
- * @return A vector of strings representing the converted values.
- */
-inline std::vector<std::string> convertToString(std::vector<long long> const& toConvert)
-{
-	std::vector<std::string> converted{};
-
-	for (auto const& nval : toConvert)
-		converted.push_back(std::to_string(nval));
-
-	return converted;
-}
-
-/**
- * @brief Converts a vector of strings to a vector of long long.
- * @complexity O(N) where N is the number of elements in the vector.
- *
- * @param[in] toConvert: The vector of strings to convert.
- *
- * @return A vector of long long representing the converted values.
- */
-inline std::vector<long long> convertBackFromString(std::vector<std::string> const& toConvert)
-{
-	std::vector<long long> converted{};
-
-	for (auto const& sval : toConvert)
-		converted.push_back(std::stoll(sval));
-
-	return converted;
-}
 
 #endif //SAVE_HPP

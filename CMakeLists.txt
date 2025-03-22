@@ -26,7 +26,7 @@ set(SFML_DIR "C:/informatique/librairie/SFML-3.0.0/lib/cmake/SFML")
 set(CMAKE_PREFIX_PATH "C:/informatique/librairie/SFML-3.0.0/lib/cmake/SFML")
 
 # Ajoutez une source à l'exécutable de ce projet.
-add_executable(SFML_3_Template "main.cpp" "Save.hpp" "Save.cpp" "errorHandling.hpp" "errorHandling.cpp")
+add_executable(SFML_3_Template "main.cpp" "Save.hpp" "Save.cpp" "GUI.hpp" "GUI.cpp" "Utils.hpp" "Utils.cpp")
 
 # Recherchez la bibliothèque SFML et ajoutez-la
 find_package(SFML 3.0 COMPONENTS System Window Graphics REQUIRED)
