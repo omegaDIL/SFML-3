@@ -21,6 +21,8 @@
 
 /** @namespace SafeSaves
  * @brief Classes, functions and exceptions to safely handle files.
+ * 
+ * @note The relative folder is "saves/".
  */
 namespace SafeSaves
 {
