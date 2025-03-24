@@ -1,18 +1,23 @@
 ﻿#include <SFML/Graphics.hpp>
 #include <string>
 #include <optional>
+#include "GUI.hpp"
 #include "Save.hpp"
 #include "Utils.hpp"
-
+#include <iostream>
 using SafeSaves::Save;
+
+sf::VideoMode windowSize{ sf::Vector2u{ 1000, 1000 } };
+std::string nameOfSoftware{ "Template sfml 3" };
 
 
 int main()
 {
-	sf::RenderWindow window(sf::VideoMode({ 1000, 1000 }), "SFML works!");
+	sf::RenderWindow window{ windowSize, nameOfSoftware };
 	sf::CircleShape shape{ 100.f };
 	shape.setFillColor(sf::Color::Green);
 	shape.setOrigin({ shape.getRadius() / 2, shape.getRadius() / 2 });
+
 
 	while (window.isOpen())
 	{
@@ -28,4 +33,6 @@ int main()
 		window.draw(shape);
 		window.display();
 	}
+
+	return 0;
 }

@@ -63,7 +63,7 @@ public:
 	 *
 	 * @see sf::Text, Interface
 	 */
-	struct InterfaceText : public sf::Text
+	struct InterfaceText : private sf::Text
 	{
 	public:
 
@@ -85,7 +85,7 @@ public:
 		 * @see sf::Text, sf::Font, loadFont().
 		 **/
 		inline InterfaceText(std::string const& content, sf::Vector2f pos, unsigned int characterSize) noexcept
-			: sf::Text{ *m_font, content, characterSize }
+			: sf::Text{ *(Interface::InterfaceText::m_font), content, characterSize }
 		{
 			updatePos(pos);
 		}
@@ -112,8 +112,10 @@ public:
 		{
 			std::ostringstream oss{}; // Convert the content to a string
 			oss << content; // Assigning the content to the variable.
+
 			setString(oss.str());
-			updatePos(getPosition()); // Updating position. If the new string is shorter/larger than the previous one, it was not centered.
+			// Updating position. If the new string is shorter/larger than the previous one, the text is not centered anymore.
+			updatePos(getPosition()); 
 		}
 
 		/**
@@ -150,7 +152,7 @@ public:
 			sf::FloatRect const textBounds{ getLocalBounds() }; // Cache bounds to avoid multiple calls.
 			setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f });
 
-			float factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
+			float const factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
 			setScale(sf::Vector2f{ factor, factor }); // The scaling factor must be the same.
 
 			setPosition(pos); // Update the position according to the new origin.
@@ -171,7 +173,7 @@ public:
 	 *
 	 * @pre  The window must NOT be nullptr.
 	 * @pre  The path must be valid or empty (the default background is created if empty).
-	 * @post The interface will draw its elements on the right window.
+	 * @post The interface will draw its elements on the expected window.
 	 * @post The background will be correclty loaded and displayed
 	 * @throw std::invalid_argument if window is nullptr. Basic exception guarantee: the object cannot be used but is safe to destroy without memory leak.
 	 * @throw std::invalid_argument if the path is neither valid nor empty. Strong exception guarantee: the object can be safely used but will have the default background.
@@ -185,27 +187,28 @@ public:
 	Interface& operator=(Interface const&) noexcept = default;
 	Interface& operator=(Interface&&) noexcept = default;
 
+
 	/**
 	 * @brief Updates the size/positioin of all elements in every interfaces.
 	 *
-	 * @param[in] scalingFactor: The scaling factor between the previous size of the window and the new one.
+	 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
 	 */
 	static void windowResized(sf::Vector2f scalingFactor) noexcept;
 
-	/** @pure
+	/** 
 	 * @brief Renders the interface.
 	 * @complexity O(1).
 	 *
 	 * @note Although this function is pure virtual, it has an implementation for drawing the background.
 	 *
-	 * @thorw std::logic_error if window is nullptr.
+	 * @throw std::logic_error if window is nullptr.
 	 */
 	inline virtual void draw() const = 0
 	{
 		if (!m_window)
-			throw std::logic_error{ "Window is nullptr.\nOccured inside the draw function of Interface.\n" };
+			throw std::logic_error{ "Window of an interface is nullptr." };
 
-		m_window->draw(m_spriteBackground);
+		m_window->draw(*m_spriteBackground);
 	}
 
 protected:
@@ -230,7 +233,7 @@ private:
 	 */
 	void creatingBackgroundTexture() noexcept;
 
-	sf::Sprite  m_spriteBackground;  // Sprite  for the background.
+	std::unique_ptr<sf::Sprite> m_spriteBackground;  // Sprite  for the background.
 	sf::Texture m_textureBackground; // Texture for the background.
 	sf::Texture m_actualTextureBackground; // It contains a potential texture loaded from a file.
 };
@@ -307,7 +310,7 @@ public:
 	template<Ostreamable T>
 	inline void addButton(size_t const identifier, T const& content, sf::Vector2f position, unsigned int characterSize, std::function<void()> function = []() {}) noexcept
 	{
-		m_buttons.emplace(identifier, std::pair{ InterfaceText{ content, position, characterSize }, function });
+		//m_buttons.emplace(identifier, std::make_pair(InterfaceText{ content, position, characterSize }, function));
 	}
 
 	/**
@@ -322,9 +325,9 @@ public:
 	{
 		if (m_pointingButton == 0)
 			return "";
-
-		m_buttons[m_pointingButton].second(); // Executing the function related to the button pressed
-		return m_buttons[m_pointingButton].first.getText().getString();
+		return "";
+		//m_buttons[m_pointingButton].second(); // Executing the function related to the button pressed
+		//return m_buttons[m_pointingButton].first.getText().getString();
 	}
 
 	/**
@@ -354,14 +357,14 @@ protected:
 	// Collection of text elements in the interface.
 	std::vector<InterfaceText> m_texts;
 	// Collection of button elements in the interface. It maps them to the corresponding text elements.
-	std::unordered_map<size_t, std::pair<InterfaceText, std::function<void()>>> m_buttons;
+	//std::unordered_map<size_t, std::pair<InterfaceText, std::function<void()>>> m_buttons;
 
 private:
 
 	// Identifier of the button currently being hovered over by the mouse. 0 means there are no buttons. Shared among all instances.
 	static size_t m_pointingButton;
 	// The background sprite for the button being hovererd over by the mouse. Shared among all intsances.
-	static sf::Sprite m_backgroundPointingButton;
+	static std::unique_ptr<sf::Sprite> m_backgroundPointingButton;
 };
 
 
@@ -436,14 +439,14 @@ public:
 	template<Ostreamable T>
 	void setNewValueButton(size_t const identifier, T const& content, bool newFunction = false, std::function<void()> function = []() {}) noexcept
 	{
-		auto const dynamicButtonElem{ m_buttons.find(identifier) };
+		//auto const dynamicButtonElem{ m_buttons.find(identifier) };
 
-		if (dynamicButtonElem != m_buttons.end())
-		{
-			dynamicButtonElem->second.first.updateContent(content);
-			if (newFunction)
-				dynamicButtonElem->second.second = function;
-		}
+		//if (dynamicButtonElem == m_buttons.end())
+		//	return;
+		//
+		//dynamicButtonElem->second.first.updateContent(content);
+		//if (newFunction)
+		//	dynamicButtonElem->second.second = function;
 	}
 
 	/**
@@ -482,7 +485,8 @@ public:
 	 */
 	inline std::string getAffiliatedButton() noexcept
 	{
-		return m_buttons[m_affiliatedIdButtonOfDynamicElements].first.getText().getString();
+		//return m_buttons[m_affiliatedIdButtonOfDynamicElements].first.getText().getString();
+		return "None";
 	}
 
 	/**
@@ -509,7 +513,7 @@ private:
 	// Identifier of the last pressed button that changed the values of the dynamic elements. 0 means there are no buttons.
 	size_t m_affiliatedIdButtonOfDynamicElements;
 	// Background sprite for `m_affiliatedButton`. 
-	sf::Sprite m_backgroundAffiliatedButton;
+	std::unique_ptr<sf::Sprite> m_backgroundAffiliatedButton;
 };
 
 
@@ -616,90 +620,90 @@ private:
 	sf::RectangleShape m_cursor;
 };
 
-
-class GameInterface : public Interface
-{
-public:
-
-	/**
-	 * @brief Constructs the interface.
-	 * @complexity O(1).
-	 *
-	 * @param[in,out] window:     The window where the interface elements will be rendered.
-	 * @param[in] rules: The rules that the game'll use.
-	 * @param[in] backgroundPath: The background path of the interface. If empty, a black-grey background is created.
-	 *
-	 * @note The path must be relative to the media folder.
-	 *
-	 * @pre  The window must NOT be nullptr.
-	 * @pre  The path must be valid or empty (the default background is created if empty).
-	 * @post The interface will draw its elements on the right window.
-	 * @post The background will be correclty loaded and displayed
-	 * @throw std::invalid_argument if window is nullptr. Basic exception guarantee: the object cannot be used but is safe to destroy without memory leak.
-	 * @throw std::invalid_argument if the path is neither valid nor empty. Strong exception guarantee: the object can be safely used but will have the default background.
-	 */
-	explicit GameInterface(sf::RenderWindow* window, RulesGame const* const rules, std::string backgroundPath = "");
-
-	GameInterface() noexcept = delete;
-	GameInterface(GameInterface const&) noexcept = default;
-	GameInterface(GameInterface&&) noexcept = default;
-	virtual ~GameInterface() noexcept = default;
-	GameInterface& operator=(GameInterface const&) noexcept = default;
-	GameInterface& operator=(GameInterface&&) noexcept = default;
-
-
-	/**
-	 * @brief When the game is starting, call this function to prepare the interface.
-	 * @complexity O(1).
-	 *
-	 * @param[in] score: The score that'll be updated throughout the game.
-	 */
-	inline void starting(size_t* const score) noexcept
-	{
-		m_score = score;
-
-		m_scoreText.updateContent("");
-		m_chronoText.updateContent("");
-
-		m_chronoTimer.restart();
-		m_chronoPoints.restart();
-	}
-
-	/**
-	 * @brief Refreshes the position and the size of the elements after the window is resized
-	 * @complexity O(1).
-	 *
-	 * @param[in] scalingFactor: The scaling factor between the previous size of the window and the new one.
-	 */
-	virtual void resizingElements(sf::Vector2f scalingFactor) noexcept;
-
-	/**
-	 * @brief Draws the interface and adds the points related to elapsed time.
-	 * @complexity O(1).
-	 */
-	virtual void draw() const noexcept final;
-
-private:
-
-	/**
-	 * @brief Creates the texture for power-ups and hearts
-	 * @complexity O(1).
-	 */
-	void createTexture() noexcept;
-
-
-	InterfaceText m_scoreText; // The text that displays the score gained.
-	mutable size_t* m_score; // Used to add points as time passes.
-	RulesGame const* m_currentRules; // The rules of the game
-
-	mutable InterfaceText m_chronoText; // The text that displays the time elapsed.
-	sf::Clock m_chronoTimer; // Tha actual timer since the beginning.
-	mutable sf::Clock m_chronoPoints; // The timer to know when we add points to the player.
-
-	std::vector<sf::Sprite> m_hearts; // The sprites that represent the heart.
-	std::vector<sf::Sprite> m_power_ups; // The sprites that represent the power ups.
-	std::unordered_map<std::string, std::shared_ptr<sf::Texture>> m_textures; // All textures.
-};
+//TODO: Implement this class
+//class GameInterface : public Interface
+//{
+//public:
+//
+//	/**
+//	 * @brief Constructs the interface.
+//	 * @complexity O(1).
+//	 *
+//	 * @param[in,out] window:     The window where the interface elements will be rendered.
+//	 * @param[in] rules: The rules that the game'll use.
+//	 * @param[in] backgroundPath: The background path of the interface. If empty, a black-grey background is created.
+//	 *
+//	 * @note The path must be relative to the media folder.
+//	 *
+//	 * @pre  The window must NOT be nullptr.
+//	 * @pre  The path must be valid or empty (the default background is created if empty).
+//	 * @post The interface will draw its elements on the right window.
+//	 * @post The background will be correclty loaded and displayed
+//	 * @throw std::invalid_argument if window is nullptr. Basic exception guarantee: the object cannot be used but is safe to destroy without memory leak.
+//	 * @throw std::invalid_argument if the path is neither valid nor empty. Strong exception guarantee: the object can be safely used but will have the default background.
+//	 */
+//	explicit GameInterface(sf::RenderWindow* window, RulesGame const* const rules, std::string backgroundPath = "");
+//
+//	GameInterface() noexcept = delete;
+//	GameInterface(GameInterface const&) noexcept = default;
+//	GameInterface(GameInterface&&) noexcept = default;
+//	virtual ~GameInterface() noexcept = default;
+//	GameInterface& operator=(GameInterface const&) noexcept = default;
+//	GameInterface& operator=(GameInterface&&) noexcept = default;
+//
+//
+//	/**
+//	 * @brief When the game is starting, call this function to prepare the interface.
+//	 * @complexity O(1).
+//	 *
+//	 * @param[in] score: The score that'll be updated throughout the game.
+//	 */
+//	inline void starting(size_t* const score) noexcept
+//	{
+//		m_score = score;
+//
+//		m_scoreText.updateContent("");
+//		m_chronoText.updateContent("");
+//
+//		m_chronoTimer.restart();
+//		m_chronoPoints.restart();
+//	}
+//
+//	/**
+//	 * @brief Refreshes the position and the size of the elements after the window is resized
+//	 * @complexity O(1).
+//	 *
+//	 * @param[in] scalingFactor: The scaling factor between the previous size of the window and the new one.
+//	 */
+//	virtual void resizingElements(sf::Vector2f scalingFactor) noexcept;
+//
+//	/**
+//	 * @brief Draws the interface and adds the points related to elapsed time.
+//	 * @complexity O(1).
+//	 */
+//	virtual void draw() const noexcept final;
+//
+//private:
+//
+//	/**
+//	 * @brief Creates the texture for power-ups and hearts
+//	 * @complexity O(1).
+//	 */
+//	void createTexture() noexcept;
+//
+//
+//	InterfaceText m_scoreText; // The text that displays the score gained.
+//	mutable size_t* m_score; // Used to add points as time passes.
+//	RulesGame const* m_currentRules; // The rules of the game
+//
+//	mutable InterfaceText m_chronoText; // The text that displays the time elapsed.
+//	sf::Clock m_chronoTimer; // Tha actual timer since the beginning.
+//	mutable sf::Clock m_chronoPoints; // The timer to know when we add points to the player.
+//
+//	std::vector<sf::Sprite> m_hearts; // The sprites that represent the heart.
+//	std::vector<sf::Sprite> m_power_ups; // The sprites that represent the power ups.
+//	std::unordered_map<std::string, std::shared_ptr<sf::Texture>> m_textures; // All textures.
+//};
 
 //////////////////////////////////Interface classes//////////////////////////////////
 
@@ -719,7 +723,7 @@ private:
  *
  * @note Give the size as if the texture is used in a 720*720 window. Will be adjusted inside this function.
  */
-std::unique_ptr<sf::Texture> createGradientTexture(sf::Vector2u size, sf::Uint8 red, sf::Uint8 green, sf::Uint8 blue) noexcept;
+std::unique_ptr<sf::Texture> createGradientTexture(sf::Vector2u size, uint8_t red, uint8_t green, uint8_t blue) noexcept;
 
 /**
  * @brief Initialise a sprite with a texture and set the origin at the center.
@@ -728,11 +732,10 @@ std::unique_ptr<sf::Texture> createGradientTexture(sf::Vector2u size, sf::Uint8 
  * @param[in]  texture:  Its texture.
  * @param[in]  position: Its position.
   */
-inline void initializeSprite(sf::Sprite& sprite, sf::Texture const& texture, sf::Vector2f position = sf::Vector2f{ 0, 0 }) noexcept
+inline void initializeSprite(sf::Sprite& sprite, sf::Vector2f position = sf::Vector2f{ 0, 0 }) noexcept
 {
-	sprite.setTexture(texture);
 	sf::FloatRect const textureOrigin{ sprite.getGlobalBounds() }; // Cache the bounds to avoid multiple calls.
-	sprite.setOrigin(textureOrigin.width / 2.f, textureOrigin.height / 2.f);
+	sprite.setOrigin(sf::Vector2f{ textureOrigin.size.x / 2.f, textureOrigin.size.y / 2.f });
 	sprite.setPosition(position);
 }
 

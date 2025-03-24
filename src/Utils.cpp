@@ -9,9 +9,6 @@
 #include "Utils.hpp"
 #include "GUI.hpp"
 
-extern sf::VideoMode windowSize;
-extern std::string nameOfSoftware;
-
 
 sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int characterSize) noexcept
 {
@@ -34,14 +31,13 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
 }
 
 
-void showErrorsUsingGUI(std::string const& errorMessage, std::string const& error) noexcept
+void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept
 {
 	sf::VideoMode const windowErrorSize{ getStringSizeForDisplay(errorMessage) };
-	std::string name{ nameOfSoftware + ": " + error + " error" };
 	// The UI text to display the error message.
 	Interface::InterfaceText textError{ errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f } , 12 }; 
 
-	sf::RenderWindow errorWindow{ windowErrorSize, name };
+	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
 	while (errorWindow.isOpen())
 	{	// The function is blocking.
 		while (const std::optional event = errorWindow.pollEvent())

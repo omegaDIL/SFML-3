@@ -92,14 +92,14 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
  * @complexity constant O(1).
  *
  * @param[in] errorMessage: The message to be displayed.
- * @param[in] nature: The nature of the error (e.g. saving error, graphical error, etc.).
+ * @param[in] errorTitle: The title of the window.
  *
  * @note This function is blocking and will terminate once the user closes the new window.
- * @note The class uses the `windowSize` variable to adjust the proportions of its elements.
- * @note The class uses the `nameOfSoftware` variable to name the window.
+ * @note Don't forget to put the character \n to avoid the text to not be seen entirely when you
+ *       have a long line.
  *
  * @see sf::RenderWindow.
  */
-void showErrorsUsingGUI(std::string const& errorMessage, std::string const& error) noexcept;
+void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept;
 
 #endif //UTILS_HPP
