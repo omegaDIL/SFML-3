@@ -16,17 +16,17 @@
 #include <string>
 
 
- /** @namespace SafeSaves
+ /**  
   * @brief Classes, functions and exceptions to safely handle files.
   */
 namespace SafeSaves
 {
-	/** @struct FileException
+	/**
 	 * @brief Exception thrown for file-related errors.
 	 *
 	 * @see std::ios_base::failure.
 	 */
-	struct FileException : public std::ios_base::failure
+	struct FileFailure : public std::ios_base::failure
 	{
 	public:
 
@@ -36,7 +36,7 @@ namespace SafeSaves
 		 *
 		 * @param[in] message: The error message.
 		 */
-		inline explicit FileException(const std::string& message) : std::ios_base::failure{ message }
+		inline explicit FileFailure(const std::string& message) : std::ios_base::failure{ message }
 		{}
 
 
@@ -51,12 +51,12 @@ namespace SafeSaves
 		}
 	};
 
-	/** @struct FileExceptionWhileOpening
+	/**
 	 * @brief Exception thrown for file-related errors when opening files.
 	 *
-	 * @see FileException, FileExceptionWhileInUse.
+	 * @see FileFailure, FileFailureWhileInUse.
 	 */
-	struct FileExceptionWhileOpening final : public FileException
+	struct FileFailureWhileOpening final : public FileFailure
 	{
 	public:
 
@@ -66,9 +66,8 @@ namespace SafeSaves
 		 *
 		 * @param[in] message: The error message.
 		 */
-		inline explicit FileExceptionWhileOpening(const std::string& message) : FileException{ message }
-		{
-		}
+		inline explicit FileFailureWhileOpening(const std::string& message) : FileFailure{ message }
+		{}
 
 
 		/**
@@ -78,16 +77,16 @@ namespace SafeSaves
 		 */
 		inline virtual const char* what() const noexcept final
 		{
-			return FileException::what();
+			return FileFailure::what();
 		}
 	};
 
-	/** @struct FileExceptionWhileInUse
+	/**
 	  * @brief Exception thrown for file-related errors when using files (reading/writing).
 	  *
-	  * @see FileException, FileExceptionWhileOpening.
+	  * @see FileFailure, FileFailureWhileOpening.
 	  */
-	struct FileExceptionWhileInUse final : public FileException
+	struct FileFailureWhileInUse final : public FileFailure
 	{
 	public:
 
@@ -97,9 +96,8 @@ namespace SafeSaves
 		 *
 		 * @param[in] message: The error message.
 		 */
-		inline explicit FileExceptionWhileInUse(const std::string& message) : FileException{ message }
-		{
-		}
+		inline explicit FileFailureWhileInUse(const std::string& message) : FileFailure{ message }
+		{}
 
 
 		/**
@@ -109,18 +107,18 @@ namespace SafeSaves
 		 */
 		inline virtual const char* what() const noexcept final
 		{
-			return FileException::what();
+			return FileFailure::what();
 		}
 	};
 } // namespace SafeSaves
 
 
-/** @struct LoadingUIRessourceException
+/** 
  * @brief Exception thrown for file-related errors.
  *
  * @see std::runtime_error.
  */
-struct LoadingUIRessourceException : public std::runtime_error
+struct LoadingUIRessourceFailure : public std::runtime_error
 {
 public:
 
@@ -130,7 +128,7 @@ public:
 	 *
 	 * @param[in] message: The error message.
 	 */
-	inline explicit LoadingUIRessourceException(const std::string& message) : std::runtime_error{ message }
+	inline explicit LoadingUIRessourceFailure(const std::string& message) : std::runtime_error{ message }
 	{}
 
 

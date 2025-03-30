@@ -9,6 +9,9 @@
 #include "Utils.hpp"
 #include "GUI.hpp"
 
+extern sf::VideoMode windowSize;
+extern std::string nameOfSoftware;
+
 
 sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int characterSize) noexcept
 {
@@ -33,9 +36,14 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
 
 void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept
 {
+	// Calculate the size needed to display the whole string.
 	sf::VideoMode const windowErrorSize{ getStringSizeForDisplay(errorMessage) };
-	// The UI text to display the error message.
-	Interface::InterfaceText textError{ errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f } , 12 }; 
+	
+	GIText textError{};
+	auto error{ textError.create(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12) };
+
+	if (error.has_value())
+		return; // Ipossible to display the error in a GUI if there's no font.
 
 	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
 	while (errorWindow.isOpen())
@@ -53,4 +61,23 @@ void showErrorsUsingGUI(std::string const& errorMessage, std::string const& erro
 		errorWindow.draw(textError.getText());
 		errorWindow.display();
 	}
+}
+
+
+void handleEventResize(sf::RenderWindow* window) noexcept
+{
+	sf::Vector2u const maxSize{ sf::VideoMode::getDesktopMode().size };
+	sf::Vector2u newSize{ static_cast<sf::Vector2f>(window->getSize()) };
+
+	// Windows (OS) does not like window that are larger than its definition.$
+	if (newSize.x > maxSize.x)
+		newSize.x = maxSize.x;
+	if (newSize.y > maxSize.y)
+		newSize.y = maxSize.y;
+	
+	sf::Vector2f factor{ static_cast<float>(newSize.x) / windowSize.size.x, static_cast<float>(newSize.y) / windowSize.size.y };
+	windowSize.size = newSize;
+	
+	window->create(windowSize, nameOfSoftware);
+	GInterface::windowResized(factor);
 }

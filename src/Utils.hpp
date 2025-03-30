@@ -102,4 +102,15 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
  */
 void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept;
 
+
+/**
+ * @brief Handles the changes due to the new size of the window.
+ * 
+ * @param[in,out] window: the window.
+ * 
+ * @note Resizes elements of the GUIs.
+ * @note Handles windowSize.
+ */
+void handleEventResize(sf::RenderWindow* window) noexcept;
+
 #endif //UTILS_HPP

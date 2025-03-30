@@ -21,8 +21,6 @@
 
 /**
  * @brief Classes, functions and exceptions to safely handle files.
- * 
- * @note The relative folder is "saves/".
  */
 namespace SafeSaves
 {
@@ -57,21 +55,19 @@ inline bool checkFileWritable(std::string const& path) noexcept
 /**
  * @brief Use RAII to ensure proper handling errors while reading data.
  *
+ * @note Call create() to open a file for reading.
+ * 
  * @see std::ifstream, WritingStreamRAIIWrapper
  */
 class ReadingStreamRAIIWrapper
 {
 public:
 
-	/**
-	 * @brief Default constructor.
-	 * @complexity O(1).
-	 *
-	 * @see create()
-	 */
-	inline ReadingStreamRAIIWrapper() noexcept
-		: m_fileStream{ nullptr }
-	{}
+	ReadingStreamRAIIWrapper() noexcept = default;
+	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper const&) = delete;
+	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper&&) noexcept = default;
+	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper const&) = delete;
+	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper&&) noexcept = default;
 
 	/**
 	 * @brief Ensures the file is closed.
@@ -83,11 +79,6 @@ public:
 			m_fileStream->close();
 	}
 
-	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper const&) = delete;
-	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper&&) noexcept = default;
-	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper const&) = delete;
-	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper&&) noexcept = default;
-
 	/**
 	 * @brief Opens a file for reading and throws an error if the operation fails.
 	 * @complexity O(1)
@@ -97,7 +88,7 @@ public:
 	 *
 	 * @pre The file must exist.
 	 * @post The file is opened for reading.
-	 * @throw FileException if the file cannot be accessed.
+	 * @throw FileFailure if the file cannot be accessed.
 	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
 	 */
 	void create(std::string const& path, std::ios::openmode mode = std::ios::in);
@@ -122,21 +113,19 @@ private:
 /**
  * @brief Use RAII to ensure proper handling errors while saving data.
  * 
+ * @note Call create() to open a file for reading.
+ *
  * @see std::ofstream, ReadingStreamRAIIWrapper
  */
 class WritingStreamRAIIWrapper
 {
 public:
 
-	/**
-	 * @brief Default constructor.
-	 * @complexity O(1).
-	 * 
-	 * @see create(), createWithFile()
-	 */
-	inline WritingStreamRAIIWrapper() noexcept
-		: m_fileStream{ nullptr }
-	{}
+	WritingStreamRAIIWrapper() noexcept = default;
+	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper const&) = delete;
+	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper&&) noexcept = default;
+	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper const&) = delete;
+	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper&&) noexcept = default;
 
 	/**
 	 * @brief Ensures that the file is closed.
@@ -148,11 +137,6 @@ public:
 			m_fileStream->close();
 	}
 
-	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper const&) = delete;
-	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper&&) noexcept = default;
-	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper const&) = delete;
-	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper&&) noexcept = default;
-
 	/**
 	 * @brief Opens a file for writing and throws an error if the operation fails.
 	 * @complexity O(1)
@@ -163,10 +147,8 @@ public:
 	 *
 	 * @pre The file must exist and be writable.
 	 * @post The file is opened for writing.
-	 * @throw FileExceptionWhileOpening if the file cannot be accessed. 
+	 * @throw FileFailureWhileOpening if the file cannot be accessed. 
 	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
-	 * 
-	 * @see createWithFile().
 	 */
 	void create(std::string const& path, std::ios::openmode mode = std::ios::out | std::ios::trunc, bool create = false);
 
@@ -191,11 +173,11 @@ private:
 /**
  * @brief Provides static functions for saving and loading data.
  *
- * @note Don't expect this structure to be fast: it interacts with files
+ * @note Don't expect this structure to be fast: it interacts with files.
  * @note This struct is non-instantiable and only contains static methods.
  * @note If any optional string is instantiated, the function called didn't satisfy its postconditions.
  *
- * @see SafeSaves, FileException
+ * @see SafeSaves, FileFailure
  */
 struct Save
 {
@@ -224,7 +206,7 @@ public:
 	 *
 	 * @see writing().
 	 */
-	static std::optional<std::string> reading(std::string const& fileName, std::vector<std::string>& valuesToLoad, bool decrypt = true) noexcept;
+	[[nodiscard]] static std::optional<std::string> reading(std::string const& fileName, std::vector<std::string>& valuesToLoad, bool decrypt = true) noexcept;
 
 	/**
 	 * @brief Writes data into a file
@@ -238,12 +220,12 @@ public:
 	 * @param[in] encrypt: True if the values need to be encrypted.
 	 *
 	 * @return an optional string that contains an error message.
-	 * 
+	 *
 	 * @note Avoid putting the character \n in any string.
 	 *
 	 * @see writing(), createFile().
 	 */
-	static std::optional<std::string> writing(std::string const& fileName, std::vector<std::string> const& valuesToSave, bool encrypt = true) noexcept;
+	[[nodiscard]] static std::optional<std::string> writing(std::string const& fileName, std::vector<std::string> const& valuesToSave, bool encrypt = true) noexcept;
 
 	/**
 	 * @brief Creates a valid file .txt to store information, or resets a file.
@@ -257,7 +239,11 @@ public:
 	 * 
 	 * @see std::filesystem for removal or getting the names of existent files.
 	 */
-	static std::optional<std::string> createFile(std::string const& fileName) noexcept;
+	[[nodiscard]] static std::optional<std::string> createFile(std::string const& fileName) noexcept;
+
+
+	// The relative path to the saves folder.
+	static std::string savesPath;
 
 private:
 
@@ -268,13 +254,13 @@ private:
 	 * @param[out] errorMessage: The error message if a critical error occured.
 	 * 
 	 * @return ReadingStreamRAIIWrapper that contains the stream.
-	 * 
+	 *
 	 * @note You need to check the value of the wrapper to see its validity.
 	 * @note If a message was added in errorMessage then the stream is not valid.
 	 * 
 	 * @see cleanUpFiles(), reading().
 	 */
-	static ReadingStreamRAIIWrapper openReadingStream(std::string const& path, std::ostringstream& errorMessage) noexcept;
+	[[nodiscard]] static ReadingStreamRAIIWrapper openReadingStream(std::string const& path, std::ostringstream& errorMessage) noexcept;
 
 	/**
 	 * @brief Opens a safe stream to a file.
@@ -284,12 +270,13 @@ private:
 	 *
 	 * @return WritingStreamRAIIWrapper that contains the stream.
 	 *
+	 *
 	 * @note You need to check the value of the wrapper to see its validity.
 	 * @note If a message was added in errorMessage then the stream is not valid.
 	 * 
 	 * @see cleanUpFiles(), writing().
 	 */
-	static WritingStreamRAIIWrapper openWritingStream(std::string const& path, std::ostringstream& errorMessage) noexcept;
+	[[nodiscard]] static WritingStreamRAIIWrapper openWritingStream(std::string const& path, std::ostringstream& errorMessage) noexcept;
 
     /**
     * @brief Cleans up files by removing temporary or corrupted files.
@@ -297,7 +284,8 @@ private:
     * 
     * @param[in] path: The path to the file to clean up.
     * 
-	* @throw FileExceptionWhileOpening if no valid (existing or non corrputed) files exist.
+	* @pre The file must be readable and valid (or its tmp).
+	* @throw FileFailureWhileOpening if no valid (existing or non corrputed) files exist.
 	* @throw std::exceptions if an important error occured and is unknown.
 	* 		 Strong exceptions guarrantee.
     * 
@@ -333,6 +321,9 @@ private:
 	 */
 	static std::string encryptDecrypt(std::string const& data, std::string const& key = "azerty") noexcept;
 	// TODO: change the default key.
+
+	// The tokens that confirm that the file has been correctly saved.
+	static std::string m_tokensOfConfirmation;
 }; // struct Save
 }  // namespace SafeSaves
 

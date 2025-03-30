@@ -11,37 +11,37 @@
 
 using namespace SafeSaves;
 
-static std::string const savesPath{ "saves/" };
-static std::string const tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
+std::string Save::savesPath{ "saves/" };
+std::string Save::m_tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
 
 
 void ReadingStreamRAIIWrapper::create(std::string const& path, std::ios::openmode mode)
 {
 	if (!checkFileExistence(path))
-		throw FileExceptionWhileOpening{ "File does not exist: " + path };
+		throw FileFailureWhileOpening{ "File does not exist: " + path };
 
 	m_fileStream = std::make_unique<std::ifstream>(path, mode);
 
 	if (!m_fileStream->is_open()) [[unlikely]]
 	{
 		m_fileStream.reset(); // Resetting the pointer to nullptr.
-		throw FileExceptionWhileOpening("Unable to open the file, unknow reasons: " + path);
+		throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);
 	}
 }
 
 void WritingStreamRAIIWrapper::create(std::string const& path, std::ios::openmode mode, bool create)
 {
 	if (!create && !checkFileExistence(path))
-		throw FileExceptionWhileOpening{ "File does not exist: " + path };
+		throw FileFailureWhileOpening{ "File does not exist: " + path };
 	if (!create &&!checkFileWritable(path)) [[unlikely]]
-		throw FileExceptionWhileOpening{ "File exists but cannot be opened for writing: " + path };
+		throw FileFailureWhileOpening{ "File exists but cannot be opened for writing: " + path };
 
 	m_fileStream = std::make_unique<std::ofstream>(path, mode);
 
 	if (!m_fileStream->is_open()) [[unlikely]]
 	{
 		m_fileStream.reset(); // Resetting the pointer to nullptr.
-		throw FileExceptionWhileOpening("Unable to open the file, unknow reasons: " + path);  
+		throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);  
 	}
 }
 
@@ -69,10 +69,10 @@ std::optional<std::string> Save::reading(std::string const& fileName, std::vecto
 			toLoad = ((decrypt) ? encryptDecrypt(temp) : temp);
 			
 			if (savingStream->fail()) [[unlikely]]
-				throw FileExceptionWhileInUse{ "Error reading from the file: " + path};
+				throw FileFailureWhileInUse{ "Error reading from the file: " + path};
 		}
 	}
-	catch (FileExceptionWhileInUse const& error)
+	catch (FileFailureWhileInUse const& error)
 	{
 		errorMessage << error.what() << '\n';
 		errorMessage << "Critical error: the file is corrupted abd further saves are unavailable\n\n";
@@ -100,13 +100,13 @@ std::optional<std::string> Save::writing(std::string const& fileName, std::vecto
 			*savingStream << ((encrypt) ? encryptDecrypt(toSave) : toSave) << '\n';
 
 			if (savingStream->fail()) [[unlikely]]
-				throw FileExceptionWhileInUse{ "Error writing into the file: " + path };
+				throw FileFailureWhileInUse{ "Error writing into the file: " + path };
 		}
 
 		// Last tokens: confirm that every lines before has been successfully saved.
-		*savingStream << tokensOfConfirmation; 
+		*savingStream << m_tokensOfConfirmation; 
 	}
-	catch (FileExceptionWhileInUse const& error)
+	catch (FileFailureWhileInUse const& error)
 	{
 		errorMessage << error.what() << '\n';
 		errorMessage << "Critical error: the file is corrupted and further saves are lost\n\n";
@@ -130,12 +130,12 @@ std::optional<std::string> SafeSaves::Save::createFile(std::string const& fileNa
 		// We don't need to check the validity of the pointer using has_value()
 		// The call to create() would have thrown an exception if badly instantiated
 		std::ofstream* savingStream{ fileWrapped.stream().value() };
-		*savingStream << tokensOfConfirmation;
+		*savingStream << m_tokensOfConfirmation;
 		 
 		if (savingStream->fail()) [[unlikely]]
-			throw FileExceptionWhileInUse{ "Error writing confirmation tokens into the file: " + path };
+			throw FileFailureWhileInUse{ "Error writing confirmation tokens into the file: " + path };
 	}
-	catch (FileException const& error)
+	catch (FileFailure const& error)
 	{
 		errorMessage << error.what() << '\n';
 		errorMessage << "error: impossible to create file" << "\n\n";
@@ -155,7 +155,7 @@ ReadingStreamRAIIWrapper Save::openReadingStream(std::string const& path, std::o
 		cleanUpFiles(path);
 		openStream.create(path);
 	}
-	catch (FileExceptionWhileOpening const& error)
+	catch (FileFailureWhileOpening const& error)
 	{
 		errorMessage << error.what() << '\n';
 		errorMessage << "Fatal error: impossible to read the values" << "\n\n";
@@ -179,7 +179,7 @@ WritingStreamRAIIWrapper Save::openWritingStream(std::string const& path, std::o
 		std::filesystem::copy_file(path, path + ".tmp"); // We create a copy to have a valid file at any given moment.
 		openStream.create(path);
 	}
-	catch (FileExceptionWhileOpening const& error)
+	catch (FileFailureWhileOpening const& error)
 	{
 		errorMessage << error.what() << '\n';
 		errorMessage << "Fatal error: impossible to read the values" << "\n\n";
@@ -202,7 +202,7 @@ void Save::cleanUpFiles(std::string const& path)
 		fileWrapped.create(path);
 		
 		if (!checkingContentValdity(fileWrapped.stream().value()))
- 			throw FileExceptionWhileOpening{ "Perm file is not valid" };
+			throw FileFailureWhileOpening{ "Perm file is not valid" };
 
 		// No need to check for the tmp file as the perm file IS valid (would have fell otherwise).
 		std::filesystem::remove(path + ".tmp"); // Delete the tmp file in case it is still there.
@@ -210,7 +210,7 @@ void Save::cleanUpFiles(std::string const& path)
 	catch (std::exception const&)
 	{	// If the program falls in this catch, the permanent file is not valid.
 		if (!checkFileExistence(path + ".tmp") || !checkFileWritable(path + "tmp"))
-			throw FileExceptionWhileOpening{ "No file avalailable to load the saves: " + path };
+			throw FileFailureWhileOpening{ "No file avalailable to load the saves: " + path };
 
 		// To remove the perm file, no stream can be openend to that same file.
 		if (fileWrapped.stream().has_value())
@@ -225,7 +225,7 @@ void Save::cleanUpFiles(std::string const& path)
 		// We don't need to check the validity of the pointer using has_value()
 		// The call to create() would have thrown an exception if badly instantiated
 		if (!checkingContentValdity(fileWrapped.stream().value())) 
-			throw FileExceptionWhileOpening{ "No valid file avalailable to load the saves: " + path };
+			throw FileFailureWhileOpening{ "No valid file avalailable to load the saves: " + path };
 	}
 }
 
@@ -236,7 +236,7 @@ bool Save::checkingContentValdity(std::ifstream* reading) noexcept
 
 	std::string fileConfirmation{ (std::istreambuf_iterator<char>(*reading)), std::istreambuf_iterator<char>() }; 
 
-	return ((reading->fail()) ? false : fileConfirmation == tokensOfConfirmation);
+	return ((reading->fail()) ? false : fileConfirmation == m_tokensOfConfirmation);
 }
 
 std::string Save::encryptDecrypt(std::string const& data, std::string const& key) noexcept
@@ -260,7 +260,7 @@ std::string Save::encryptDecrypt(std::string const& data, std::string const& key
 		uint8_t const current_key = key[i % key.size()]; // Ensure the key index is within bounds
 
 		// Applying three different involutive algorithms in a specific order to ensure decryption works correctly.
-		// so f(h(g(h(f(x))))) == y; f(h(g(h(f(y))))) == x.
+		// so f(h(g(h(f(x))))) == y; and f(h(g(h(f(y))))) == x.
 		letter = lambdaXorCipher(letter, current_key);
 		letter = lambdaComplement(letter, current_key);
 		letter = lambdaReverseBits(letter);
