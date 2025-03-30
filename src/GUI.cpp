@@ -24,23 +24,6 @@ std::string GraphicalFixedInterface::mediaPath{ "media/" };
 std::vector<GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
 
 
-std::optional<std::string> GraphicalFixedInterface::Text::create(std::string const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color) noexcept
-{
-	// loads the font if needed
-	if (m_font.getInfo().family.empty())
-	{
-		auto const error = loadFont();
-		if (error.has_value())
-			return error;
-	}
-
-	m_text = std::make_unique<sf::Text>(m_font, content, characterSize);
-	m_text->setFillColor(color);
-	updateTransformables(pos);
-
-	return std::nullopt;
-}
-
 void GraphicalFixedInterface::Text::updateTransformables(sf::Vector2f pos) noexcept
 {
 	if (!m_text)
@@ -53,28 +36,6 @@ void GraphicalFixedInterface::Text::updateTransformables(sf::Vector2f pos) noexc
 	m_text->setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f });
 
 	m_text->setPosition(pos); // Update the position according to the new origin.
-}
-
-std::optional<std::string> GraphicalFixedInterface::Text::loadFont() noexcept
-{
-	try
-	{
-		std::string path{ GraphicalFixedInterface::mediaPath + "font.ttf" };
-
-		if (!m_font.openFromFile(path))
-			throw LoadingUIRessourceFailure{ "Failed to load font at: " + path };
-
-		m_font.setSmooth(true);
-	}
-	catch (LoadingUIRessourceFailure const& error)
-	{
-		std::ostringstream oss{};
-		oss << error.what() << "\n";
-		oss << "Fatal error: No text can be displayed\n\n";
-		return oss.str();
-	}
-
-	return std::nullopt;
 }
 
 
@@ -101,29 +62,6 @@ std::optional<std::string> GraphicalFixedInterface::createBackground(std::string
 	return std::nullopt;
 }
 
-void GraphicalFixedInterface::addText(std::string const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color)
-{
-	try
-	{
-		Text newText{};
-
-		auto error{ newText.create(content, position, characterSize, color) };
-		if (error.has_value())
-			throw LoadingUIRessourceFailure(error.value());
-		
-		m_texts.push_back(std::move(newText));
-	}
-	catch (LoadingUIRessourceFailure const& error)
-	{
-		throw error;
-	}
-}
-
-void GraphicalFixedInterface::addText(GraphicalFixedInterface::Text text) noexcept
-{
-	m_texts.push_back(std::move(text));
-}
-
 void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
 {
 	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
@@ -148,7 +86,7 @@ void GraphicalFixedInterface::addShape(sf::Shape* shape, bool smooth) noexcept
 	renderTexture.draw(*shape);
 	renderTexture.display();
 
-	sf::Texture newTexture{ renderTexture.getTexture().copyToImage(),  };
+	sf::Texture newTexture{ renderTexture.getTexture().copyToImage() };
 	newTexture.setSmooth(smooth);
 
 	sf::Sprite newSprite{ newTexture };
@@ -222,6 +160,86 @@ void GraphicalFixedInterface::resizeElements(sf::Vector2f scalingFactor) noexcep
 	}
 }
 
+
+void GraphicalDynamicInterface::addDynamicText(std::string const& identifier, GraphicalFixedInterface::Text text) noexcept
+{
+	if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
+		return;
+
+	addText(std::move(text));
+	m_dynamicTextsIds[identifier] = m_texts.size() - 1;
+}
+
+void GraphicalDynamicInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
+{
+	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
+		return;
+
+	addSprite(std::move(sprite), std::move(texture));
+	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
+}
+
+void GraphicalDynamicInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
+{
+	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
+		return;
+
+	addShape(shape, smooth);
+	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
+}
+
+GraphicalFixedInterface::Text& GraphicalDynamicInterface::getText(std::string const& identifier)
+{
+	return m_texts[m_dynamicTextsIds.at(identifier)];
+}
+
+sf::Sprite& GraphicalDynamicInterface::getSprite(std::string const& identifier)
+{
+	return m_sprites[m_dynamicSpritesIds.at(identifier)].first;
+}
+
+sf::Texture& GraphicalDynamicInterface::getTexture(std::string const& identifier)
+{
+	return m_sprites[m_dynamicSpritesIds.at(identifier)].second;
+}
+
+//void GraphicalDynamicInterface::setNewPos(std::string const& identifier, sf::Vector2f pos) noexcept
+//{
+//	auto it = m_dynamicTextsIds.find(identifier);
+//	if (it != m_dynamicTextsIds.end())
+//		m_texts[it->second].updatePosition(pos);
+//
+//	auto it = m_dynamicSpritesIds.find(identifier);
+//	if (it != m_dynamicSpritesIds.end())
+//		m_sprites[it->second].first.setPosition(pos);
+//}
+//
+//void GraphicalDynamicInterface::setNewRot(std::string const& identifier, sf::Angle ang) noexcept
+//{
+//	auto it = m_dynamicTextsIds.find(identifier);
+//	if (it != m_dynamicTextsIds.end())
+//		m_texts[it->second].updatePosition(pos);
+//
+//	auto it = m_dynamicSpritesIds.find(identifier);
+//	if (it != m_dynamicSpritesIds.end())
+//		m_sprites[it->second].first.setPosition(pos);
+//}
+//
+//void GraphicalDynamicInterface::setNewScale(std::string const& identifier, sf::Vector2f scale) noexcept
+//{
+//
+//}
+//
+//void GraphicalDynamicInterface::setNewFillColor(std::string const& identifier, sf::Color color) noexcept
+//{
+//	auto it = m_dynamicTextsIds.find(identifier);
+//	if (it != m_dynamicTextsIds.end())
+//		m_texts[it->second].updateColor(color);
+//
+//	auto it = m_dynamicSpritesIds.find(identifier);
+//	if (it != m_dynamicSpritesIds.end())
+//		m_sprites[it->second].first.setColor(color);
+//}
 
 //static float const alignerCursorUI{ 0.99f };
 //static float const alignerButtonBackgroundUI{ 1.015f };

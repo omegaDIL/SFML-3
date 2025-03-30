@@ -19,6 +19,7 @@
 #include <span>
 #include <valarray>
 #include <utility>
+#include <optional>
 #include <stdexcept>
 #include <array>
 #include <algorithm>
@@ -26,6 +27,7 @@
 #include <memory>
 #include <functional>
 #include <sstream>
+#include "Exceptions.hpp"
 
 extern sf::VideoMode windowSize;
 
@@ -88,6 +90,7 @@ public:
 		 * @brief Initializes the text with the specified parameters.
 		 * @complexity O(1).
 		 *
+		 * @tparam T: Type that can be streamed to `std::basic_ostream`.
 		 * @param[in] string: The text string to set.
 		 * @param[in] pos: The position to place the text.
 		 * @param[in] characterSize: The size of the text characters.
@@ -99,7 +102,35 @@ public:
 		 * 		 is instantiated. Therefore, no error will occur after the first object.
 		 * @note Call other members only after this function has been successfully executed (otherwise there is no effect).
 		 **/
-		[[nodiscard]] std::optional<std::string> create(std::string const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }) noexcept;
+		template<Ostreamable T>
+		[[nodiscard]] std::optional<std::string> create(T const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }) noexcept
+		{
+			// loads the font if needed
+			if (m_font.getInfo().family.empty())
+			{
+				try
+				{	
+					std::string path{ GraphicalFixedInterface::mediaPath + "font.ttf" };
+
+					if (!m_font.openFromFile(path))
+						throw LoadingUIRessourceFailure{ "Failed to load font at: " + path };
+
+					m_font.setSmooth(true);
+				}
+				catch (LoadingUIRessourceFailure const& error)
+				{
+					std::ostringstream message{ error.what() };
+					message << "Fatal error: No text can be displayed\n\n";
+					return message.str();
+				}
+			}
+
+			m_text = std::make_unique<sf::Text>(m_font, content, characterSize);
+			m_text->setFillColor(color);
+			updateTransformables(pos);
+
+			return std::nullopt;
+		}
 
 
 		/**
@@ -127,7 +158,7 @@ public:
 		 * 
 		 * @param[in] pos: The new position for the text.
 		 * 
-		 * @see updateContent(), updateColor().
+		 * @see sf::Text::setPosition().
 		 */
 		inline void updatePosition(sf::Vector2f pos) noexcept
 		{
@@ -135,12 +166,40 @@ public:
 		}	
 
 		/**
+		 * @brief Updates the rotation of the text.
+		 * @complexity O(1).
+		 *
+		 * @param[in] rot: The new rotation for the text.
+		 *
+		 * @see sf::Text::setRotation.
+		 */
+		inline void updateRotation(sf::Angle rot) noexcept
+		{
+			m_text->setRotation(rot);
+		}
+
+		/**
+		 * @brief Updates the scale of the text.
+		 * @complexity O(1).
+		 *
+		 * @param[in] pos: The scale that'll be added the text.
+		 *
+		 * @note This function that doesn't override the old scale attribute. It adds it rather.
+	     * 
+		 * @see sf::Text::scale().
+		 */
+		inline void updateScale(sf::Vector2f scale) noexcept
+		{
+			m_text->scale(scale);
+		}
+
+		/**
 		 * @brief Updates the color of the text.
 		 * @complexity O(1).
 		 *
 		 * @param[in] color: The new color for the text.
 		 *
-		 * @see updateContent(), updatePosition().
+		 * @see sf::Text::setFillColor().
 		 */
 		inline void updateColor(sf::Color color) noexcept
 		{
@@ -172,13 +231,6 @@ public:
 		 */
 		void updateTransformables(sf::Vector2f pos) noexcept;
 
-		/**
-		 * @brief Loads the font for texts
-		 *
-		 * @return a string that contains an error message if the font could not be loaded.
-		 */
-		std::optional<std::string> loadFont() noexcept;
-		
 
 		std::unique_ptr<sf::Text> m_text; // The text object.
 
@@ -211,7 +263,6 @@ public:
 		loadDefaultBackground();
 	}
 
-
 	/**
 	 * @brief Loads a background from a file.
 	 * @complexity O(1).
@@ -221,23 +272,35 @@ public:
 	 * @return The error message if the background could not be loaded.
 	 *
 	 */
-	std::optional<std::string> createBackground(std::string const& fileName);
+	[[nodiscard]] std::optional<std::string> createBackground(std::string const& fileName);
+
 
 	/**
 	 * @brief Adds a text element to the interface.
-	 * @complexity O(1).
-	 *
+	 * @complexity O(1) : average case.
+	 * @complexity O(N) : worst case, where N is the number of texts already added.
+	 * 
+	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
 	 * @param[in] content: The text label.
 	 * @param[in] position: The position of the text.
 	 * @param[in] characterSize: The size of the text characters.
 	 * @param[in] color: The color of the text.
 	 * 
-	 * @throw LoadingUIRessourceFailure if the font was not load yet and could not be loaded.
-	 * 		  Strong exception guarantee.
+	 * @return An optional string that contains an error message if the font could not be loaded.
 	 * 
-	 * @see addSprite(), addShape().
+	 * @see GraphicalFixedInterface::Text, addSprite(), addShape().
 	 */
-	void addText(std::string const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color);
+	template<Ostreamable T>
+	std::optional<std::string> addText(T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 })
+	{
+		Text newText{};
+		auto error{ newText.create(content, position, characterSize, color) };
+
+		if (error.has_value())
+			return error;
+
+		m_texts.push_back(std::move(newText));
+	}
 
 	/**
 	 * @brief Adds a text element to the interface.
@@ -248,14 +311,17 @@ public:
 	 * 
 	 * @see addSprite(), addShape().
 	 */
-	void addText(GraphicalFixedInterface::Text text) noexcept;
+	inline void addText(GraphicalFixedInterface::Text text) noexcept
+	{
+		m_texts.push_back(std::move(text));
+	}
 
 	/**
 	 * @brief Adds a sprite element to the interface.
 	 * @complexity O(N) where N is the number of shapes + sprites already added.
 	 *
-	 * @param[in] sprite: The shape to add.
-	 * @param[in] texture: The texture of the shape.
+	 * @param[in] sprite: The sprite to add.
+	 * @param[in] texture: The texture of the sprite.
 	 * 
 	 * @see addText(), addShape().
 	 */
@@ -308,8 +374,8 @@ protected:
 	// Pointer to the window.
 	mutable sf::RenderWindow* m_window; 
 
-	// Collection of all interfaces to perform the same operation (resizing for example).
-	static std::vector<GraphicalFixedInterface*> allInterfaces;
+	std::vector<Text> m_texts; // Collection of text elements in the interface.
+	std::vector<std::pair<sf::Sprite, sf::Texture>> m_sprites; // Collection of sprites in the interface.
 
 private:
 
@@ -330,14 +396,207 @@ private:
 	std::unique_ptr<sf::Sprite> m_spriteBackground;  // Sprite  for the background.
 	sf::Texture m_textureBackground; // Texture for the background.
 
-	std::vector<Text> m_texts; // Collection of text elements in the interface.
-	std::vector<std::pair<sf::Sprite, sf::Texture>> m_sprites; // Collection of sprites in the interface.
+
+	// Collection of all interfaces to perform the same operation (resizing for example).
+	static std::vector<GraphicalFixedInterface*> allInterfaces;
 };
+
+
+/** @class GraphicalDynamicInterface
+ * @brief  Manages an interface with changeable contents of elements (texts and shapes).
+ *
+ * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
+ *
+ * @see GraphicalFixedInterface, sf::RenderWindow.
+ */
+class GraphicalDynamicInterface : public GraphicalFixedInterface
+{
+public:
+
+	GraphicalDynamicInterface() noexcept = delete;
+	GraphicalDynamicInterface(GraphicalDynamicInterface const&) noexcept = default;
+	GraphicalDynamicInterface(GraphicalDynamicInterface&&) noexcept = default;
+	virtual ~GraphicalDynamicInterface() noexcept = default;
+	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface const&) noexcept = default;
+	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface&&) noexcept = default;
+
+	/**
+	 * @brief Constructs the interface with a default background.
+	 * @complexity O(1).
+	 *
+	 * @param[out] window: The window where the interface elements will be rendered.
+	 *
+	 * @see createBackground().
+	 */
+	inline explicit GraphicalDynamicInterface(sf::RenderWindow* window) noexcept
+		: GraphicalFixedInterface{ window }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
+	{}
+
+
+	/**
+	 * @brief Adds a dynamic text to the interface.
+	 * @complexity O(1) : average case.
+	 * @complexity O(N) : worst case, where N is the number of texts already added (static and dynamic).
+	 * 
+	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
+	 * @param[in] identifier:     The text identifier.
+	 * @param[in] content:		  The text label.
+	 * @param[in] position:       The position of the text.
+	 * @param[in] characterSize:  The size of the text characters.
+	 * @param[in] color:		  The color of the text.
+	 *
+	 * @note No effect if a text is already there.
+	 * @note The identifiers must be unique between texts.
+	 * @note The ids between one text and one sprite can be the same.
+	 * 
+	 * @see addText().
+	 */
+	template<Ostreamable T>
+	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 })
+	{
+		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
+			return;
+
+		addText(content, position, characterSize, color);
+		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
+	}
+
+	/**
+	 * @brief Adds a dynamic text element to the interface.
+	 * @complexity O(1) : average case.
+	 * @complexity O(N) : worst case, where N is the number of texts already added.
+	 *
+	 * @param[in] identifier: The text identifier.
+	 * @param[in] text:		  The text to add.
+	 *
+	 * @note No effect if a text is already there.
+	 * @note The identifiers must be unique between texts.
+	 * @note The ids between one text and one sprite can be the same.
+	 * 
+	 * @see addText().
+	 */
+	void addDynamicText(std::string const& identifier, GraphicalFixedInterface::Text text) noexcept;
+
+	/**
+	 * @brief Adds a dynamic sprite element to the interface.
+     * @complexity O(N) where N is the number of shapes + sprites already added.
+	 *
+	 * @param[in] identifier: The text identifier.
+	 * @param[in] sprite: The sprite to add.
+	 * @param[in] texture: The texture of the sprite.
+	 *
+	 * @note No effect if a text is already there.
+	 * @note The identifiers must be unique between shapes/sprites.
+	 * @note The ids between one text and one sprite can be the same.
+	 *
+	 * @see addSprite().
+	 */
+	void addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept;
+
+	/**
+	 * @brief Adds a dynamic shape element to the interface.
+	 * @complexity O(N) where N is the number of shapes + sprites already added.
+	 *
+	 * @param[in] identifier: The text identifier.
+	 * @param[in] shape: The shape to add.
+	 * @param[in] smooth: True if the shape needs to be smoothed.
+	 *
+	 * @note No effect if a text is already there.
+	 * @note The identifiers must be unique between shapes/sprites.
+	 * @note The ids between one text and one shape can be the same.
+	 *
+	 * @see addShape().
+	 */
+	void addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
+
+
+	/**
+	 * @brief Allows you to change some attributes of a text.
+	 * 
+	 * @param[in] identifier: The id of the text you want.
+	 * 
+	 * @return A reference to the text you want to access.
+	 * 
+	 * @pre Be sure that you added a text with this id.
+	 * @post The appropriate text is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	GraphicalFixedInterface::Text& getText(std::string const& identifier);
+
+	/**
+	 * @brief Allows you to change some attributes of a sprite.
+	 *
+	 * @param[in] identifier: The id of the sprite you want.
+	 *
+	 * @return A reference to the sprite you want to access.
+	 *
+	 * @pre Be sure that you added the sprite with this id.
+	 * @post The appropriate sprite is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	sf::Sprite& getSprite(std::string const& identifier);
+
+	/**
+	 * @brief Allows you to change some attributes of a sprite's texture.
+	 *
+	 * @param[in] identifier: The id of the sprite's texture you want.
+	 *
+	 * @return A reference to the texture you want to access.
+	 *
+	 * @pre Be sure that you added the sprite with this id.
+	 * @post The appropriate texture is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	sf::Texture& getTexture(std::string const& identifier);
+
+protected:
+
+	std::unordered_map<std::string, int> m_dynamicTextsIds;
+	std::unordered_map<std::string, int> m_dynamicSpritesIds;
+};
+
 
 using GIText = GraphicalFixedInterface::Text;
 using GInterface = GraphicalFixedInterface;
+using GDynamicInterface = GraphicalDynamicInterface;
 
 
+
+
+///**
+// * @brief Changes the position for both text and sprite that share the same id.
+// * 
+// * @param[in] identifier: they're ids.
+// * @param[in] pos:		  they're new pos.
+// */
+//void setNewPos(std::string const& identifier, sf::Vector2f pos) noexcept;
+
+///**
+// * @brief Changes the rotation for both text and sprite that share the same id.
+// *
+// * @param[in] identifier: they're ids.
+// * @param[in] ang:		  the angle to turn.
+// */
+//void setNewRot(std::string const& identifier, sf::Angle ang) noexcept;
+
+///**
+// * @brief Scales both text and sprite that share the same id.
+// *
+// * @param[in] identifier: they're ids.
+// * @param[in] scale:	  the scale to add to their current scale.
+// * 
+// * @note This is the only function that doesn't override the old attribute between setNewPos(),
+// * 		 setNewRot(), setNewFillColor(). It adds it rather.
+// */
+//void setNewScale(std::string const& identifier, sf::Vector2f scale) noexcept;
+
+///**
+// * @brief Changes the fill color for both text and sprite that share the same id.
+// *
+// * @param[in] identifier: they're ids.
+// * @param[in] color:	  they're new color.
+// */
+//void setNewFillColor(std::string const& identifier, sf::Color color) noexcept;
 ///** @class MenuInterface
 // * @brief Manages buttons and texts on top of the `Interface` class.
 // *

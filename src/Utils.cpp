@@ -1,12 +1,12 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
-#include <stdexcept>
-#include <ios>
-#include <optional>
 #include <algorithm>
+#include <iterator>
 #include <sstream>
+#include <optional>
 #include "Utils.hpp"
+#include "Exceptions.hpp"
 #include "GUI.hpp"
 
 extern sf::VideoMode windowSize;
@@ -41,9 +41,8 @@ void showErrorsUsingGUI(std::string const& errorMessage, std::string const& erro
 	
 	GIText textError{};
 	auto error{ textError.create(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12) };
-
 	if (error.has_value())
-		return; // Ipossible to display the error in a GUI if there's no font.
+		return; // Imossible to display the error in a GUI if there's no font.
 
 	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
 	while (errorWindow.isOpen())

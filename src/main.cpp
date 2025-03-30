@@ -15,8 +15,11 @@ std::string nameOfSoftware{ "Template sfml 3" };
 
 int main()
 {
-	sf::RenderWindow window{ windowSize, nameOfSoftware };
-	GInterface mainInterface{ &window };
+	sf::ContextSettings settings{};
+	settings.antiAliasingLevel = 16;
+
+	sf::RenderWindow window{ windowSize, nameOfSoftware, sf::Style::Default, sf::State::Windowed, settings };
+	GDynamicInterface mainInterface{ &window };
 
 	while (window.isOpen())
 	{
