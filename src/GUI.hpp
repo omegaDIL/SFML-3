@@ -48,9 +48,10 @@ concept Ostreamable = requires(std::ostream & os, T t)
  * @brief Manages items to create a basic GUI. You can display texts, sprites, shapes and a background.
  * @details All elements are fixed and can't be changed (except the background).
  *
+ * @note This class stores UI componenents; it will consume a considerable amount of memory. 
  * @warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *
- * @see sf::RenderWindow, Interface::Text.
+ * @see sf::RenderWindow, GraphicalFixedInterface::Text.
  */
 class GraphicalFixedInterface
 {
@@ -65,7 +66,7 @@ public:
 	 *
 	 * @see GraphicalFixedInterface, sf::Text, create().
 	 */
-	class Text
+	struct Text
 	{
 	public:
 
@@ -185,7 +186,7 @@ public:
 		 * @param[in] pos: The scale that'll be added the text.
 		 *
 		 * @note This function that doesn't override the old scale attribute. It adds it rather.
-	     * 
+		 * 
 		 * @see sf::Text::scale().
 		 */
 		inline void updateScale(sf::Vector2f scale) noexcept
@@ -234,6 +235,7 @@ public:
 
 		std::unique_ptr<sf::Text> m_text; // The text object.
 
+		
 		static sf::Font m_font; // The font used for the texts.
 
 	friend class GraphicalFixedInterface;
@@ -371,29 +373,38 @@ public:
 
 protected:
 
-	// Pointer to the window.
-	mutable sf::RenderWindow* m_window; 
+	/**
+	 * @details The pointers to the textures become invalid when adding or removing an element
+	 *          to the sprite vector.
+	 * @complexity O(N), where N is the size of 'm_sprites'
+	 */
+	void resetTextureForSprites() noexcept;
 
-	std::vector<Text> m_texts; // Collection of text elements in the interface.
-	std::vector<std::pair<sf::Sprite, sf::Texture>> m_sprites; // Collection of sprites in the interface.
+
+	mutable sf::RenderWindow* m_window; // Pointer to the window.
+	
+	using Element = std::pair<sf::Sprite, sf::Texture>;
+	std::vector<Element> m_sprites; // Collection of sprites in the interface.
+	std::vector<Text> m_texts; // Collection of texts in the interface.
 
 private:
 
 	/**
 	 * @brief Loads the default background.
+	 * @complexity O(N), where N is the length + the width of the window.
 	 */
 	void loadDefaultBackground() noexcept;
 
 	/**
 	 * @brief Refreshes the position and the size of the elements after the window is resized
-	 * @complexity O(N + K).
+	 * @complexity O(N + K), where N is the number of texts, and K the number of shapes.
 	 *
 	 * @param[in] scalingFactor: The scaling factor between the previous size of the window and the new one.
 	 */
 	void resizeElements(sf::Vector2f scalingFactor) noexcept;
+	
 
-
-	std::unique_ptr<sf::Sprite> m_spriteBackground;  // Sprite  for the background.
+	std::unique_ptr<sf::Sprite> m_spriteBackground; // Sprite for the background.
 	sf::Texture m_textureBackground; // Texture for the background.
 
 
@@ -402,9 +413,11 @@ private:
 };
 
 
-/** @class GraphicalDynamicInterface
+/**
  * @brief  Manages an interface with changeable contents of elements (texts and shapes).
  *
+ * @note D stands for dynamic.
+ * @note This class stores UI componenents; it will consume a considerable amount of memory.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
  * @see GraphicalFixedInterface, sf::RenderWindow.
@@ -445,7 +458,7 @@ public:
 	 * @param[in] characterSize:  The size of the text characters.
 	 * @param[in] color:		  The color of the text.
 	 *
-	 * @note No effect if a text is already there.
+	 * @note No effect if a text has the same id.
 	 * @note The identifiers must be unique between texts.
 	 * @note The ids between one text and one sprite can be the same.
 	 * 
@@ -469,7 +482,7 @@ public:
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] text:		  The text to add.
 	 *
-	 * @note No effect if a text is already there.
+	 * @note No effect if a text has the same id.
 	 * @note The identifiers must be unique between texts.
 	 * @note The ids between one text and one sprite can be the same.
 	 * 
@@ -479,13 +492,13 @@ public:
 
 	/**
 	 * @brief Adds a dynamic sprite element to the interface.
-     * @complexity O(N) where N is the number of shapes + sprites already added.
+	 * @complexity O(N) where N is the number of shapes + sprites already added.
 	 *
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
 	 *
-	 * @note No effect if a text is already there.
+	 * @note No effect if a sprite has the same id.
 	 * @note The identifiers must be unique between shapes/sprites.
 	 * @note The ids between one text and one sprite can be the same.
 	 *
@@ -501,7 +514,7 @@ public:
 	 * @param[in] shape: The shape to add.
 	 * @param[in] smooth: True if the shape needs to be smoothed.
 	 *
-	 * @note No effect if a text is already there.
+	 * @note No effect if a sprite has the same id.
 	 * @note The identifiers must be unique between shapes/sprites.
 	 * @note The ids between one text and one shape can be the same.
 	 *
@@ -509,11 +522,10 @@ public:
 	 */
 	void addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
 
-
 	/**
-	 * @brief Allows you to change some attributes of a text.
+	 * @brief Allows you to change some attributes of a dynamic text.
 	 * 
-	 * @param[in] identifier: The id of the text you want.
+	 * @param[in] identifier: The id of the text you want to access.
 	 * 
 	 * @return A reference to the text you want to access.
 	 * 
@@ -521,12 +533,12 @@ public:
 	 * @post The appropriate text is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	GraphicalFixedInterface::Text& getText(std::string const& identifier);
+	GraphicalFixedInterface::Text& getDText(std::string const& identifier);
 
 	/**
-	 * @brief Allows you to change some attributes of a sprite.
+	 * @brief Allows you to change some attributes of a dyanmic sprite.
 	 *
-	 * @param[in] identifier: The id of the sprite you want.
+	 * @param[in] identifier: The id of the sprite you want to access.
 	 *
 	 * @return A reference to the sprite you want to access.
 	 *
@@ -534,12 +546,12 @@ public:
 	 * @post The appropriate sprite is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	sf::Sprite& getSprite(std::string const& identifier);
+	sf::Sprite& getDSprite(std::string const& identifier);
 
 	/**
-	 * @brief Allows you to change some attributes of a sprite's texture.
+	 * @brief Allows you to change some attributes of a dynamic sprite's texture.
 	 *
-	 * @param[in] identifier: The id of the sprite's texture you want.
+	 * @param[in] identifier: The id of the sprite's texture you want to access.
 	 *
 	 * @return A reference to the texture you want to access.
 	 *
@@ -547,19 +559,179 @@ public:
 	 * @post The appropriate texture is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	sf::Texture& getTexture(std::string const& identifier);
+	sf::Texture& getDTexture(std::string const& identifier);
+
+	/**
+	 * @brief Removes a dynamic text.
+	 *
+	 * @param[in] identifier: The id of the text you want to remove.
+	 * 
+	 * @note No effect if not there.
+	 */
+	virtual void removeDText(std::string const& identifier) noexcept;
+
+	/**
+	 * @brief Removes a sprite
+	 *
+	 * @param[in] identifier: The id of the sprite you want to remove.
+	 * 
+	 * @note No effect if not there.
+	 */
+	virtual void removeDSprite(std::string const& identifier) noexcept;
 
 protected:
 
-	std::unordered_map<std::string, int> m_dynamicTextsIds;
-	std::unordered_map<std::string, int> m_dynamicSpritesIds;
+	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All index of dynamic texts in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All index of dynamic sprites in the interface.
+};
+
+
+/** 
+ * @brief  Manages an interface in which the user can interact such as writing, pressing buttons...
+ *
+ * @note This class stores UI componenents; it will consume a considerable amount of memory.
+ * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
+ *
+ * @see GraphicalDynamicInterface, Slider, sf::RenderWindow.
+ */
+class GraphicalUserInteractableInterface : public GraphicalDynamicInterface
+{
+public:
+
+	GraphicalUserInteractableInterface() noexcept = delete;
+	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface const&) noexcept = default;
+	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface&&) noexcept = default;
+	virtual ~GraphicalUserInteractableInterface() noexcept = default;
+	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface const&) noexcept = default;
+	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface&&) noexcept = default;
+
+	/**
+	 * @brief Constructs the interface with a default background.
+	 * @complexity O(1).
+	 *
+	 * @param[out] window: The window where the interface elements will be rendered.
+	 *
+	 * @see createBackground().
+	 */
+	inline explicit GraphicalUserInteractableInterface(sf::RenderWindow* window) noexcept
+		: GraphicalDynamicInterface{ window }, m_indexButtons{}, m_hoveringButtonIdentifier{}
+	{}
+
+
+	/**
+	 * @brief Adds a button to the interface.
+	 *
+	 * @param[in] identifier: The id of the button.
+	 * @param[in] text: The text to display on the button.
+	 * @param[in] texture: The texture of tghe button's background.
+	 *
+	 * @note The button will take the transformables of the text (rotation, scale & pos).
+	 * @note No effect if a button has the same id.
+	 * @note The ids need to be different form button to button, but not from texts/sprites.
+	 */
+	void addButton(std::string const& identifier, Text text, sf::Texture texture) noexcept;
+
+	/**
+	 * @brief Allows you to change some attributes of a dyanmic button's sprite.
+	 *
+	 * @param[in] identifier: The id of the button you want to access.
+	 *
+	 * @return A reference to the sprite you want to access.
+	 *
+	 * @pre Be sure that you added the button with this id.
+	 * @post The appropriate button is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	sf::Sprite& getButtonSprite(std::string const& identifier);
+
+	/**
+	 * @brief Allows you to change some attributes of a dynamic button's texture.
+	 *
+	 * @param[in] identifier: The id of the button's texture you want to access.
+	 *
+	 * @return A reference to the texture you want to access.
+	 *
+	 * @pre Be sure that you added the button with this id.
+	 * @post The appropriate texture is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	sf::Texture& getButtonTexture(std::string const& identifier);
+
+	/**
+	 * @brief Removes a dynamic text.
+	 *
+	 * @param[in] identifier: The id of the text you want to remove.
+	 *
+	 * @note No effect if not there.
+	 */
+	virtual void removeDText(std::string const& identifier) noexcept;
+
+	/**
+	 * @brief Removes a sprite
+	 *
+	 * @param[in] identifier: The id of the sprite you want to remove.
+	 *
+	 * @note No effect if not there.
+	 */
+	virtual void removeDSprite(std::string const& identifier) noexcept;
+
+	/**
+	 * @brief Removes a button
+	 *
+	 * @param[in] identifier: The id of the button you want to remove.
+	 *
+	 * @note No effect if not there.
+	 */
+	void removeDButton(std::string const& identifier) noexcept;
+
+	/** 
+	 * @brief Detects if the mouse is hovering over a button to update its visual state.
+	 * @complexity O(N), where N is the number of buttons.
+	 *
+	 * @note You should call this function when you change the menu to position the button's background 
+	 *       accordingly.
+	 * 
+	 * @pre The window must have been valid when passed to the constructor and still exists.
+	 * @post The elements are drawn on the window.
+	 * @throw std::logic_error if window is nullptr.
+	 */
+	std::string mouseMoved();
+
+	/**
+	 * @complexity O(1).
+	 * 
+	 * @return The id of the button that is currently hovered.
+	 */
+	inline std::string getHoveredButton() const noexcept
+	{
+		return m_hoveringButtonIdentifier;
+	}
+
+	/**
+	 * @brief Renders the interface.
+	 * @complexity O(N + K + M), where N is the number of texts, K the number of shapes, and M the number
+	 *			   of sliders.
+	 *
+	 * @pre The window must have been valid when passed to the constructor and still exists.
+	 * @post The elements are drawn on the window.
+	 * @throw std::logic_error if window is nullptr.
+	 */
+	virtual void draw() const override;
+
+private:
+	
+	using Button = std::pair<size_t, size_t>; // The first is the element's index and the second is the text's index.
+	std::unordered_map<std::string, Button> m_indexButtons; // Collection of buttons in the interface.
+
+	std::string m_hoveringButtonIdentifier;
 };
 
 
 using GIText = GraphicalFixedInterface::Text;
 using GInterface = GraphicalFixedInterface;
 using GDynamicInterface = GraphicalDynamicInterface;
-
+using GInteractableInterface = GraphicalUserInteractableInterface;
+using GUI = GraphicalUserInteractableInterface;
 
 
 

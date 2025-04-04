@@ -165,9 +165,8 @@ public:
 
 private:
 
-	/// File stream managed by the wrapper.
-	std::unique_ptr<std::ofstream> m_fileStream;
-};  // class WritingStreamRAIIWrapper
+	std::unique_ptr<std::ofstream> m_fileStream; // File stream managed by the wrapper.
+};
 
 
 /**
@@ -242,8 +241,7 @@ public:
 	[[nodiscard]] static std::optional<std::string> createFile(std::string const& fileName) noexcept;
 
 
-	// The relative path to the saves folder.
-	static std::string savesPath;
+	static std::string savesPath; // The relative path to the saves folder.
 
 private:
 
@@ -322,9 +320,9 @@ private:
 	static std::string encryptDecrypt(std::string const& data, std::string const& key = "azerty") noexcept;
 	// TODO: change the default key.
 
-	// The tokens that confirm that the file has been correctly saved.
-	static std::string m_tokensOfConfirmation;
-}; // struct Save
-}  // namespace SafeSaves
+	
+	static std::string m_tokensOfConfirmation; // The tokens that confirm that the file has been correctly saved.
+};
+} // namespace SafeSaves
 
 #endif //SAVE_HPP

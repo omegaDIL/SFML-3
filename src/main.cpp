@@ -4,8 +4,6 @@
 #include "GUI.hpp"
 #include "Save.hpp"
 #include "Utils.hpp"
-#include <iostream>
-#include <filesystem>
 
 using SafeSaves::Save;
 
@@ -19,8 +17,8 @@ int main()
 	settings.antiAliasingLevel = 16;
 
 	sf::RenderWindow window{ windowSize, nameOfSoftware, sf::Style::Default, sf::State::Windowed, settings };
-	GDynamicInterface mainInterface{ &window };
-
+	GUI mainInterface{ &window };
+	
 	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())
@@ -30,6 +28,9 @@ int main()
 
 			if (event->is<sf::Event::Resized>())
 				handleEventResize(&window);
+
+			if (event->is<sf::Event::MouseMoved>())
+				mainInterface.mouseMoved();
 		}
 
 

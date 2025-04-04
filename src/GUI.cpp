@@ -67,8 +67,7 @@ void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) 
 	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
 
 	// The pointer to the texture becomes invalid because we added something to the vector.
-	for (auto& sprite : m_sprites)
-		sprite.first.setTexture(sprite.second);
+	resetTextureForSprites();
 }
 
 void GraphicalFixedInterface::addShape(sf::Shape* shape, bool smooth) noexcept
@@ -115,6 +114,12 @@ void GraphicalFixedInterface::windowResized(sf::Vector2f scalingFactor) noexcept
 		i->resizeElements(scalingFactor);
 }
 
+void GraphicalFixedInterface::resetTextureForSprites() noexcept
+{
+	for (auto& sprite : m_sprites)
+		sprite.first.setTexture(sprite.second);
+}
+
 void GraphicalFixedInterface::loadDefaultBackground() noexcept
 {
 	static sf::Color const defaultColor{ 20, 20, 20 };
@@ -135,7 +140,7 @@ void GraphicalFixedInterface::resizeElements(sf::Vector2f scalingFactor) noexcep
 	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
 	sf::Vector2f factor2f{ factor, factor };
 
-	m_spriteBackground->setScale(factor2f);
+	m_spriteBackground->setScale(scalingFactor);
 
 	for (auto& sprite : m_sprites)
 	{
@@ -188,19 +193,162 @@ void GraphicalDynamicInterface::addDynamicShape(std::string const& identifier, s
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
 }
 
-GraphicalFixedInterface::Text& GraphicalDynamicInterface::getText(std::string const& identifier)
+GraphicalFixedInterface::Text& GraphicalDynamicInterface::getDText(std::string const& identifier)
 {
 	return m_texts[m_dynamicTextsIds.at(identifier)];
 }
 
-sf::Sprite& GraphicalDynamicInterface::getSprite(std::string const& identifier)
+sf::Sprite& GraphicalDynamicInterface::getDSprite(std::string const& identifier)
 {
 	return m_sprites[m_dynamicSpritesIds.at(identifier)].first;
 }
 
-sf::Texture& GraphicalDynamicInterface::getTexture(std::string const& identifier)
+sf::Texture& GraphicalDynamicInterface::getDTexture(std::string const& identifier)
 {
 	return m_sprites[m_dynamicSpritesIds.at(identifier)].second;
+}
+
+void GraphicalDynamicInterface::removeDText(std::string const& identifier) noexcept
+{
+	auto toRemove{ m_dynamicTextsIds.find(identifier) };
+
+	if (toRemove == m_dynamicTextsIds.end())
+		return;
+
+	for (auto& it : m_dynamicTextsIds)
+		if (it.second > toRemove->second)
+			it.second--;
+
+	m_texts.erase(std::next(m_texts.begin(), toRemove->second));
+	m_dynamicTextsIds.erase(toRemove);
+}
+
+void GraphicalDynamicInterface::removeDSprite(std::string const& identifier) noexcept
+{
+	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
+
+	if (toRemove == m_dynamicSpritesIds.end())
+		return;
+
+	for (auto& it : m_dynamicSpritesIds)
+		if (it.second > toRemove->second)
+			it.second--;
+
+	m_sprites.erase(std::next(m_sprites.begin(), toRemove->second));
+	m_dynamicSpritesIds.erase(toRemove);
+
+	// The pointer to the texture becomes invalid because we removed something to the vector.
+	resetTextureForSprites();
+}
+
+
+void GraphicalUserInteractableInterface::addButton(std::string const& identifier, Text text, sf::Texture texture) noexcept
+{
+	sf::Sprite button{ texture };
+
+	auto rect{ button.getGlobalBounds() };
+	button.setOrigin(sf::Vector2f{ rect.size.x / 2, rect.size.y / 2 });
+	
+	sf::Text const& getTransformables{ text.getText() };
+	button.setRotation(getTransformables.getRotation());
+	button.setScale(getTransformables.getScale());
+	button.setPosition(getTransformables.getPosition());
+
+	addText(std::move(text));
+	addSprite(button, texture);
+
+	m_indexButtons[identifier] = std::make_pair(m_sprites.size()-1, m_texts.size()-1);
+}
+
+sf::Sprite& GraphicalUserInteractableInterface::getButtonSprite(std::string const& identifier)
+{
+	return m_sprites[m_indexButtons.at(identifier).first].first;
+}
+
+sf::Texture& GraphicalUserInteractableInterface::getButtonTexture(std::string const& identifier)
+{
+	return m_sprites[m_indexButtons.at(identifier).second].second;
+}
+
+void GraphicalUserInteractableInterface::removeDText(std::string const& identifier) noexcept
+{
+	auto toRemove{ m_dynamicTextsIds.find(identifier) };
+
+	if (toRemove == m_dynamicTextsIds.end())
+		return;
+
+	for (auto& it : m_indexButtons)
+		if (it.second.second > toRemove->second)
+			it.second.second--;
+
+	GraphicalDynamicInterface::removeDText(identifier);
+}
+
+void GraphicalUserInteractableInterface::removeDSprite(std::string const& identifier) noexcept
+{
+	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
+
+	if (toRemove == m_dynamicSpritesIds.end())
+		return;
+
+	for (auto& it : m_indexButtons)
+		if (it.second.first > toRemove->second)
+			it.second.first--;
+
+	GraphicalDynamicInterface::removeDSprite(identifier);
+}
+
+void GraphicalUserInteractableInterface::removeDButton(std::string const& identifier) noexcept
+{
+	auto toRemove{ m_indexButtons.find(identifier) };
+
+	if (toRemove == m_indexButtons.end())
+		return;
+
+	size_t index{ toRemove->second.first };
+
+	m_sprites.erase(std::next(m_sprites.begin(), index));
+	m_texts.erase(std::next(m_texts.begin(), index));
+	m_indexButtons.erase(toRemove);
+
+	for (auto& it : m_indexButtons)
+		if (it.second.first > index)
+			it.second.first--;
+
+	for (auto& it : m_dynamicSpritesIds)
+		if (it.second > index)
+			it.second--;
+
+	for (auto& it : m_dynamicTextsIds)
+		if (it.second > index)
+			it.second--;
+}
+
+std::string GraphicalUserInteractableInterface::mouseMoved()
+{
+	if (!m_window)
+		throw std::logic_error{ "Window of an interface is nullptr." };
+
+	// Get the mouse position in the window.
+	sf::Vector2f const& mousePos{ static_cast<sf::Vector2f>(sf::Mouse::getPosition(*m_window)) };
+
+	for (auto const& button : m_indexButtons)
+	{
+		if (!m_texts[button.second.second].getText().getGlobalBounds().contains(mousePos))
+			continue;
+
+		// Set the value of the hovering button to the hovered button.
+		m_hoveringButtonIdentifier = button.first;
+
+		return m_hoveringButtonIdentifier;
+	}
+
+	return "";
+}
+
+void GraphicalUserInteractableInterface::draw() const
+{
+	GraphicalFixedInterface::draw();
 }
 
 //void GraphicalDynamicInterface::setNewPos(std::string const& identifier, sf::Vector2f pos) noexcept
