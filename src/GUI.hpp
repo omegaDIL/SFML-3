@@ -84,7 +84,7 @@ public:
 		 * 
 		 * @see create().
 		 */
-		inline Text() noexcept : m_text{ std::make_unique<sf::Text>(m_font, "") }
+		inline Text() noexcept : m_text{ std::make_unique<sf::Text>(m_font, "") } //TODO: chech if this works
 		{}
 
 		/**
@@ -629,7 +629,7 @@ public:
 	 * @note No effect if a button has the same id.
 	 * @note The ids need to be different form button to button, but not from texts/sprites.
 	 */
-	void addButton(std::string const& identifier, Text text, sf::Texture texture) noexcept;
+	void addButton(std::string const& identifier, Text text, sf::Texture texture = sf::Texture{ sf::Image{ sf::Vector2u{ 1, 1 }, sf::Color{ 0, 0, 0, 0 }}}) noexcept;
 
 	/**
 	 * @brief Allows you to change some attributes of a dyanmic button's sprite.
@@ -720,6 +720,56 @@ public:
 
 private:
 	
+	struct Slider
+	{
+	public:
+
+		Slider(Slider const&) noexcept = default;
+		Slider(Slider&&) noexcept = default;
+		~Slider() noexcept = default;
+		Slider& operator=(Slider const&) noexcept = default;
+		Slider& operator=(Slider&&) noexcept = default;
+
+		Slider() noexcept
+			: m_backgroundSlider{ nullptr }, m_slider{ nullptr } // TODO: Create the slider and the background to avoid using nullptr pointers.
+		{}
+
+		/**
+		 * 
+		  * 
+		 */
+		void create();
+
+
+		/**
+		 * .
+		 * 
+		 * \return 
+		 */
+		void moveCursor() noexcept;
+
+		/**
+		 * .
+		 * 
+		 * \return 
+		 */
+		void getValue() noexcept;
+
+	private:
+
+		void loadDefaultTexture(sf::Vector2u size) noexcept;
+
+
+		std::unique_ptr<sf::Sprite> m_backgroundSlider; // The background of the slider.
+		std::unique_ptr<sf::Sprite> m_slider; // The slider itself.
+
+		sf::Texture m_textureBackgroundSlider; // The texture of the background.
+		sf::Texture m_textureSlider; // The texture of the slider.
+
+	friend class GraphicalUserInteractableInterface;
+	};
+
+
 	using Button = std::pair<size_t, size_t>; // The first is the element's index and the second is the text's index.
 	std::unordered_map<std::string, Button> m_indexButtons; // Collection of buttons in the interface.
 
@@ -1150,7 +1200,6 @@ using GUI = GraphicalUserInteractableInterface;
 //	sf::RectangleShape m_cursor;
 //};
 
-//TODO: Implement this class
 //class GameInterface : public Interface
 //{
 //public:

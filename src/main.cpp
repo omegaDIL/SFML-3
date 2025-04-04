@@ -18,7 +18,7 @@ int main()
 
 	sf::RenderWindow window{ windowSize, nameOfSoftware, sf::Style::Default, sf::State::Windowed, settings };
 	GUI mainInterface{ &window };
-	
+
 	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())

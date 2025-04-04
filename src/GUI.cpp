@@ -123,12 +123,12 @@ void GraphicalFixedInterface::resetTextureForSprites() noexcept
 void GraphicalFixedInterface::loadDefaultBackground() noexcept
 {
 	static sf::Color const defaultColor{ 20, 20, 20 };
-	static sf::Image imgDefaultBackground{ sf::Vector2u{ windowSize.size.x, windowSize.size.y }, defaultColor };
+	static sf::Image defaultImg{ sf::Vector2u{ windowSize.size.x, windowSize.size.y }, defaultColor };
 
-	if (windowSize.size.x != imgDefaultBackground.getSize().x || windowSize.size.y != imgDefaultBackground.getSize().y)
-		imgDefaultBackground.resize({ windowSize.size.x, windowSize.size.y }, defaultColor);
+	if (windowSize.size.x != defaultImg.getSize().x || windowSize.size.y != defaultImg.getSize().y)
+		defaultImg.resize({ windowSize.size.x, windowSize.size.y }, defaultColor);
 
-	if (m_textureBackground.loadFromImage(imgDefaultBackground))
+	if (m_textureBackground.loadFromImage(defaultImg))
 	{
 		m_textureBackground.setSmooth(true);
 		m_spriteBackground.reset(new sf::Sprite{ m_textureBackground });
@@ -349,6 +349,34 @@ std::string GraphicalUserInteractableInterface::mouseMoved()
 void GraphicalUserInteractableInterface::draw() const
 {
 	GraphicalFixedInterface::draw();
+}
+
+void GraphicalUserInteractableInterface::Slider::loadDefaultTexture(sf::Vector2u size) noexcept
+{
+	// TODO: revoir couleur
+	static sf::Color const defaultFillColor{ 40, 40, 40 };
+	static sf::Color const defaultOutlineColor{ 80, 80, 80 };
+
+	static std::unique_ptr<sf::Image> defaultBackgroundImg{ nullptr };
+
+	if (defaultBackgroundImg != nullptr)
+		return;	// Already created
+
+	defaultBackgroundImg = std::make_unique<sf::Image>(size, defaultFillColor);
+	for (unsigned int i{ 0 }; i < size.x; i++)
+		for (unsigned int j{ 0 }; j < size.y; j++)
+			if (i < size.x / 10 || i > 9 * size.x / 10 && j < size.y / 10 || j > 9 * size.y / 10)
+				defaultBackgroundImg->setPixel(sf::Vector2u{ i, j }, defaultOutlineColor);
+
+	m_textureBackgroundSlider.loadFromImage(*defaultBackgroundImg);
+	m_textureBackgroundSlider.setSmooth(true);
+
+	// No need to use a pointer. It was used to determine if the static image has already been 
+	// initialized. If this function has already been called, then the ptr would not be nullptr and the
+	// function would have exited. It didn't exit at this line. So, we can use the image directly.
+	static sf::Image defaultSliderImg{ sf::Vector2u{ static_cast<unsigned int>(size.x * 4), static_cast<unsigned int>(size.y * 0.1) } }; //TODO: revoir proportion 
+
+	//TODO; faire le reste pour le slider.
 }
 
 //void GraphicalDynamicInterface::setNewPos(std::string const& identifier, sf::Vector2f pos) noexcept
@@ -651,7 +679,7 @@ void GraphicalUserInteractableInterface::draw() const
 //
 //void GameInterface::draw() const noexcept
 //{
-//	//TODO: complete this part (GameInterface).
+//
 //
 //	// Calculation of points
 //	//if (m_chronoPoints.getElapsedTime().asMilliseconds() > m_currentRules.)
@@ -670,7 +698,7 @@ void GraphicalUserInteractableInterface::draw() const
 //
 //void GameInterface::createTexture() noexcept
 //{
-//	//TODO: complete this function (GameInterface).
+//
 //	sf::Vector2u sizeSmallIconTexture{ windowSize.size.x / 12, windowSize.size.y / 12 }; // The size of all textures
 //
 //	// Texture empty power up slots
@@ -878,7 +906,11 @@ void GraphicalUserInteractableInterface::draw() const
 //void createElemForCustomDiffInterface(UserWritableMenuInterface& menu, std::span<size_t> const& easyScore, std::span<size_t> const& mediumScore, std::span<size_t> const& hardScore, std::span<size_t> const& competitionScore, std::span<size_t> const& custom1Score, std::span<size_t> const& custom2Score, std::span<size_t> const& custom3Score) noexcept
 //{
 //	menu.addButton(1, "Back", sf::Vector2f(windowSize.size.x * 0.5f, windowSize.size.y * 0.8f), 20u);
-//	//TODO: complete this function (CustomizeDiff factory).
+//
 //}
 
 //////////////////////////////////Factory & managing functions//////////////////////////////////
+
+//TODO: finir slider
+//TODO: finir writbale
+//TODO: refactor
