@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 build/*
 !build/.gitkeep
+touch build/.gitkeep
