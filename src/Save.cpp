@@ -11,7 +11,7 @@
 
 using namespace SafeSaves;
 
-std::string Save::savesPath{ "saves/" };
+std::string Save::savesPath{ "../saves/" };
 std::string Save::m_tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
 
 

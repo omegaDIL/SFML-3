@@ -20,7 +20,7 @@ extern sf::VideoMode windowSize;
 extern std::string nameOfSoftware;
 
 sf::Font GraphicalFixedInterface::Text::m_font{};
-std::string GraphicalFixedInterface::mediaPath{ "media/" };
+std::string GraphicalFixedInterface::mediaPath{ "../res/" };
 std::vector<GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
 
 

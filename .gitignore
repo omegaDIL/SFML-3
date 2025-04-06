@@ -363,7 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 
 build/*
-!build/saves/
-!build/media/
-!build/saves/*
-!build/media/*
+!build/bin/

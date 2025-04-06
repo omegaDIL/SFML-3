@@ -33,7 +33,6 @@ int main()
 				mainInterface.mouseMoved();
 		}
 
-
 		window.clear();
 		mainInterface.draw();
 		window.display();
