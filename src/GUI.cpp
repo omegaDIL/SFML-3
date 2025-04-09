@@ -109,7 +109,7 @@ void GraphicalFixedInterface::draw() const
 
 void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
-	float const factor = static_cast<float>(std::min(window->getSize().x, window->getSize().y) / 1080.f);
+	float const factor = std::min(scalingFactor.x, scalingFactor.y);
 
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
@@ -117,16 +117,17 @@ void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector
 		auto* curInterface{ elem->second };
 
 		for (auto& text : curInterface->m_texts)
-			text.windowResized(scalingFactor);	
+			text.windowResized(scalingFactor);
 
 		// The background is the first sprite.
-		curInterface->m_sprites[0].first.setScale(static_cast<sf::Vector2f>(window->getSize()));
+		curInterface->m_sprites[0].first.setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
+		//curInterface->m_sprites[0].first.setScale(static_cast<sf::Vector2f>(window->getSize()));
 
 		for (int j{ 1 }; j < curInterface->m_sprites.size(); j++)
 		{	// Avoiding the background by skipping index 0.
 			sf::Sprite& curSprite{ curInterface->m_sprites[j].first };
 
-			//curSprite.scale(scalingFactor);
+			curSprite.scale(sf::Vector2f{ factor, factor });
 			curSprite.setPosition(sf::Vector2f{ curSprite.getPosition().x * scalingFactor.x, curSprite.getPosition().y * scalingFactor.y });
 		}
 	}

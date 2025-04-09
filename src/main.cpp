@@ -41,7 +41,7 @@ int main()
 				window.close();
 
 			if (event->is<sf::Event::Resized>())
-				handleEventResize(&window, nameOfSoftware, sf::Style::Default, sf::State::Windowed);
+				handleEventResize(&window);
 		}
 
 		window.clear();
