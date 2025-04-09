@@ -114,11 +114,11 @@ namespace SafeSaves
 
 
 /** 
- * @brief Exception thrown for file-related errors.
+ * @brief Exception thrown for graphical errors when loading ressources.
  *
  * @see std::runtime_error.
  */
-struct LoadingUIRessourceFailure : public std::runtime_error
+struct LoadingGUIRessourceFailure : public std::runtime_error
 {
 public:
 
@@ -128,7 +128,7 @@ public:
 	 *
 	 * @param[in] message: The error message.
 	 */
-	inline explicit LoadingUIRessourceFailure(const std::string& message) : std::runtime_error{ message }
+	inline explicit LoadingGUIRessourceFailure(const std::string& message) : std::runtime_error{ message }
 	{}
 
 

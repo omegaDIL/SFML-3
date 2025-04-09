@@ -23,15 +23,15 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
 	std::vector<std::string> lines{ std::istream_iterator<std::string>{ stream }, std::istream_iterator<std::string>{} };
 
 	auto longest = std::max_element(lines.begin(), lines.end(), [](const std::string& a, const std::string& b) -> size_t
-		{
-			return a.length() < b.length();
-		});
+	{
+		return a.length() < b.length();
+	});
 
 	if (longest != lines.end())
 		sizeWidth = static_cast<unsigned int>(longest->length()) * 10;
 
 	return { sizeWidth, sizeHeight };
-}
+}//TODO: characterSize
 
 
 void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept
@@ -39,12 +39,10 @@ void showErrorsUsingGUI(std::string const& errorMessage, std::string const& erro
 	// Calculate the size needed to display the whole string.
 	sf::VideoMode const windowErrorSize{ getStringSizeForDisplay(errorMessage) };
 	
-	GIText textError{};
-	auto error{ textError.create(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12) };
-	if (error.has_value())
-		return; // Imossible to display the error in a GUI if there's no font.
-
 	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
+	GraphicalFixedInterface gui{ &errorWindow }; // Create the interface to use the GUI.
+	gui.addText(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12);
+
 	while (errorWindow.isOpen())
 	{	// The function is blocking.
 		while (const std::optional event = errorWindow.pollEvent())
@@ -57,7 +55,7 @@ void showErrorsUsingGUI(std::string const& errorMessage, std::string const& erro
 		}
 
 		errorWindow.clear();
-		errorWindow.draw(textError.getText());
+		gui.draw();
 		errorWindow.display();
 	}
 }
@@ -68,7 +66,7 @@ void handleEventResize(sf::RenderWindow* window) noexcept
 	sf::Vector2u const maxSize{ sf::VideoMode::getDesktopMode().size };
 	sf::Vector2u newSize{ static_cast<sf::Vector2f>(window->getSize()) };
 
-	// Windows (OS) does not like window that are larger than its definition.$
+	// Windows (OS) does not like windows (app) that are larger than their definition.
 	if (newSize.x > maxSize.x)
 		newSize.x = maxSize.x;
 	if (newSize.y > maxSize.y)
@@ -78,5 +76,5 @@ void handleEventResize(sf::RenderWindow* window) noexcept
 	windowSize.size = newSize;
 	
 	window->create(windowSize, nameOfSoftware);
-	GInterface::windowResized(factor);
+	GraphicalFixedInterface::windowResized(window, factor);
 }

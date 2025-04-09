@@ -1,5 +1,6 @@
 ﻿#include <SFML/Graphics.hpp>
 #include <string>
+#include <iostream>
 #include <optional>
 #include "GUI.hpp"
 #include "Save.hpp"
@@ -17,7 +18,8 @@ int main()
 	settings.antiAliasingLevel = 16;
 
 	sf::RenderWindow window{ windowSize, nameOfSoftware, sf::Style::Default, sf::State::Windowed, settings };
-	GUI mainInterface{ &window };
+	GraphicalFixedInterface mainInterface{ &window };
+	mainInterface.create();
 
 	while (window.isOpen())
 	{
@@ -28,9 +30,6 @@ int main()
 
 			if (event->is<sf::Event::Resized>())
 				handleEventResize(&window);
-
-			if (event->is<sf::Event::MouseMoved>())
-				mainInterface.mouseMoved();
 		}
 
 		window.clear();
@@ -40,3 +39,4 @@ int main()
 
 	return 0;
 }
+//Faire les testes

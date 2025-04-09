@@ -101,7 +101,7 @@ public:
 	 */
 	inline std::optional<std::ifstream*> stream() const noexcept
 	{
-		return (m_fileStream) ? std::optional<std::ifstream*>{ m_fileStream.get() } : std::nullopt;
+		return (m_fileStream) ? std::make_optional<std::ifstream*>(m_fileStream.get()) : std::nullopt;
 	}
 
 private:
@@ -160,7 +160,7 @@ public:
 	 */
 	inline std::optional<std::ofstream*> stream() noexcept
 	{
-		return (m_fileStream) ? std::optional<std::ofstream*>{ m_fileStream.get() } : std::nullopt;
+		return (m_fileStream) ? std::make_optional<std::ofstream*>(m_fileStream.get()) : std::nullopt;
 	}
 
 private:
@@ -268,7 +268,6 @@ private:
 	 *
 	 * @return WritingStreamRAIIWrapper that contains the stream.
 	 *
-	 *
 	 * @note You need to check the value of the wrapper to see its validity.
 	 * @note If a message was added in errorMessage then the stream is not valid.
 	 * 
@@ -276,20 +275,20 @@ private:
 	 */
 	[[nodiscard]] static WritingStreamRAIIWrapper openWritingStream(std::string const& path, std::ostringstream& errorMessage) noexcept;
 
-    /**
-    * @brief Cleans up files by removing temporary or corrupted files.
-    * @complexity O(1).
-    * 
-    * @param[in] path: The path to the file to clean up.
-    * 
+	/**
+	* @brief Cleans up files by removing temporary or corrupted files.
+	* @complexity O(1).
+	* 
+	* @param[in] path: The path to the file to clean up.
+	* 
 	* @pre The file must be readable and valid (or its tmp).
 	* @throw FileFailureWhileOpening if no valid (existing or non corrputed) files exist.
 	* @throw std::exceptions if an important error occured and is unknown.
 	* 		 Strong exceptions guarrantee.
-    * 
-    * @see openReadingStream(), openWritingStream(), checkingContentValdity()
-    */
-    static void cleanUpFiles(std::string const& path);
+	* 
+	* @see openReadingStream(), openWritingStream(), checkingContentValdity()
+	*/
+	static void cleanUpFiles(std::string const& path);
 
 	/**
 	 * @brief Checks if a file has a valid content - isn't corrupted.
@@ -317,8 +316,7 @@ private:
 	 * 
 	 * @return the data encrypted.
 	 */
-	static std::string encryptDecrypt(std::string const& data, std::string const& key = "azerty") noexcept;
-	// TODO: change the default key.
+	static std::string encryptDecrypt(std::string const& data, std::string const& key = "7gK9!wZp2FhJ8@qL") noexcept;
 
 	
 	static std::string m_tokensOfConfirmation; // The tokens that confirm that the file has been correctly saved.

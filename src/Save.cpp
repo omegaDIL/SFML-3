@@ -78,7 +78,7 @@ std::optional<std::string> Save::reading(std::string const& fileName, std::vecto
 		errorMessage << "Critical error: the file is corrupted abd further saves are unavailable\n\n";
 	}
 
-	return (errorMessage.str().empty()) ? std::nullopt : std::optional<std::string>{ errorMessage.str() };
+	return (errorMessage.str().empty()) ? std::nullopt : std::make_optional<std::string>(errorMessage.str());
 }
 
 std::optional<std::string> Save::writing(std::string const& fileName, std::vector<std::string> const& valuesToSave, bool encrypt) noexcept
@@ -114,7 +114,7 @@ std::optional<std::string> Save::writing(std::string const& fileName, std::vecto
 
 	savingStream->close(); // To clean up the files, no writing stream can be openend to these same files.
 	cleanUpFiles(path); // Won't throw any execptions as it sure that the tmp file is valid.
-	return (errorMessage.str().empty()) ? std::nullopt : std::optional<std::string>{ errorMessage.str() };
+	return (errorMessage.str().empty()) ? std::nullopt : std::make_optional<std::string>(errorMessage.str());
 }
 
 std::optional<std::string> SafeSaves::Save::createFile(std::string const& fileName) noexcept
@@ -143,7 +143,7 @@ std::optional<std::string> SafeSaves::Save::createFile(std::string const& fileNa
 		std::filesystem::remove(path);
 	}
 
-	return (errorMessage.str().empty()) ? std::nullopt : std::optional<std::string>{ errorMessage.str() };
+	return (errorMessage.str().empty()) ? std::nullopt : std::make_optional<std::string>(errorMessage.str());
 }
 
 ReadingStreamRAIIWrapper Save::openReadingStream(std::string const& path, std::ostringstream& errorMessage) noexcept

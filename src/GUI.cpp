@@ -12,88 +12,71 @@
 #include <stdexcept>
 #include <functional>
 #include <sstream>
+#include <iostream>
 #include <iomanip>
 #include "GUI.hpp"
+#include "GUITexturesLoader.hpp"
 #include "Exceptions.hpp"
 
 extern sf::VideoMode windowSize;
-extern std::string nameOfSoftware;
 
-sf::Font GraphicalFixedInterface::Text::m_font{};
-std::string GraphicalFixedInterface::mediaPath{ "../res/" };
-std::vector<GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
+sf::Font GraphicalFixedInterface::WrapperText::m_font{};
+std::string GraphicalFixedInterface::ressourcePath{ "../res/" };
+std::unordered_multimap<sf::RenderWindow*, GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
 
 
-void GraphicalFixedInterface::Text::updateTransformables(sf::Vector2f pos) noexcept
-{
-	if (!m_text)
-		return;
-	
-	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
-	m_text->setScale(sf::Vector2f{ factor, factor }); // The scaling factor must be the same.
+GraphicalFixedInterface::GraphicalFixedInterface(sf::RenderWindow* window) noexcept
+	: m_window{ window }, m_texts{}, m_sprites{}
+{	
+	// Add this interface to the collection.
+	allInterfaces.emplace(std::make_pair(window, this));
 
-	sf::FloatRect const textBounds{ m_text->getLocalBounds() }; // Cache bounds to avoid multiple calls.
-	m_text->setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f });
-
-	m_text->setPosition(pos); // Update the position according to the new origin.
+	// Creating the background.
+	sf::RectangleShape background{ static_cast<sf::Vector2f>(window->getSize()) };
+	background.setFillColor(sf::Color{ 20, 20, 20 });
+	background.setOrigin(window->getView().getCenter()); // Putting the origin at the center 
+	background.setPosition(window->getView().getCenter());
+	addShape(&background, false); // Adds the background to the interface.
 }
 
-
-std::optional<std::string> GraphicalFixedInterface::createBackground(std::string const& fileName)
+std::optional<std::string> GraphicalFixedInterface::create(std::string const& fileName)
 {
-	std::string path{ mediaPath + fileName };
-	
+	if (!m_window)
+		throw std::logic_error{ "Window of an interface is nullptr." };
+
+	std::ostringstream oss{};
+
+	// Loads the font.
+	auto error{ WrapperText::loadFont() };
+	if (error.has_value())
+		oss << error.value() ;
+
+	// If default background is used, no need to load its texture.
+	if (fileName.empty())
+		return (oss.str().empty()) ? std::nullopt : std::make_optional<std::string>(oss.str());
+
+	// Loads the background.
 	try
 	{
-		if (m_textureBackground.loadFromFile(path))
-		{
-			m_textureBackground.setSmooth(true);
-			m_spriteBackground.reset(new sf::Sprite{ m_textureBackground, sf::IntRect{ sf::Vector2i{ 0, 0 }, static_cast<sf::Vector2i>(windowSize.size) } });
-		}
+		std::string path{ ressourcePath + fileName };
+
+		sf::Texture textureBackground{};
+		if (!textureBackground.loadFromFile(path))
+			throw LoadingGUIRessourceFailure{ "Failed to load background at: " + path };
+
+		textureBackground.setSmooth(true);
+		m_sprites[0].second = std::move(textureBackground); // The first sprite is the background.
+		m_sprites[0].first = sf::Sprite{ m_sprites[0].second };
 	}
-	catch (LoadingUIRessourceFailure const& error)
+	catch (LoadingGUIRessourceFailure const& error)
 	{
-		std::ostringstream oss{};
 		oss << error.what() << "\n";
 		oss << "error: the default background is displayed instead\n\n";
-		return oss.str();
-	}
-
+		
+		return std::make_optional<std::string>(oss.str());
+	}	
+	
 	return std::nullopt;
-}
-
-void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
-{
-	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
-
-	// The pointer to the texture becomes invalid because we added something to the vector.
-	resetTextureForSprites();
-}
-
-void GraphicalFixedInterface::addShape(sf::Shape* shape, bool smooth) noexcept
-{
-	if (shape == nullptr)
-		return;
-	
-	// Contains the position of the shape. We need to reset the position to display the shape at the
-	// top-left corner on the renderTexture object.
-	sf::Vector2f position{ shape->getPosition() };
-	shape->setPosition(sf::Vector2f{ 0.f, 0.f });
-
-	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(shape->getGlobalBounds().size) };
-	renderTexture.clear(sf::Color::Transparent);
-	renderTexture.draw(*shape);
-	renderTexture.display();
-
-	sf::Texture newTexture{ renderTexture.getTexture().copyToImage() };
-	newTexture.setSmooth(smooth);
-
-	sf::Sprite newSprite{ newTexture };
-	newSprite.setOrigin(shape->getOrigin());
-	newSprite.setPosition(position);
-	
-	shape->setPosition(position);
-	addSprite(std::move(newSprite), std::move(newTexture));
 }
 
 void GraphicalFixedInterface::draw() const
@@ -101,17 +84,29 @@ void GraphicalFixedInterface::draw() const
 	if (!m_window)
 		throw std::logic_error{ "Window of an interface is nullptr." };
 
-	m_window->draw(*m_spriteBackground);
 	for (auto const& sprite : m_sprites)
 		m_window->draw(sprite.first);
 	for (auto const& text : m_texts)
 		m_window->draw(text.getText());
 }
 
-void GraphicalFixedInterface::windowResized(sf::Vector2f scalingFactor) noexcept
+void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
-	for (auto i : allInterfaces)
-		i->resizeElements(scalingFactor);
+	float const factor = std::min(window->getSize().x, window->getSize().y) / 720.f;
+	sf::Vector2f const factor2f{ factor, factor };
+
+	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
+	for (auto i{ interfaceRange.first }; i != interfaceRange.second; i++)
+	{
+		for (auto& text : i->second->m_texts)
+			text.windowResized(scalingFactor);
+
+		for (auto& sprite : i->second->m_sprites)
+		{
+			sprite.first.setScale(sf::Vector2f{ factor, factor });
+			sprite.first.setPosition(sf::Vector2f{ sprite.first.getPosition().x * scalingFactor.x, sprite.first.getPosition().y * scalingFactor.y });
+		}
+	}
 }
 
 void GraphicalFixedInterface::resetTextureForSprites() noexcept
@@ -120,52 +115,41 @@ void GraphicalFixedInterface::resetTextureForSprites() noexcept
 		sprite.first.setTexture(sprite.second);
 }
 
-void GraphicalFixedInterface::loadDefaultBackground() noexcept
+std::optional<std::string> GraphicalFixedInterface::WrapperText::loadFont() noexcept
 {
-	static sf::Color const defaultColor{ 20, 20, 20 };
-	static sf::Image defaultImg{ sf::Vector2u{ windowSize.size.x, windowSize.size.y }, defaultColor };
+	if (m_font.getInfo().family != "")
+		return std::nullopt; // Font already loaded.
 
-	if (windowSize.size.x != defaultImg.getSize().x || windowSize.size.y != defaultImg.getSize().y)
-		defaultImg.resize({ windowSize.size.x, windowSize.size.y }, defaultColor);
-
-	if (m_textureBackground.loadFromImage(defaultImg))
+	try
 	{
-		m_textureBackground.setSmooth(true);
-		m_spriteBackground.reset(new sf::Sprite{ m_textureBackground });
+		std::string path{ GraphicalFixedInterface::ressourcePath + "font.ttf" };
+
+		if (!m_font.openFromFile(path))
+			throw LoadingGUIRessourceFailure{ "Failed to load font at: " + path };
+
+		m_font.setSmooth(true);
 	}
+	catch (LoadingGUIRessourceFailure const& error)
+	{
+		std::ostringstream message{ error.what() };
+		message << "Fatal error: No text can be displayed\n\n";
+		return message.str();
+	}
+
+	return std::nullopt;
 }
 
-void GraphicalFixedInterface::resizeElements(sf::Vector2f scalingFactor) noexcept
+void GraphicalFixedInterface::WrapperText::updateTransformables(sf::Vector2f pos) noexcept
 {
 	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
-	sf::Vector2f factor2f{ factor, factor };
-
-	m_spriteBackground->setScale(scalingFactor);
-
-	for (auto& sprite : m_sprites)
-	{
-		sprite.first.setScale(factor2f);
-
-		sf::FloatRect const textBounds{ sprite.first.getLocalBounds() };
-		sprite.first.setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f });
-
-		sf::Vector2f pos{ sprite.first.getPosition() };
-		pos.x *= scalingFactor.x;
-		pos.y *= scalingFactor.y;
-		sprite.first.setPosition(pos);
-	}
-
-	for (auto& text : m_texts)
-	{
-		sf::Vector2f pos{ text.getText().getPosition() };
-		pos.x *= scalingFactor.x;
-		pos.y *= scalingFactor.y;
-
-		text.updateTransformables(pos);
-	}
+	sf::FloatRect const textBounds{ getLocalBounds() }; // Cache bounds to avoid multiple calls.
+	
+	setScale(sf::Vector2f{ factor, factor }); // The scaling factor must be the same.
+	setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f }); // Updating the origin is needed only when the content changes or when size character changes.
+	setPosition(pos); // Update the position according to the new origin.
 }
 
-
+/*
 void GraphicalDynamicInterface::addDynamicText(std::string const& identifier, GraphicalFixedInterface::Text text) noexcept
 {
 	if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
@@ -343,40 +327,106 @@ std::string GraphicalUserInteractableInterface::mouseMoved()
 		return m_hoveringButtonIdentifier;
 	}
 
+	sf::Sprite& cursor{ *m_slider.m_cursorSlider };
+	cursor.setPosition(sf::Vector2f{ cursor.getPosition().x, mousePos.y});
+	
+	float maxPosCursor{ m_slider.m_backgroundSlider->getGlobalBounds().size.y + m_slider.m_backgroundSlider->getGlobalBounds().position.y };
+	if (cursor.getPosition().y > maxPosCursor)
+		cursor.setPosition(sf::Vector2f{ cursor.getPosition().x, maxPosCursor });
+	float minPosCursor{ m_slider.m_backgroundSlider->getGlobalBounds().position.y };
+	if (cursor.getPosition().y < minPosCursor)
+		cursor.setPosition(sf::Vector2f{ cursor.getPosition().x, minPosCursor });
+
 	return "";
+}
+
+void GraphicalUserInteractableInterface::mousePressed() noexcept
+{
+	if (!m_window)
+		throw std::logic_error{ "Window of an interface is nullptr." };
+
+	// Get the mouse position in the window.
+	sf::Vector2f const& mousePos{ static_cast<sf::Vector2f>(sf::Mouse::getPosition(*m_window)) };
+
+	
 }
 
 void GraphicalUserInteractableInterface::draw() const
 {
 	GraphicalFixedInterface::draw();
+
+	m_window->draw(*m_slider.m_backgroundSlider);
+	m_window->draw(*m_slider.m_cursorSlider);
+}
+
+GraphicalUserInteractableInterface::Slider::Slider(sf::Vector2f pos, unsigned int length, bool integers) noexcept
+	: m_backgroundSlider{ nullptr }, m_cursorSlider{ nullptr } // TODO: Create the slider and the background to avoid using nullptr pointers.
+{
+	sf::Vector2u size{ 12u, length };
+
+	loadDefaultTexture(size);
+	m_backgroundSlider.reset(new sf::Sprite{ m_textureBackgroundSlider });
+	m_cursorSlider.reset(new sf::Sprite{ m_textureCursorSlider });
+	
+	m_backgroundSlider->setPosition(pos);
+	m_cursorSlider->setPosition(pos);
+
+	sf::Vector2f const& backgroundSize{ m_backgroundSlider->getGlobalBounds().size };
+	m_backgroundSlider->setOrigin(sf::Vector2f{ backgroundSize.x / 2.f, backgroundSize.y / 2.f } );
+	sf::Vector2f const& cursorSize{ m_cursorSlider->getGlobalBounds().size };
+	m_cursorSlider->setOrigin(sf::Vector2f{ cursorSize.x / 2.f, cursorSize.y / 2.f });
+
+
+	//TODO: integers argument
+}
+
+void GraphicalUserInteractableInterface::Slider::changeTexture(std::string backgroundSlider, std::string cursorSlider)
+{
+	//TODO: completer cette fonction
+}
+
+float GraphicalUserInteractableInterface::Slider::getValue() const noexcept
+{
+	float cursorPos{ m_cursorSlider->getPosition().y };
+
+	float minPos{ m_backgroundSlider->getGlobalBounds().position.y };
+	float maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
+
+	return 1 - (cursorPos - minPos)/(maxPos - minPos);
 }
 
 void GraphicalUserInteractableInterface::Slider::loadDefaultTexture(sf::Vector2u size) noexcept
 {
-	// TODO: revoir couleur
-	static sf::Color const defaultFillColor{ 40, 40, 40 };
-	static sf::Color const defaultOutlineColor{ 80, 80, 80 };
+	static bool flag{ false }; // To check if the texture has already been created.
+	if (flag) // Already created
+		return;	
 
-	static std::unique_ptr<sf::Image> defaultBackgroundImg{ nullptr };
+	constexpr sf::Color defaultFillColor{ 40, 40, 40 };
+	constexpr sf::Color defaultOutlineColor{ 80, 80, 80 };
 
-	if (defaultBackgroundImg != nullptr)
-		return;	// Already created
+	sf::Vector2u sizeSlider{ static_cast<sf::Vector2u>(size) };
+	float sizeOutline { std::min(sizeSlider.x, sizeSlider.y) / 5.f };
+	sf::Image defaultBackgroundImg{ sizeSlider, defaultFillColor};
+	for (unsigned int i{ 0 }; i < sizeSlider.x; i++)
+		for (unsigned int j{ 0 }; j < sizeSlider.y; j++)
+			if (i < sizeOutline || j < sizeOutline || sizeSlider.x - i - 1 < sizeOutline || sizeSlider.y - j - 1< sizeOutline)
+				defaultBackgroundImg.setPixel(sf::Vector2u{ i, j }, defaultOutlineColor);
 
-	defaultBackgroundImg = std::make_unique<sf::Image>(size, defaultFillColor);
-	for (unsigned int i{ 0 }; i < size.x; i++)
-		for (unsigned int j{ 0 }; j < size.y; j++)
-			if (i < size.x / 10 || i > 9 * size.x / 10 && j < size.y / 10 || j > 9 * size.y / 10)
-				defaultBackgroundImg->setPixel(sf::Vector2u{ i, j }, defaultOutlineColor);
+	sizeSlider = sf::Vector2u{ static_cast<unsigned int>(size.x * 4), static_cast<unsigned int>(size.x) };
+	sizeOutline = std::min(sizeSlider.x, sizeSlider.y) / 5.f;
+	sf::Image defaultSliderImg{ sizeSlider, defaultFillColor };
+	for (unsigned int i{ 0 }; i < sizeSlider.x; i++)
+		for (unsigned int j{ 0 }; j < sizeSlider.y; j++)
+			if (i < sizeOutline || j < sizeOutline || sizeSlider.x - i - 1 < sizeOutline || sizeSlider.y - j - 1 < sizeOutline)
+				defaultSliderImg.setPixel(sf::Vector2u{ i, j }, defaultOutlineColor);
 
-	m_textureBackgroundSlider.loadFromImage(*defaultBackgroundImg);
-	m_textureBackgroundSlider.setSmooth(true);
+	if (m_textureBackgroundSlider.loadFromImage(defaultBackgroundImg))
+		m_textureBackgroundSlider.setSmooth(true);
 
-	// No need to use a pointer. It was used to determine if the static image has already been 
-	// initialized. If this function has already been called, then the ptr would not be nullptr and the
-	// function would have exited. It didn't exit at this line. So, we can use the image directly.
-	static sf::Image defaultSliderImg{ sf::Vector2u{ static_cast<unsigned int>(size.x * 4), static_cast<unsigned int>(size.y * 0.1) } }; //TODO: revoir proportion 
+	if(m_textureCursorSlider.loadFromImage(defaultSliderImg))
+		m_textureCursorSlider.setSmooth(true);
 
-	//TODO; faire le reste pour le slider.
+	flag = true;
 }
 
 //void GraphicalDynamicInterface::setNewPos(std::string const& identifier, sf::Vector2f pos) noexcept
@@ -910,7 +960,3 @@ void GraphicalUserInteractableInterface::Slider::loadDefaultTexture(sf::Vector2u
 //}
 
 //////////////////////////////////Factory & managing functions//////////////////////////////////
-
-//TODO: finir slider
-//TODO: finir writbale
-//TODO: refactor
