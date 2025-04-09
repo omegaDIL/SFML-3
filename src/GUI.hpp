@@ -112,9 +112,9 @@ public:
 	 * @see GraphicalFixedInterface::WrapperText, addSprite(), addShape().
 	 */
 	template<Ostreamable T>
-	inline void addText(T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }) noexcept
+	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }) noexcept
 	{
-		WrapperText newText{content, position, characterSize, color};
+		WrapperText newText{ content, position, characterSize, color };
 		m_texts.push_back(std::move(newText));
 	}
 
@@ -128,13 +128,7 @@ public:
 	 * 
 	 * @see addText(), addShape().
 	 */
-	inline void addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
-	{
-		m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
-
-		// The pointer to the texture becomes invalid because we added something to the vector.
-		resetTextureForSprites();
-	}
+	void addSprite(sf::Sprite sprite, sf::Texture texture) noexcept;
 
 	/**
 	 * @brief Adds a sprite element to the interface.
@@ -146,14 +140,7 @@ public:
 	 * 
 	 * @see addText(), addSprite(), convertShapeToSprite().
 	 */
-	inline void addShape(sf::Shape* shape, bool smooth = true) noexcept
-	{
-		std::unique_ptr<sf::Sprite> sprite{ nullptr };
-		std::unique_ptr<sf::Texture> texture{ nullptr };
-
-		convertShapeToSprite(shape, sprite, texture, smooth);
-		addSprite(std::move(*sprite), std::move(*texture));
-	}
+	void addShape(sf::Shape* shape, bool smooth = true) noexcept;
 
 	/** 
 	 * @brief Renders the interface.
@@ -199,7 +186,7 @@ protected:
 	 *
 	 * @see GraphicalFixedInterface, sf::Text, create().
 	 */
-	struct WrapperText : sf::Text
+	struct WrapperText : private sf::Text
 	{
 	public:
 
@@ -243,9 +230,9 @@ protected:
 		{
 			std::ostringstream oss{}; // Convert the content to a string
 			oss << content; // Assigning the content to the variable.
+			
 			setString(oss.str());
-
-			updateTransformables(getPosition()); // recenter the text.
+			setOrigin(sf::Vector2f{ getLocalBounds().size.x / 2.f, getLocalBounds().size.y / 2.f }); // Recenters the text.
 		}
 
 		/**
@@ -275,17 +262,17 @@ protected:
 		}
 
 		/**
-		 * @brief Updates the scale of the text.
+		 * @brief Updates the size of the text.
 		 * @complexity O(1).
 		 *
 		 * @param[in] size: The size of the characters.
 		 *
 		 * @see sf::Text::scale().
 		 */
-		inline void updateCharacterScale(unsigned int size) noexcept
+		inline void updateCharacterSize(unsigned int size) noexcept
 		{
 			setCharacterSize(size);
-			updateTransformables(getPosition()); // recenter the text.
+			setOrigin(sf::Vector2f{ getLocalBounds().size.x / 2.f, getGlobalBounds().size.y / 2.f}); // Recenters the text.
 		}
 
 		/**
@@ -321,7 +308,7 @@ protected:
 		 *
 		 * @return A reference to the base `sf::Text` object.
 		 */
-		inline sf::Text const& getText() const noexcept
+		[[nodiscard]] inline sf::Text const& getText() const noexcept
 		{
 			return *this;
 		}
@@ -332,7 +319,7 @@ protected:
 		 *
 		 * @return a string if failed.
 		 */
-		static std::optional<std::string> loadFont() noexcept;
+		[[nodiscard]] static std::optional<std::string> loadFont() noexcept;
 
 	private:
 
@@ -373,163 +360,150 @@ private:
 };
 
 
-///**
-// * @brief  Manages an interface with changeable contents of elements (texts and shapes).
-// *
-// * @note D stands for dynamic.
-// * @note This class stores UI componenents; it will consume a considerable amount of memory.
-// * @note The background is dynamic and changeable with the getSprite() function using the attribut
-// *       "background".
-// * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
-// *
-// * @see GraphicalFixedInterface, sf::RenderWindow.
-// */
-//class GraphicalDynamicInterface : public GraphicalFixedInterface
-//{
-//public:
-//
-//	GraphicalDynamicInterface() noexcept = delete;
-//	GraphicalDynamicInterface(GraphicalDynamicInterface const&) noexcept = default;
-//	GraphicalDynamicInterface(GraphicalDynamicInterface&&) noexcept = default;
-//	virtual ~GraphicalDynamicInterface() noexcept = default;
-//	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface const&) noexcept = default;
-//	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface&&) noexcept = default;
-//
-//	/**
-//	 * @brief Constructs the interface with a default background.
-//	 * @complexity O(1).
-//	 *
-//	 * @param[out] window: The window where the interface elements will be rendered.
-//	 *
-//	 * @see createBackground().
-//	 */
-//	inline explicit GraphicalDynamicInterface(sf::RenderWindow* window) noexcept
-//		: GraphicalFixedInterface{ window }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
-//	{}
-//
-//
-//	/**
-//	 * @brief Adds a dynamic text to the interface.
-//	 * @complexity O(1) : average case.
-//	 * @complexity O(N) : worst case, where N is the number of texts already added (static and dynamic).
-//	 * 
-//	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
-//	 * @param[in] identifier:     The text identifier.
-//	 * @param[in] content:		  The text label.
-//	 * @param[in] position:       The position of the text.
-//	 * @param[in] characterSize:  The size of the text characters.
-//	 * @param[in] color:		  The color of the text.
-//	 *
-//	 * @note No effect if a text has the same id.
-//	 * @note The identifiers must be unique between texts.
-//	 * @note The ids between one text and one sprite can be the same.
-//	 * 
-//	 * @see addText().
-//	 */
-//	template<Ostreamable T>
-//	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 })
-//	{
-//		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
-//			return;
-//
-//		addText(content, position, characterSize, color);
-//		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
-//	}
-//
-//	/**
-//	 * @brief Adds a dynamic sprite element to the interface.
-//	 * @complexity O(N) where N is the number of shapes + sprites already added.
-//	 *
-//	 * @param[in] identifier: The text identifier.
-//	 * @param[in] sprite: The sprite to add.
-//	 * @param[in] texture: The texture of the sprite.
-//	 *
-//	 * @note No effect if a sprite has the same id.
-//	 * @note The identifiers must be unique between shapes/sprites.
-//	 * @note The ids between one text and one sprite can be the same.
-//	 *
-//	 * @see addSprite().
-//	 */
-//	void addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept;
-//
-//	/**
-//	 * @brief Adds a dynamic shape element to the interface.
-//	 * @complexity O(N) where N is the number of shapes + sprites already added.
-//	 *
-//	 * @param[in] identifier: The text identifier.
-//	 * @param[in] shape: The shape to add.
-//	 * @param[in] smooth: True if the shape needs to be smoothed.
-//	 *
-//	 * @note No effect if a sprite has the same id.
-//	 * @note The identifiers must be unique between shapes/sprites.
-//	 * @note The ids between one text and one shape can be the same.
-//	 *
-//	 * @see addShape().
-//	 */
-//	void addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
-//
-//	/**
-//	 * @brief Allows you to change some attributes of a dynamic text.
-//	 * 
-//	 * @param[in] identifier: The id of the text you want to access.
-//	 * 
-//	 * @return A reference to the text you want to access.
-//	 * 
-//	 * @pre Be sure that you added a text with this id.
-//	 * @post The appropriate text is returned.
-//	 * @throw std::out_of_range if id not there.
-//	 */
-//	GraphicalFixedInterface::Text& getDText(std::string const& identifier);
-//
-//	/**
-//	 * @brief Allows you to change some attributes of a dyanmic sprite.
-//	 *
-//	 * @param[in] identifier: The id of the sprite you want to access.
-//	 *
-//	 * @return A reference to the sprite you want to access.
-//	 *
-//	 * @pre Be sure that you added the sprite with this id.
-//	 * @post The appropriate sprite is returned.
-//	 * @throw std::out_of_range if id not there.
-//	 */
-//	sf::Sprite& getDSprite(std::string const& identifier);
-//
-//	/**
-//	 * @brief Allows you to change some attributes of a dynamic sprite's texture.
-//	 *
-//	 * @param[in] identifier: The id of the sprite's texture you want to access.
-//	 *
-//	 * @return A reference to the texture you want to access.
-//	 *
-//	 * @pre Be sure that you added the sprite with this id.
-//	 * @post The appropriate texture is returned.
-//	 * @throw std::out_of_range if id not there.
-//	 */
-//	sf::Texture& getDTexture(std::string const& identifier);
-//
-//	/**
-//	 * @brief Removes a dynamic text.
-//	 *
-//	 * @param[in] identifier: The id of the text you want to remove.
-//	 * 
-//	 * @note No effect if not there.
-//	 */
-//	virtual void removeDText(std::string const& identifier) noexcept;
-//
-//	/**
-//	 * @brief Removes a sprite
-//	 *
-//	 * @param[in] identifier: The id of the sprite you want to remove.
-//	 * 
-//	 * @note No effect if not there.
-//	 */
-//	virtual void removeDSprite(std::string const& identifier) noexcept;
-//
-//protected:
-//
-//	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All index of dynamic texts in the interface.
-//	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All index of dynamic sprites in the interface.
-//};
+/**
+ * @brief  Manages an interface with changeable contents of elements (texts and shapes).
+ *
+ * @note D stands for dynamic.
+ * @note This class stores UI componenents; it will consume a considerable amount of memory.
+ * @note The background is dynamic and changeable with the getSprite() function using the attribut
+ *       "background".
+ * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
+ *
+ * @see GraphicalFixedInterface, sf::RenderWindow.
+ */
+class GraphicalDynamicInterface : public GraphicalFixedInterface
+{
+public:
+
+	GraphicalDynamicInterface() noexcept = delete;
+	GraphicalDynamicInterface(GraphicalDynamicInterface const&) noexcept = default;
+	GraphicalDynamicInterface(GraphicalDynamicInterface&&) noexcept = default;
+	virtual ~GraphicalDynamicInterface() noexcept = default;
+	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface const&) noexcept = default;
+	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface&&) noexcept = default;
+
+	/**
+	 * @brief Constructs the interface with a default background.
+	 * @complexity O(1).
+	 *
+	 * @param[out] window: The window where the interface elements will be rendered.
+	 *
+	 * @see createBackground().
+	 */
+	inline explicit GraphicalDynamicInterface(sf::RenderWindow* window) noexcept
+		: GraphicalFixedInterface{ window }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
+	{}
+
+
+	/**
+	 * @brief Adds a dynamic text to the interface.
+	 * @complexity O(1) : average case.
+	 * @complexity O(N) : worst case, where N is the number of texts already added (static and dynamic).
+	 * 
+	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
+	 * @param[in] identifier:     The text identifier.
+	 * @param[in] content:		  The text label.
+	 * @param[in] position:       The position of the text.
+	 * @param[in] characterSize:  The size of the text characters.
+	 * @param[in] color:		  The color of the text.
+	 *
+	 * @note No effect if a text has the same id.
+	 * @note The identifiers must be unique between texts.
+	 * @note The ids between one text and one sprite can be the same.
+	 * 
+	 * @see addText().
+	 */
+	template<Ostreamable T>
+	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 })
+	{
+		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
+			return;
+
+		addText(content, position, characterSize, color);
+		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
+	}
+
+	/**
+	 * @brief Adds a dynamic sprite element to the interface.
+	 * @complexity O(N) where N is the number of shapes + sprites already added.
+	 *
+	 * @param[in] identifier: The text identifier.
+	 * @param[in] sprite: The sprite to add.
+	 * @param[in] texture: The texture of the sprite.
+	 *
+	 * @note No effect if a sprite has the same id.
+	 * @note The identifiers must be unique between shapes/sprites.
+	 * @note The ids between one text and one sprite can be the same.
+	 *
+	 * @see addSprite().
+	 */
+	void addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept;
+
+	/**
+	 * @brief Adds a dynamic shape element to the interface.
+	 * @complexity O(N) where N is the number of shapes + sprites already added.
+	 *
+	 * @param[in] identifier: The text identifier.
+	 * @param[in] shape: The shape to add.
+	 * @param[in] smooth: True if the shape needs to be smoothed.
+	 *
+	 * @note No effect if a sprite has the same id.
+	 * @note The identifiers must be unique between shapes/sprites.
+	 * @note The ids between one text and one shape can be the same.
+	 *
+	 * @see addShape().
+	 */
+	void addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
+
+	/**
+	 * @brief Allows you to change some attributes of a dynamic text.
+	 * 
+	 * @param[in] identifier: The id of the text you want to access.
+	 * 
+	 * @return A reference to the text you want to access.
+	 * 
+	 * @pre Be sure that you added a text with this id.
+	 * @post The appropriate text is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	GraphicalFixedInterface::WrapperText& getDText(std::string const& identifier);
+
+	/**
+	 * @brief Allows you to change some attributes of a dyanmic sprite.
+	 *
+	 * @param[in] identifier: The id of the sprite you want to access.
+	 *
+	 * @return A reference to the sprite you want to access.
+	 *
+	 * @pre Be sure that you added the sprite with this id.
+	 * @post The appropriate sprite is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	std::pair<sf::Sprite*, sf::Texture*> getDSprite(std::string const& identifier);
+
+	/**
+	 * @brief Removes a dynamic text.
+	 *
+	 * @param[in] identifier: The id of the text you want to remove.
+	 * 
+	 * @note No effect if not there.
+	 */
+	virtual void removeDText(std::string const& identifier) noexcept;
+
+	/**
+	 * @brief Removes a sprite
+	 *
+	 * @param[in] identifier: The id of the sprite you want to remove.
+	 * 
+	 * @note No effect if not there.
+	 */
+	virtual void removeDSprite(std::string const& identifier) noexcept;
+
+protected:
+
+	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All index of dynamic texts in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All index of dynamic sprites in the interface.
+};
 //
 //
 ///** 

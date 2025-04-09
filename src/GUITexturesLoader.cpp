@@ -28,8 +28,8 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 	sf::Angle rotation{ shape->getRotation() };
 	setTransformable(shape, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ 1.f, 1.f }, sf::degrees(0));
 
-	// Create a render texture to draw the shape.
-	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(shape->getGlobalBounds().size) };
+	// Creates a render texture to draw the shape.
+	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(shape->getLocalBounds().size) };
 	renderTexture.clear(sf::Color::Transparent);
 	renderTexture.draw(*shape);
 	renderTexture.display();
@@ -40,5 +40,5 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 	setTransformable(sprite.get(), origin, position, scale, rotation);
 
 	// Reset the transformables of the shape to their original values.
-	setTransformable(sprite.get(), origin, position, scale, rotation);
+	setTransformable(shape, origin, position, scale, rotation);
 }

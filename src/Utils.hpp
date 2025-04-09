@@ -114,12 +114,9 @@ void showErrorsUsingGUI(std::string const& errorMessage, std::string const& erro
 
 
 /**
- * @brief Handles the changes due to the new size of the window.
+ * @brief Handles the changes due to a resize of the window with its GUIs.
  * 
  * @param[in,out] window: the window.
- * 
- * @note Resizes elements of the GUIs.
- * @note Handles windowSize.
  */
 void handleEventResize(sf::RenderWindow* window) noexcept;
 

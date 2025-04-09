@@ -42,9 +42,6 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 /// Image loader functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-sf::Image loadDefaultBackgroundOfInterface(sf::Vector2u size) noexcept;
-
 sf::Image loadDefaultSliderBackgroundTexture(sf::Vector2f size) noexcept;
 
 sf::Image loadDefaultSliderCursorTexture(sf::Vector2f size) noexcept;

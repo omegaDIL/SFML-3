@@ -26,7 +26,7 @@ std::unordered_multimap<sf::RenderWindow*, GraphicalFixedInterface*> GraphicalFi
 
 
 GraphicalFixedInterface::GraphicalFixedInterface(sf::RenderWindow* window) noexcept
-	: m_window{ window }, m_texts{}, m_sprites{}
+	: m_window{ window }, m_sprites{}, m_texts{}
 {	
 	// Add this interface to the collection.
 	allInterfaces.emplace(std::make_pair(window, this));
@@ -76,7 +76,24 @@ std::optional<std::string> GraphicalFixedInterface::create(std::string const& fi
 		return std::make_optional<std::string>(oss.str());
 	}	
 	
-	return std::nullopt;
+	return (oss.str().empty()) ? std::nullopt : std::make_optional<std::string>(oss.str());
+}
+
+void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
+{
+	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
+
+	// The pointer to the texture becomes invalid because we added something to the vector.
+	resetTextureForSprites();
+}
+
+void GraphicalFixedInterface::addShape(sf::Shape* shape, bool smooth) noexcept
+{
+	std::unique_ptr<sf::Sprite> sprite{ nullptr };
+	std::unique_ptr<sf::Texture> texture{ nullptr };
+
+	convertShapeToSprite(shape, sprite, texture, smooth);
+	addSprite(std::move(*sprite), std::move(*texture));
 }
 
 void GraphicalFixedInterface::draw() const
@@ -92,22 +109,28 @@ void GraphicalFixedInterface::draw() const
 
 void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
-	float const factor = std::min(window->getSize().x, window->getSize().y) / 720.f;
-	sf::Vector2f const factor2f{ factor, factor };
+	float const factor = static_cast<float>(std::min(window->getSize().x, window->getSize().y) / 1080.f);
 
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
-	for (auto i{ interfaceRange.first }; i != interfaceRange.second; i++)
+	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
-		for (auto& text : i->second->m_texts)
-			text.windowResized(scalingFactor);
+		auto* curInterface{ elem->second };
 
-		for (auto& sprite : i->second->m_sprites)
-		{
-			sprite.first.setScale(sf::Vector2f{ factor, factor });
-			sprite.first.setPosition(sf::Vector2f{ sprite.first.getPosition().x * scalingFactor.x, sprite.first.getPosition().y * scalingFactor.y });
+		for (auto& text : curInterface->m_texts)
+			text.windowResized(scalingFactor);	
+
+		// The background is the first sprite.
+		curInterface->m_sprites[0].first.setScale(static_cast<sf::Vector2f>(window->getSize()));
+
+		for (int j{ 1 }; j < curInterface->m_sprites.size(); j++)
+		{	// Avoiding the background by skipping index 0.
+			sf::Sprite& curSprite{ curInterface->m_sprites[j].first };
+
+			//curSprite.scale(scalingFactor);
+			curSprite.setPosition(sf::Vector2f{ curSprite.getPosition().x * scalingFactor.x, curSprite.getPosition().y * scalingFactor.y });
 		}
 	}
-}
+}	// TODO: revoir resize pour changement de ratio avec background pas default (resolution). 
 
 void GraphicalFixedInterface::resetTextureForSprites() noexcept
 {
@@ -141,7 +164,7 @@ std::optional<std::string> GraphicalFixedInterface::WrapperText::loadFont() noex
 
 void GraphicalFixedInterface::WrapperText::updateTransformables(sf::Vector2f pos) noexcept
 {
-	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 720.f;
+	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 1080.f;
 	sf::FloatRect const textBounds{ getLocalBounds() }; // Cache bounds to avoid multiple calls.
 	
 	setScale(sf::Vector2f{ factor, factor }); // The scaling factor must be the same.
@@ -149,15 +172,6 @@ void GraphicalFixedInterface::WrapperText::updateTransformables(sf::Vector2f pos
 	setPosition(pos); // Update the position according to the new origin.
 }
 
-/*
-void GraphicalDynamicInterface::addDynamicText(std::string const& identifier, GraphicalFixedInterface::Text text) noexcept
-{
-	if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
-		return;
-
-	addText(std::move(text));
-	m_dynamicTextsIds[identifier] = m_texts.size() - 1;
-}
 
 void GraphicalDynamicInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
 {
@@ -177,19 +191,20 @@ void GraphicalDynamicInterface::addDynamicShape(std::string const& identifier, s
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
 }
 
-GraphicalFixedInterface::Text& GraphicalDynamicInterface::getDText(std::string const& identifier)
+GraphicalFixedInterface::WrapperText& GraphicalDynamicInterface::getDText(std::string const& identifier)
 {
-	return m_texts[m_dynamicTextsIds.at(identifier)];
+	return m_texts[m_dynamicTextsIds.at(identifier)]; // Throw an exception if not there.
 }
 
-sf::Sprite& GraphicalDynamicInterface::getDSprite(std::string const& identifier)
+std::pair<sf::Sprite*, sf::Texture*> GraphicalDynamicInterface::getDSprite(std::string const& identifier)
 {
-	return m_sprites[m_dynamicSpritesIds.at(identifier)].first;
-}
+	std::pair<sf::Sprite*, sf::Texture*> sprite{ std::make_pair(nullptr, nullptr) };
+	auto& pair{ m_sprites[m_dynamicSpritesIds.at(identifier)] }; // Throw an exception if not there.
 
-sf::Texture& GraphicalDynamicInterface::getDTexture(std::string const& identifier)
-{
-	return m_sprites[m_dynamicSpritesIds.at(identifier)].second;
+	sprite.first = &pair.first;
+	sprite.second = &pair.second;
+
+	return sprite;
 }
 
 void GraphicalDynamicInterface::removeDText(std::string const& identifier) noexcept
@@ -197,14 +212,16 @@ void GraphicalDynamicInterface::removeDText(std::string const& identifier) noexc
 	auto toRemove{ m_dynamicTextsIds.find(identifier) };
 
 	if (toRemove == m_dynamicTextsIds.end())
-		return;
+		return; // No effect if it does not exist.
 
+	// For all Indexes that are greater than the one we want to remove, we decrease their index by 1.
+	// Otherwise, we will have a gap in the vector.
 	for (auto& it : m_dynamicTextsIds)
 		if (it.second > toRemove->second)
 			it.second--;
 
-	m_texts.erase(std::next(m_texts.begin(), toRemove->second));
-	m_dynamicTextsIds.erase(toRemove);
+	m_texts.erase(std::next(m_texts.begin(), toRemove->second)); // Erase from the vector.
+	m_dynamicTextsIds.erase(toRemove); // Erase from the "dynamic" map.
 }
 
 void GraphicalDynamicInterface::removeDSprite(std::string const& identifier) noexcept
@@ -212,20 +229,23 @@ void GraphicalDynamicInterface::removeDSprite(std::string const& identifier) noe
 	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
 
 	if (toRemove == m_dynamicSpritesIds.end())
-		return;
+		return; // No effect if it does not exist.
 
+	// For all Indexes that are greater than the one we want to remove, we decrease their index by 1.
+	// Otherwise, we will have a gap in the vector.
 	for (auto& it : m_dynamicSpritesIds)
 		if (it.second > toRemove->second)
-			it.second--;
+			it.second--; 
 
-	m_sprites.erase(std::next(m_sprites.begin(), toRemove->second));
-	m_dynamicSpritesIds.erase(toRemove);
+	m_sprites.erase(std::next(m_sprites.begin(), toRemove->second)); // Erase from the vector.
+	m_dynamicSpritesIds.erase(toRemove); // Erase from the "dynamic" map.
 
 	// The pointer to the texture becomes invalid because we removed something to the vector.
 	resetTextureForSprites();
 }
 
 
+/*
 void GraphicalUserInteractableInterface::addButton(std::string const& identifier, Text text, sf::Texture texture) noexcept
 {
 	sf::Sprite button{ texture };
