@@ -109,6 +109,9 @@ void GraphicalFixedInterface::draw() const
 
 void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
+	float minOfCurrentWindowSize{ std::min(window->getSize().x, window->getSize().y) };
+	float minOfPreviousWindowSize{ std::min(window->getSize().x / scalingFactor.x, window->getSize().y / scalingFactor.y) };
+
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
@@ -125,8 +128,7 @@ void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector
 		{	// Avoiding the background by skipping index 0.
 			sf::Sprite& curSprite{ curInterface->m_sprites[j].first };
 
-			float scalingSprite{ std::min(window->getSize().x, window->getSize().y) / 1080.f };
-			curSprite.setScale(sf::Vector2f{ scalingSprite, scalingSprite });
+			curSprite.scale(sf::Vector2f{ minOfCurrentWindowSize / minOfPreviousWindowSize, minOfCurrentWindowSize / minOfPreviousWindowSize });
 			curSprite.setPosition(sf::Vector2f{ curSprite.getPosition().x * scalingFactor.x, curSprite.getPosition().y * scalingFactor.y });
 		}
 	}
