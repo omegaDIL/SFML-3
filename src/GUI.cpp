@@ -20,7 +20,7 @@
 
 extern sf::VideoMode windowSize;
 
-sf::Font GraphicalFixedInterface::WrapperText::m_font{};
+sf::Font GraphicalFixedInterface::TextWrapper::m_font{};
 std::string GraphicalFixedInterface::ressourcePath{ "../res/" };
 std::unordered_multimap<sf::RenderWindow*, GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
 
@@ -47,7 +47,7 @@ std::optional<std::string> GraphicalFixedInterface::create(std::string const& fi
 	std::ostringstream oss{};
 
 	// Loads the font.
-	auto error{ WrapperText::loadFont() };
+	auto error{ TextWrapper::loadFont() };
 	if (error.has_value())
 		oss << error.value() ;
 
@@ -109,8 +109,6 @@ void GraphicalFixedInterface::draw() const
 
 void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
-	float const factor = std::min(scalingFactor.x, scalingFactor.y);
-
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
@@ -127,7 +125,8 @@ void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector
 		{	// Avoiding the background by skipping index 0.
 			sf::Sprite& curSprite{ curInterface->m_sprites[j].first };
 
-			curSprite.scale(sf::Vector2f{ factor, factor });
+			float scalingSprite{ std::min(window->getSize().x, window->getSize().y) / 1080.f };
+			curSprite.setScale(sf::Vector2f{ scalingSprite, scalingSprite });
 			curSprite.setPosition(sf::Vector2f{ curSprite.getPosition().x * scalingFactor.x, curSprite.getPosition().y * scalingFactor.y });
 		}
 	}
@@ -139,7 +138,7 @@ void GraphicalFixedInterface::resetTextureForSprites() noexcept
 		sprite.first.setTexture(sprite.second);
 }
 
-std::optional<std::string> GraphicalFixedInterface::WrapperText::loadFont() noexcept
+std::optional<std::string> GraphicalFixedInterface::TextWrapper::loadFont() noexcept
 {
 	if (m_font.getInfo().family != "")
 		return std::nullopt; // Font already loaded.
@@ -163,7 +162,7 @@ std::optional<std::string> GraphicalFixedInterface::WrapperText::loadFont() noex
 	return std::nullopt;
 }
 
-void GraphicalFixedInterface::WrapperText::updateTransformables(sf::Vector2f pos) noexcept
+void GraphicalFixedInterface::TextWrapper::updateTransformables(sf::Vector2f pos) noexcept
 {
 	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 1080.f;
 	sf::FloatRect const textBounds{ getLocalBounds() }; // Cache bounds to avoid multiple calls.
@@ -192,7 +191,7 @@ void GraphicalDynamicInterface::addDynamicShape(std::string const& identifier, s
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
 }
 
-GraphicalFixedInterface::WrapperText& GraphicalDynamicInterface::getDText(std::string const& identifier)
+GraphicalFixedInterface::TextWrapper& GraphicalDynamicInterface::getDText(std::string const& identifier)
 {
 	return m_texts[m_dynamicTextsIds.at(identifier)]; // Throw an exception if not there.
 }

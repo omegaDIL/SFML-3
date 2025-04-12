@@ -8,7 +8,7 @@
 
 using SafeSaves::Save;
 
-sf::VideoMode windowSize{ sf::Vector2u{ 700, 700 } };
+sf::VideoMode windowSize{ sf::Vector2u{ 1080, 1080 } };
 std::string nameOfSoftware{ "Template sfml 3" };
 
 
