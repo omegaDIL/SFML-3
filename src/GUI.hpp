@@ -93,7 +93,7 @@ public:
 	 * @note If you already have a font and don't want to load a background, it is useless to call this
 	 *		 function.
 	 */
-	[[nodiscard]] std::optional<std::string> create(std::string const& fileName = "");
+	[[nodiscard]] virtual std::optional<std::string> create(std::string const& fileName = "");
 
 	virtual ~GraphicalFixedInterface() noexcept
 	{
@@ -118,9 +118,10 @@ public:
 	 * @see GraphicalFixedInterface::TextWrapper, addSprite(), addShape().
 	 */
 	template<Ostreamable T>
-	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }) noexcept
+	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
 	{
 		TextWrapper newText{ content, position, characterSize, color };
+		newText.updateRotation(rot);
 		m_texts.push_back(std::move(newText));
 	}
 
@@ -213,12 +214,13 @@ protected:
 		 * @param[in] color: The color of the text.
 		 */
 		template<Ostreamable T>
-		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }) noexcept
+		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
 			: sf::Text{ m_font, "", characterSize}
 		{
 			setFillColor(color);
+			setRotation(rot);
 			updateContent(content);
-			updateTransformables(pos);
+			setPosition(pos);
 		}
 
 
@@ -232,7 +234,7 @@ protected:
 		 * @see updatePosition(), updateColor().
 		 */
 		template<Ostreamable T>
-		void updateContent(T const& content) noexcept
+		inline void updateContent(T const& content) noexcept
 		{
 			std::ostringstream oss{}; // Convert the content to a string
 			oss << content; // Assigning the content to the variable.
@@ -268,6 +270,21 @@ protected:
 		}
 
 		/**
+		 * @brief Updates the scale of the text.
+		 * @complexity O(1).
+		 *
+		 * @param[in] scale: Adds the scale to the current one.
+		 * 
+		 * @note Doesn't override the previous scale : use scale() instead of setScale().
+		 *
+		 * @see sf::Text::scale.
+		 */
+		inline void updateScale(sf::Vector2f scale) noexcept
+		{
+			this->scale(scale);
+		}
+
+		/**
 		 * @brief Updates the size of the text.
 		 * @complexity O(1).
 		 *
@@ -299,13 +316,10 @@ protected:
 		 *
 		 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
 		 */
-		inline void windowResized(sf::Vector2f scalingFactor) noexcept
+		inline void windowResized(sf::Vector2f scalingFactor, sf::Vector2f scalingFactorMin) noexcept
 		{
-			sf::Vector2f newPos{ getPosition() };
-			newPos.x *= scalingFactor.x;
-			newPos.y *= scalingFactor.y;
-
-			updateTransformables(newPos);
+			scale(scalingFactorMin);
+			setPosition(sf::Vector2f{ getPosition().x * scalingFactor.x, getPosition().y * scalingFactor.y });
 		}
 
 		/**
@@ -328,21 +342,6 @@ protected:
 		[[nodiscard]] static std::optional<std::string> loadFont() noexcept;
 
 	private:
-
-		/**
-		 * @brief Updates the position, the scale and the origin of the text.
-		 * @details Is useful when the text string
-		 * 
-		 *  changes and is shorter or larger than the previous one.
-		 * @complexity O(1).
-		 *
-		 * @param[in] pos: The new position for the text.
-		 *
-		 * @note If the window is resized, the position passed should be the product of the current position
-		 * 		 by the scaling factor between the previous window's size and the new one.
-		 */
-		void updateTransformables(sf::Vector2f pos) noexcept;
-
 
 		static sf::Font m_font; // The font used for the texts.
 	};
@@ -420,12 +419,12 @@ public:
 	 * @see addText().
 	 */
 	template<Ostreamable T>
-	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 })
+	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
 	{
 		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
 			return;
 
-		addText(content, position, characterSize, color);
+		addText(content, position, characterSize, color, rot);
 		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
 	}
 
@@ -512,228 +511,228 @@ protected:
 };
 
 
-/** 
- * @brief  Manages an interface in which the user can interact such as writing, pressing buttons...
- *
- * @note This class stores UI componenents; it will consume a considerable amount of memory.
- * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
- *
- * @see GraphicalDynamicInterface, Slider, sf::RenderWindow.
- */
-class GraphicalUserInteractableInterface : public GraphicalDynamicInterface
-{
-public:
-
-	enum class InteractableItem
-	{
-		None,
-		Button,
-		Slider,
-		MultipleQuestionBox
-	};
-
-	using IdentifierInteractableItem = std::pair<InteractableItem, std::string*>; 
-
-
-	GraphicalUserInteractableInterface() noexcept = delete;
-	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface const&) noexcept = default;
-	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface&&) noexcept = default;
-	virtual ~GraphicalUserInteractableInterface() noexcept = default;
-	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface const&) noexcept = default;
-	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface&&) noexcept = default;
-
-	/**
-	 * @brief Constructs the interface with a default background.
-	 * @complexity O(1).
-	 *
-	 * @param[out] window: The window where the interface elements will be rendered.
-	 *
-	 * @see createBackground().
-	 */
-	inline explicit GraphicalUserInteractableInterface(sf::RenderWindow* window) noexcept
-		: GraphicalDynamicInterface{ window }, m_indexButtons{}
-	{}
-
-
-	/**
-	 * @brief Adds a button to the interface.
-	 *
-	 * @param[in] identifier: The id of the button.
-	 * @param[in] text: The text to display on the button.
-	 * @param[in] texture: The texture of tghe button's background.
-	 *
-	 * @note No effect if a button has the same id.
-	 * @note The ids need to be different from texts and other buttons.
-	 * @note To get the button, use getDText() with the same id.
-	 * @warning Don't remove the button using removeDText(), use removeButton() instead.
-	 */
-	template<Ostreamable T>
-	void addButton(std::string const& identifier, T const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, std::function<void()> = [](){}) noexcept;
-
-	std::function<void()> getFunctionOfButton(std::string const& identifier) noexcept;
-
-	/**
-	 * .
-	 * 
-	 * \param identifier
-	 * \return 
-	 * 
-	 * @note Is also automatically executed when the button is pressed.
-	 */
-	void executeFunctionOfButton(std::string const& identifier) noexcept;
-
-	/**
-	 * @brief Removes a button
-	 *
-	 * @param[in] identifier: The id of the button you want to remove.
-	 *
-	 * @note No effect if not there.
-	 */
-	void removeButton(std::string const& identifier) noexcept;
-
-	/** 
-	 * @brief Detects if the mouse is hovering over a button to update its visual state.
-	 * @complexity O(N), where N is the number of buttons.
-	 *
-	 * @note You should call this function when you change the menu to position the button's background 
-	 *       accordingly.
-	 * 
-	 * @pre The window must have been valid when passed to the constructor and still exists.
-	 * @post The elements are drawn on the window.
-	 * @throw std::logic_error if window is nullptr.
-	 */
-	IdentifierInteractableItem mouseMoved();
-	IdentifierInteractableItem mousePressed() noexcept;
-
-
-
-	/**
-	 * @complexity O(1).
-	 * 
-	 * @return The id of the button that is currently hovered.
-	 */
-	inline IdentifierInteractableItem getHoveredInteractableItem() const noexcept
-	{
-		return m_hoveredElement;
-	}
-
-	/**
-	 * @brief Renders the interface.
-	 * @complexity O(N + K + M), where N is the number of texts, K the number of shapes, and M the number
-	 *			   of sliders.
-	 *
-	 * @pre The window must have been valid when passed to the constructor and still exists.
-	 * @post The elements are drawn on the window.
-	 * @throw std::logic_error if window is nullptr.
-	 */
-	virtual void draw() const override;
-
-private:
-	
-	class Slider
-	{
-	public:
-
-		Slider() noexcept = delete;
-		Slider(Slider const&) noexcept = default;
-		Slider(Slider&&) noexcept = default;
-		~Slider() noexcept = default;
-		Slider& operator=(Slider const&) noexcept = default;
-		Slider& operator=(Slider&&) noexcept = default;
-
-		Slider(sf::Vector2f pos, unsigned int length, bool integers = false) noexcept;
-
-		/**
-		 * 
-		  * 
-		 */
-		void changeTexture(std::string backgroundSlider = "", std::string cursorSlider ="");
-
-
-		/**
-		 * .
-		 * 
-		 * \return 
-		 */
-		void mouseMoved() noexcept;
-
-		/**
-		 * .
-		 * 
-		 * \return 
-		 */
-		float getValue() const noexcept;
-
-		float setCursor(float relativePos = 0.0f) noexcept;
-
-		//TODO: add a function to resize when event is triggered.
-
-	private:
-
-		/**
-		 * @brief Loads the default textures for the slider.
-		 * 
-		 * @note It is useless to call this function if the textures are already loaded.
-		 */
-		void loadDefaultTexture(sf::Vector2u size) noexcept;
-
-
-		std::unique_ptr<sf::Sprite> m_backgroundSlider; // The background of the slider.
-		std::unique_ptr<sf::Sprite> m_cursorSlider; // The slider itself.
-
-		sf::Texture m_textureBackgroundSlider; // The texture of the background.
-		sf::Texture m_textureCursorSlider; // The texture of the slider.;
-	};
-
-	class MultipleQuestionBox
-	{
-	public:
-
-		MultipleQuestionBox() noexcept = delete;
-		MultipleQuestionBox(MultipleQuestionBox const&) noexcept = default;
-		MultipleQuestionBox(MultipleQuestionBox&&) noexcept = default;
-		~MultipleQuestionBox() noexcept = default;
-		MultipleQuestionBox& operator=(MultipleQuestionBox const&) noexcept = default;
-		MultipleQuestionBox& operator=(MultipleQuestionBox&&) noexcept = default;
-
-		/**
-		 * 
-		 * \param box
-		 * \param onlyOne: True if only one box can be selected.
-		 */
-		MultipleQuestionBox(std::vector<sf::Vector2f> pos, bool onlyOne) noexcept;
-
-
-		void addBox(sf::Vector2f pos) noexcept;
-
-		void removeBox(size_t index) noexcept;
-		
-		void mousePressed() noexcept;
-
-		std::vector<bool> getValues() const noexcept;
-
-		void reset(bool value = false) noexcept;
-
-
-		bool onlyeOne; // True if only one box can be selected.
-
-	private:
-
-		std::vector<std::pair<sf::Sprite, bool>> m_boxes; // The boxes of the MQB.
-		sf::Texture m_textureBoxUnchecked; // The texture of the boxes.
-		sf::Texture m_textureBoxChecked; // The texture of the boxes.
-	};
-
-
-	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
-	using MQB = MultipleQuestionBox;
-
-	std::unordered_map<std::string, Button> m_indexButtons; // Collection of buttons in the interface.
-	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
-	std::unordered_map<std::string, MQB> m_sliders; // Collection of MQBs in the interface.
-
-	IdentifierInteractableItem m_hoveredElement; // The type of the button that is currently hovered.
-};
+///** 
+// * @brief  Manages an interface in which the user can interact such as writing, pressing buttons...
+// *
+// * @note This class stores UI componenents; it will consume a considerable amount of memory.
+// * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
+// *
+// * @see GraphicalDynamicInterface, Slider, sf::RenderWindow.
+// */
+//class GraphicalUserInteractableInterface : public GraphicalDynamicInterface
+//{
+//public:
+//
+//	enum class InteractableItem
+//	{
+//		None,
+//		Button,
+//		Slider,
+//		MultipleQuestionBox
+//	};
+//
+//	using IdentifierInteractableItem = std::pair<InteractableItem, std::string*>; 
+//
+//
+//	GraphicalUserInteractableInterface() noexcept = delete;
+//	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface const&) noexcept = default;
+//	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface&&) noexcept = default;
+//	virtual ~GraphicalUserInteractableInterface() noexcept = default;
+//	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface const&) noexcept = default;
+//	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface&&) noexcept = default;
+//
+//	/**
+//	 * @brief Constructs the interface with a default background.
+//	 * @complexity O(1).
+//	 *
+//	 * @param[out] window: The window where the interface elements will be rendered.
+//	 *
+//	 * @see createBackground().
+//	 */
+//	inline explicit GraphicalUserInteractableInterface(sf::RenderWindow* window) noexcept
+//		: GraphicalDynamicInterface{ window }, m_indexButtons{}
+//	{}
+//
+//
+//	/**
+//	 * @brief Adds a button to the interface.
+//	 *
+//	 * @param[in] identifier: The id of the button.
+//	 * @param[in] text: The text to display on the button.
+//	 * @param[in] texture: The texture of tghe button's background.
+//	 *
+//	 * @note No effect if a button has the same id.
+//	 * @note The ids need to be different from texts and other buttons.
+//	 * @note To get the button, use getDText() with the same id.
+//	 * @warning Don't remove the button using removeDText(), use removeButton() instead.
+//	 */
+//	template<Ostreamable T>
+//	void addButton(std::string const& identifier, T const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, std::function<void()> = [](){}) noexcept;
+//
+//	std::function<void()> getFunctionOfButton(std::string const& identifier) noexcept;
+//
+//	/**
+//	 * .
+//	 * 
+//	 * \param identifier
+//	 * \return 
+//	 * 
+//	 * @note Is also automatically executed when the button is pressed.
+//	 */
+//	void executeFunctionOfButton(std::string const& identifier) noexcept;
+//
+//	/**
+//	 * @brief Removes a button
+//	 *
+//	 * @param[in] identifier: The id of the button you want to remove.
+//	 *
+//	 * @note No effect if not there.
+//	 */
+//	void removeButton(std::string const& identifier) noexcept;
+//
+//	/** 
+//	 * @brief Detects if the mouse is hovering over a button to update its visual state.
+//	 * @complexity O(N), where N is the number of buttons.
+//	 *
+//	 * @note You should call this function when you change the menu to position the button's background 
+//	 *       accordingly.
+//	 * 
+//	 * @pre The window must have been valid when passed to the constructor and still exists.
+//	 * @post The elements are drawn on the window.
+//	 * @throw std::logic_error if window is nullptr.
+//	 */
+//	IdentifierInteractableItem mouseMoved();
+//	IdentifierInteractableItem mousePressed() noexcept;
+//
+//
+//
+//	/**
+//	 * @complexity O(1).
+//	 * 
+//	 * @return The id of the button that is currently hovered.
+//	 */
+//	inline IdentifierInteractableItem getHoveredInteractableItem() const noexcept
+//	{
+//		return m_hoveredElement;
+//	}
+//
+//	/**
+//	 * @brief Renders the interface.
+//	 * @complexity O(N + K + M), where N is the number of texts, K the number of shapes, and M the number
+//	 *			   of sliders.
+//	 *
+//	 * @pre The window must have been valid when passed to the constructor and still exists.
+//	 * @post The elements are drawn on the window.
+//	 * @throw std::logic_error if window is nullptr.
+//	 */
+//	virtual void draw() const override;
+//
+//private:
+//	
+//	class Slider
+//	{
+//	public:
+//
+//		Slider() noexcept = delete;
+//		Slider(Slider const&) noexcept = default;
+//		Slider(Slider&&) noexcept = default;
+//		~Slider() noexcept = default;
+//		Slider& operator=(Slider const&) noexcept = default;
+//		Slider& operator=(Slider&&) noexcept = default;
+//
+//		Slider(sf::Vector2f pos, unsigned int length, bool integers = false) noexcept;
+//
+//		/**
+//		 * 
+//		  * 
+//		 */
+//		void changeTexture(std::string backgroundSlider = "", std::string cursorSlider ="");
+//
+//
+//		/**
+//		 * .
+//		 * 
+//		 * \return 
+//		 */
+//		void mouseMoved() noexcept;
+//
+//		/**
+//		 * .
+//		 * 
+//		 * \return 
+//		 */
+//		float getValue() const noexcept;
+//
+//		float setCursor(float relativePos = 0.0f) noexcept;
+//
+//		//TODO: add a function to resize when event is triggered.
+//
+//	private:
+//
+//		/**
+//		 * @brief Loads the default textures for the slider.
+//		 * 
+//		 * @note It is useless to call this function if the textures are already loaded.
+//		 */
+//		void loadDefaultTexture(sf::Vector2u size) noexcept;
+//
+//
+//		std::unique_ptr<sf::Sprite> m_backgroundSlider; // The background of the slider.
+//		std::unique_ptr<sf::Sprite> m_cursorSlider; // The slider itself.
+//
+//		sf::Texture m_textureBackgroundSlider; // The texture of the background.
+//		sf::Texture m_textureCursorSlider; // The texture of the slider.;
+//	};
+//
+//	class MultipleQuestionBox
+//	{
+//	public:
+//
+//		MultipleQuestionBox() noexcept = delete;
+//		MultipleQuestionBox(MultipleQuestionBox const&) noexcept = default;
+//		MultipleQuestionBox(MultipleQuestionBox&&) noexcept = default;
+//		~MultipleQuestionBox() noexcept = default;
+//		MultipleQuestionBox& operator=(MultipleQuestionBox const&) noexcept = default;
+//		MultipleQuestionBox& operator=(MultipleQuestionBox&&) noexcept = default;
+//
+//		/**
+//		 * 
+//		 * \param box
+//		 * \param onlyOne: True if only one box can be selected.
+//		 */
+//		MultipleQuestionBox(std::vector<sf::Vector2f> pos, bool onlyOne) noexcept;
+//
+//
+//		void addBox(sf::Vector2f pos) noexcept;
+//
+//		void removeBox(size_t index) noexcept;
+//		
+//		void mousePressed() noexcept;
+//
+//		std::vector<bool> getValues() const noexcept;
+//
+//		void reset(bool value = false) noexcept;
+//
+//
+//		bool onlyeOne; // True if only one box can be selected.
+//
+//	private:
+//
+//		std::vector<std::pair<sf::Sprite, bool>> m_boxes; // The boxes of the MQB.
+//		sf::Texture m_textureBoxUnchecked; // The texture of the boxes.
+//		sf::Texture m_textureBoxChecked; // The texture of the boxes.
+//	};
+//
+//
+//	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
+//	using MQB = MultipleQuestionBox;
+//
+//	std::unordered_map<std::string, Button> m_indexButtons; // Collection of buttons in the interface.
+//	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
+//	std::unordered_map<std::string, MQB> m_mqbs; // Collection of MQBs in the interface.
+//
+//	IdentifierInteractableItem m_hoveredElement; // The type of the button that is currently hovered.
+//};
 //
 //
 //using GIText = GraphicalFixedInterface::Text;

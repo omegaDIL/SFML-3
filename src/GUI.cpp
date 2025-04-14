@@ -18,8 +18,6 @@
 #include "GUITexturesLoader.hpp"
 #include "Exceptions.hpp"
 
-extern sf::VideoMode windowSize;
-
 sf::Font GraphicalFixedInterface::TextWrapper::m_font{};
 std::string GraphicalFixedInterface::ressourcePath{ "../res/" };
 std::unordered_multimap<sf::RenderWindow*, GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
@@ -109,16 +107,14 @@ void GraphicalFixedInterface::draw() const
 
 void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
-	float minOfCurrentWindowSize{ std::min(window->getSize().x, window->getSize().y) };
-	float minOfPreviousWindowSize{ std::min(window->getSize().x / scalingFactor.x, window->getSize().y / scalingFactor.y) };
+	float minOfCurrentWindowSize{ static_cast<float>(std::min(window->getSize().x, window->getSize().y)) };
+	float minOfPreviousWindowSize{ static_cast<float>(std::min(window->getSize().x / scalingFactor.x, window->getSize().y / scalingFactor.y)) };
+	sf::Vector2f minScalingFactor{ minOfCurrentWindowSize / minOfPreviousWindowSize, minOfCurrentWindowSize / minOfPreviousWindowSize };
 
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
 		auto* curInterface{ elem->second };
-
-		for (auto& text : curInterface->m_texts)
-			text.windowResized(scalingFactor);
 
 		// The background is the first sprite.
 		curInterface->m_sprites[0].first.setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
@@ -128,11 +124,14 @@ void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector
 		{	// Avoiding the background by skipping index 0.
 			sf::Sprite& curSprite{ curInterface->m_sprites[j].first };
 
-			curSprite.scale(sf::Vector2f{ minOfCurrentWindowSize / minOfPreviousWindowSize, minOfCurrentWindowSize / minOfPreviousWindowSize });
+			curSprite.scale(minScalingFactor);
 			curSprite.setPosition(sf::Vector2f{ curSprite.getPosition().x * scalingFactor.x, curSprite.getPosition().y * scalingFactor.y });
 		}
+
+		for (auto& text : curInterface->m_texts)
+			text.windowResized(scalingFactor, minScalingFactor);
 	}
-}	// TODO: revoir resize pour changement de ratio avec background pas default (resolution). 
+}
 
 void GraphicalFixedInterface::resetTextureForSprites() noexcept
 {
@@ -162,16 +161,6 @@ std::optional<std::string> GraphicalFixedInterface::TextWrapper::loadFont() noex
 	}
 
 	return std::nullopt;
-}
-
-void GraphicalFixedInterface::TextWrapper::updateTransformables(sf::Vector2f pos) noexcept
-{
-	float const factor = std::min(windowSize.size.x, windowSize.size.y) / 1080.f;
-	sf::FloatRect const textBounds{ getLocalBounds() }; // Cache bounds to avoid multiple calls.
-	
-	setScale(sf::Vector2f{ factor, factor }); // The scaling factor must be the same.
-	setOrigin(sf::Vector2f{ textBounds.size.x / 2.f, textBounds.size.y / 2.f }); // Updating the origin is needed only when the content changes or when size character changes.
-	setPosition(pos); // Update the position according to the new origin.
 }
 
 
