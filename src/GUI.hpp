@@ -98,9 +98,14 @@ public:
 	virtual ~GraphicalFixedInterface() noexcept
 	{
 		auto interfaceRange{ allInterfaces.equal_range(m_window) }; // All interfaces associated with the resized window.
-		for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
-			if(elem->second == this)
-				allInterfaces.erase(elem); // Remove the interface from the collection.
+		
+		for (auto elem{ interfaceRange.first }; elem != interfaceRange.second;)
+		{
+			if (elem->second == this)
+				elem = allInterfaces.erase(elem); // Remove the interface from the collection.
+			else	
+				elem++;	
+		}
 	}
 
 
