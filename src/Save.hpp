@@ -185,9 +185,9 @@ public:
 	Save() noexcept = delete;
 	Save(Save const&) noexcept = delete;
 	Save(Save&&) noexcept = delete;
-	virtual ~Save() noexcept = delete;
-	virtual Save& operator=(Save const&) noexcept = delete;
+	Save& operator=(Save const&) noexcept = delete;
 	Save& operator=(Save&&) noexcept = delete;
+	virtual ~Save() noexcept = delete;
 
 
 	/**

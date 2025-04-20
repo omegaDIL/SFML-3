@@ -42,3 +42,18 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 	// Reset the transformables of the shape to their original values.
 	setTransformable(shape, origin, position, scale, rotation);
 }
+
+
+sf::Image loadDefaultSliderTexture(sf::Vector2u size) noexcept
+{
+	sf::RectangleShape slider{ static_cast<sf::Vector2f>(size) };
+	slider.setFillColor(sf::Color{ 20, 20, 20 });
+	slider.setOutlineThickness(std::min(size.x, size.y) / 5);
+	slider.setOutlineColor(sf::Color{ 80, 80, 80 });
+
+	std::unique_ptr<sf::Sprite> buffer{ nullptr }; // Is not used. It was created to satisfy the paraemters of the function 'convertShapeToSprite()'.
+	std::unique_ptr<sf::Texture> newTextureSlider{ nullptr };
+	convertShapeToSprite(&slider, buffer, newTextureSlider, true);
+
+	return newTextureSlider->copyToImage();
+}

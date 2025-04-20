@@ -38,7 +38,7 @@ void showErrorsUsingGUI(std::string const& errorMessage, std::string const& erro
 	
 	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
 	GraphicalFixedInterface gui{ &errorWindow }; // Create the interface to use the GUI.
-	gui.addText(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12);
+	gui.addText(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12, 1.f);
 
 	while (errorWindow.isOpen())
 	{	// The function is blocking.

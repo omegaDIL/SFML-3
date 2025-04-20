@@ -12,13 +12,15 @@ using SafeSaves::Save;
 int main()
 {
 	sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 720, 720 } }, "Template sfml 3" };
-	GraphicalDynamicInterface mainInterface{ &window };
+	GraphicalUserInteractableInterface mainInterface{ &window };
 	auto err = mainInterface.create();
 	if (err.has_value())
 	{
 		showErrorsUsingGUI(err.value(), "Error while creating the GUI");
 		return -1;
 	}
+
+	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, sf::Vector2u{ 10, 100 }, 1.f);
 
 	while (window.isOpen())
 	{

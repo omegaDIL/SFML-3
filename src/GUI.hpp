@@ -58,10 +58,8 @@ class GraphicalFixedInterface
 public:
 
 	GraphicalFixedInterface() noexcept = delete;
-	GraphicalFixedInterface(GraphicalFixedInterface const&) noexcept = default;
-	GraphicalFixedInterface(GraphicalFixedInterface&&) noexcept = default;
-	GraphicalFixedInterface& operator=(GraphicalFixedInterface const&) noexcept = default;
-	GraphicalFixedInterface& operator=(GraphicalFixedInterface&&) noexcept = default;
+	GraphicalFixedInterface(GraphicalFixedInterface const&) noexcept = delete;
+	GraphicalFixedInterface& operator=(GraphicalFixedInterface const&) noexcept = delete;
 
 	/**
 	 * @brief Constructs The interface with a default background.
@@ -95,18 +93,11 @@ public:
 	 */
 	[[nodiscard]] virtual std::optional<std::string> create(std::string const& fileName = "");
 
-	virtual ~GraphicalFixedInterface() noexcept
-	{
-		auto interfaceRange{ allInterfaces.equal_range(m_window) }; // All interfaces associated with the resized window.
-		
-		for (auto elem{ interfaceRange.first }; elem != interfaceRange.second;)
-		{
-			if (elem->second == this)
-				elem = allInterfaces.erase(elem); // Remove the interface from the collection.
-			else	
-				elem++;	
-		}
-	}
+	GraphicalFixedInterface(GraphicalFixedInterface&& other) noexcept;
+
+	GraphicalFixedInterface& operator=(GraphicalFixedInterface&& other) noexcept;
+
+	virtual ~GraphicalFixedInterface() noexcept;
 
 
 	/**
@@ -123,10 +114,9 @@ public:
 	 * @see GraphicalFixedInterface::TextWrapper, addSprite(), addShape().
 	 */
 	template<Ostreamable T>
-	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
+	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
 	{
-		TextWrapper newText{ content, position, characterSize, color };
-		newText.updateRotation(rot);
+		TextWrapper newText{ content, position, characterSize, scale, color, rot };
 		m_texts.push_back(std::move(newText));
 	}
 
@@ -204,9 +194,9 @@ protected:
 
 		TextWrapper(TextWrapper const&) noexcept = default;
 		TextWrapper(TextWrapper&&) noexcept = default;
-		virtual ~TextWrapper() noexcept = default;
-		virtual TextWrapper& operator=(TextWrapper const&) noexcept = default;
+		TextWrapper& operator=(TextWrapper const&) noexcept = default;
 		TextWrapper& operator=(TextWrapper&&) noexcept = default;
+		virtual ~TextWrapper() noexcept = default;
 
 		/**
 		 * @brief Initializes the text with the specified parameters.
@@ -219,11 +209,12 @@ protected:
 		 * @param[in] color: The color of the text.
 		 */
 		template<Ostreamable T>
-		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
+		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
 			: sf::Text{ m_font, "", characterSize}
 		{
 			setFillColor(color);
 			setRotation(rot);
+			setScale(sf::Vector2f{ scale, scale });
 			updateContent(content);
 			setPosition(pos);
 		}
@@ -386,11 +377,11 @@ class GraphicalDynamicInterface : public GraphicalFixedInterface
 public:
 
 	GraphicalDynamicInterface() noexcept = delete;
-	GraphicalDynamicInterface(GraphicalDynamicInterface const&) noexcept = default;
+	GraphicalDynamicInterface(GraphicalDynamicInterface const&) noexcept = delete;
 	GraphicalDynamicInterface(GraphicalDynamicInterface&&) noexcept = default;
-	virtual ~GraphicalDynamicInterface() noexcept = default;
-	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface const&) noexcept = default;
+	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface const&) noexcept = delete;
 	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface&&) noexcept = default;
+	virtual ~GraphicalDynamicInterface() noexcept = default;
 
 	/**
 	 * @brief Constructs the interface with a default background.
@@ -424,12 +415,12 @@ public:
 	 * @see addText().
 	 */
 	template<Ostreamable T>
-	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
+	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
 	{
 		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
 			return;
 
-		addText(content, position, characterSize, color, rot);
+		addText(content, position, characterSize, scale, color, rot);
 		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
 	}
 
@@ -540,11 +531,11 @@ public:
 
 
 	GraphicalUserInteractableInterface() noexcept = delete;
-	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface const&) noexcept = default;
+	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface const&) noexcept = delete;
 	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface&&) noexcept = default;
-	virtual ~GraphicalUserInteractableInterface() noexcept = default;
-	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface const&) noexcept = default;
+	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface const&) noexcept = delete;
 	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface&&) noexcept = default;
+	virtual ~GraphicalUserInteractableInterface() noexcept = default;
 
 	/**
 	 * @brief Constructs the interface with a default background.
@@ -583,6 +574,8 @@ public:
 	 */
 	void removeButton(std::string const& identifier) noexcept;
 
+	void addSlider(std::string const& id, sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+
 	/** 
 	 * @brief Detects if the mouse is hovering over a button to update its visual state.
 	 * @complexity O(N), where N is the number of buttons.
@@ -597,8 +590,6 @@ public:
 	IdentifierInteractableItem mouseMoved();
 
 	IdentifierInteractableItem mousePressed() noexcept;
-
-
 
 	/**
 	 * @complexity O(1).
@@ -622,99 +613,110 @@ public:
 	virtual void draw() const override;
 
 private:
-	
+
 	class Slider
 	{
 	public:
 
-		Slider() noexcept = delete;
-		Slider(Slider const&) noexcept = default;
-		Slider(Slider&&) noexcept = default;
+		Slider() noexcept : m_maxValue{ 1 }, m_intervalles{ 0 } {}
+		Slider(Slider const&) noexcept = delete;
+		Slider& operator=(Slider const&) noexcept = delete;
 		~Slider() noexcept = default;
-		Slider& operator=(Slider const&) noexcept = default;
-		Slider& operator=(Slider&&) noexcept = default;
 
-		Slider(sf::Vector2f pos, unsigned int length, bool integers = false) noexcept;
+		Slider(sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+		
+		Slider(Slider&&) noexcept;
 
-		/**
-		 * 
-		  * 
-		 */
-		void changeTexture(std::string backgroundSlider = "", std::string cursorSlider ="");
+		Slider& operator=(Slider&&) noexcept;
 
 
 		/**
 		 * .
-		 * 
-		 * \return 
+		 *
+		 * \return
 		 */
-		void mouseMoved() noexcept;
+		void changeValue(sf::Vector2u mousePos) noexcept;
 
 		/**
 		 * .
-		 * 
-		 * \return 
+		 *
+		 * \return
 		 */
 		float getValue() const noexcept;
 
+		/**
+		 * .
+		 * 
+		 * \param relativePos
+		 * \return 
+		 */
 		float setCursor(float relativePos = 0.0f) noexcept;
+
+		inline sf::Sprite const& getBackground() const noexcept
+		{
+			return *m_backgroundSlider;
+		}
+
+		inline sf::Sprite const& getCursor() const noexcept
+		{
+			return *m_cursorSlider;
+		}
 
 		//TODO: add a function to resize when event is triggered.
 
+
+		int m_maxValue;
+
 	private:
 
-		/**
-		 * @brief Loads the default textures for the slider.
-		 * 
-		 * @note It is useless to call this function if the textures are already loaded.
-		 */
-		void loadDefaultTexture(sf::Vector2u size) noexcept;
-
+		sf::Texture m_textureBackgroundSlider; // The texture of the background.
+		sf::Texture m_textureCursorSlider; // The texture of the slider
 
 		std::unique_ptr<sf::Sprite> m_backgroundSlider; // The background of the slider.
 		std::unique_ptr<sf::Sprite> m_cursorSlider; // The slider itself.
 
-		sf::Texture m_textureBackgroundSlider; // The texture of the background.
-		sf::Texture m_textureCursorSlider; // The texture of the slider.;
+		std::unique_ptr<TextWrapper> m_currentValue;
+
+		int m_intervalles;
 	};
 
 	class MultipleQuestionBox
 	{
-	public:
+	//public:
 
-		MultipleQuestionBox() noexcept = delete;
-		MultipleQuestionBox(MultipleQuestionBox const&) noexcept = default;
-		MultipleQuestionBox(MultipleQuestionBox&&) noexcept = default;
-		~MultipleQuestionBox() noexcept = default;
-		MultipleQuestionBox& operator=(MultipleQuestionBox const&) noexcept = default;
-		MultipleQuestionBox& operator=(MultipleQuestionBox&&) noexcept = default;
+	//	MultipleQuestionBox() noexcept = delete;
+	//	MultipleQuestionBox(MultipleQuestionBox const&) noexcept = default;
+	//	MultipleQuestionBox(MultipleQuestionBox&&) noexcept = default;
+	//	~MultipleQuestionBox() noexcept = default;
+	//	MultipleQuestionBox& operator=(MultipleQuestionBox const&) noexcept = default;
+	//	MultipleQuestionBox& operator=(MultipleQuestionBox&&) noexcept = default;
 
-		/**
-		 * 
-		 * \param box
-		 * \param onlyOne: True if only one box can be selected.
-		 */
-		MultipleQuestionBox(std::vector<sf::Vector2f> pos, bool onlyOne) noexcept;
-
-
-		void addBox(sf::Vector2f pos) noexcept;
-
-		void removeBox(size_t index) noexcept;
-		
-		void mousePressed() noexcept;
-
-		std::vector<bool> getValues() const noexcept;
-
-		void reset(bool value = false) noexcept;
+	//	/**
+	//	 * 
+	//	 * \param box
+	//	 * \param onlyOne: True if only one box can be selected.
+	//	 */
+	//	MultipleQuestionBox(std::vector<sf::Vector2f> pos, bool onlyOne) noexcept;
 
 
-		bool onlyeOne; // True if only one box can be selected.
+	//	void addBox(sf::Vector2f pos) noexcept;
 
-	private:
+	//	void removeBox(size_t index) noexcept;
+	//	
+	//	void mousePressed() noexcept;
 
-		std::vector<std::pair<sf::Sprite, bool>> m_boxes; // The boxes of the MQB.
-		sf::Texture m_textureBoxUnchecked; // The texture of the boxes.
-		sf::Texture m_textureBoxChecked; // The texture of the boxes.
+	//	std::vector<bool> getValues() const noexcept;
+
+	//	void reset(bool value = false) noexcept;
+
+
+	//	bool onlyeOne; // True if only one box can be selected.
+
+	//private:
+
+	//	std::vector<std::pair<sf::Sprite, bool>> m_boxes; // The boxes of the MQB.
+	//	sf::Texture m_textureBoxUnchecked; // The texture of the boxes.
+	//	sf::Texture m_textureBoxChecked; // The texture of the boxes.
 	};
 
 

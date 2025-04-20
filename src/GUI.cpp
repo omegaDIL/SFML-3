@@ -77,6 +77,80 @@ std::optional<std::string> GraphicalFixedInterface::create(std::string const& fi
 	return (oss.str().empty()) ? std::nullopt : std::make_optional<std::string>(oss.str());
 }
 
+GraphicalFixedInterface::GraphicalFixedInterface(GraphicalFixedInterface&& other) noexcept
+	: m_window{ other.m_window }, m_sprites{ std::move(other.m_sprites) }, m_texts{ std::move(other.m_texts) }
+{
+	// Update the static collection of interfaces to point to the new object
+	auto interfaceRange = allInterfaces.equal_range(m_window);
+	for (auto it = interfaceRange.first; it != interfaceRange.second; ++it)
+	{
+		if (it->second == &other)
+		{
+			it->second = this;
+			break;
+		}
+	}
+	
+	for (auto& sprite : m_sprites)
+		sprite.first.setTexture(sprite.second);
+	
+	// Leave the moved-from object in a valid state
+	other.m_window = nullptr;
+}
+
+GraphicalFixedInterface& GraphicalFixedInterface::operator=(GraphicalFixedInterface&& other) noexcept
+{
+	if (this != &other) // Avoid self-assignment
+	{
+		// Remove this object from the static collection if it already exists
+		auto interfaceRange = allInterfaces.equal_range(m_window);
+		for (auto it = interfaceRange.first; it != interfaceRange.second;)
+		{
+			if (it->second == this)
+				it = allInterfaces.erase(it);
+			else
+				++it;
+		}
+
+		// Transfer ownership of resources
+		m_window = other.m_window;
+		m_sprites = std::move(other.m_sprites);
+		m_texts = std::move(other.m_texts);
+
+		// Update the static collection of interfaces to point to the new object
+		interfaceRange = allInterfaces.equal_range(m_window);
+		for (auto it = interfaceRange.first; it != interfaceRange.second; ++it)
+		{
+			if (it->second == &other)
+			{
+				it->second = this;
+				break;
+			}
+		}
+
+		// Reset textures for sprites to ensure they are valid
+		for (auto& sprite : m_sprites)
+			sprite.first.setTexture(sprite.second);
+		
+		// Leave the moved-from object in a valid state
+		other.m_window = nullptr;
+	}
+	return *this;
+}
+
+GraphicalFixedInterface::~GraphicalFixedInterface() noexcept
+{
+	auto interfaceRange{ allInterfaces.equal_range(m_window) }; // All interfaces associated with the resized window.
+
+	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second;)
+	{
+		if (elem->second == this)
+			elem = allInterfaces.erase(elem); // Remove the interface from the collection.
+		else
+			elem++;
+	}
+}
+
 void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
 {
 	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
@@ -236,7 +310,7 @@ void GraphicalDynamicInterface::removeDSprite(std::string const& identifier) noe
 }
 
 
-void GraphicalUserInteractableInterface::addButton(std::string const& id, std::function<void()> function = []() {}) noexcept
+void GraphicalUserInteractableInterface::addButton(std::string const& id, std::function<void()> function) noexcept
 {
 	if (m_buttons.find(id) != m_buttons.end() || m_dynamicTextsIds.find(id) == m_dynamicTextsIds.end())
 		return;
@@ -257,3 +331,104 @@ void GraphicalUserInteractableInterface::removeButton(std::string const& identif
 	m_buttons.erase(identifier);
 	removeDText(identifier);
 }
+
+void GraphicalUserInteractableInterface::addSlider(std::string const& id, sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+{
+	if (m_sliders.find(id) != m_sliders.end())
+		return;
+	
+	m_sliders[id] = Slider{ pos, size, scale, maxValue, intervalle, displayCurrentValue };
+}
+
+GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInteractableInterface::mouseMoved()
+{
+	return IdentifierInteractableItem();
+}
+
+GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInteractableInterface::mousePressed() noexcept
+{
+	return IdentifierInteractableItem();
+}
+
+void GraphicalUserInteractableInterface::draw() const
+{
+	GraphicalDynamicInterface::draw();
+
+	for (auto const& elem : m_sliders)
+	{
+		m_window->draw(elem.second.getBackground());
+		m_window->draw(elem.second.getCursor());
+	}
+}
+
+GraphicalUserInteractableInterface::Slider::Slider(sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+	: m_textureBackgroundSlider{ loadDefaultSliderTexture(size) }, m_textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{ size.x * 3, size.x }) }, m_backgroundSlider{ std::make_unique<sf::Sprite>(m_textureBackgroundSlider) }, m_cursorSlider{ std::make_unique<sf::Sprite>(m_textureCursorSlider) }, m_currentValue{ nullptr }, m_maxValue{ maxValue }, m_intervalles{ intervalle }
+{
+	m_backgroundSlider->setOrigin(m_backgroundSlider->getLocalBounds().getCenter());
+	m_backgroundSlider->setScale(sf::Vector2f{ scale, scale });
+	m_backgroundSlider->setPosition(pos);
+
+	m_cursorSlider->setOrigin(m_cursorSlider->getLocalBounds().getCenter());
+	m_cursorSlider->setScale(sf::Vector2f{ scale, scale });
+	m_cursorSlider->setPosition(pos);
+
+	if (displayCurrentValue)
+		m_currentValue = std::make_unique<TextWrapper>("", sf::Vector2f{ pos.x + size.x * 8, pos.y }, size.x, scale);
+}
+
+GraphicalUserInteractableInterface::Slider::Slider(Slider&& other) noexcept
+	: m_textureBackgroundSlider{ std::move(other.m_textureBackgroundSlider) },
+	m_textureCursorSlider{ std::move(other.m_textureCursorSlider) },
+	m_backgroundSlider{ std::move(other.m_backgroundSlider) },
+	m_cursorSlider{ std::move(other.m_cursorSlider) },
+	m_currentValue{ std::move(other.m_currentValue) },
+	m_maxValue{ other.m_maxValue },
+	m_intervalles{ other.m_intervalles }
+{
+	// Réinitialiser les pointeurs de l'objet déplacé
+	other.m_backgroundSlider = nullptr;
+	other.m_cursorSlider = nullptr;
+	other.m_currentValue = nullptr;
+
+	m_backgroundSlider->setTexture(m_textureBackgroundSlider);
+	m_cursorSlider->setTexture(m_textureCursorSlider);
+}
+
+GraphicalUserInteractableInterface::Slider& GraphicalUserInteractableInterface::Slider::operator=(Slider&& other) noexcept
+{
+	if (this != &other)
+	{
+		m_textureBackgroundSlider = std::move(other.m_textureBackgroundSlider);
+		m_textureCursorSlider = std::move(other.m_textureCursorSlider);
+		m_backgroundSlider = std::move(other.m_backgroundSlider);
+		m_cursorSlider = std::move(other.m_cursorSlider);
+		m_currentValue = std::move(other.m_currentValue);
+		m_maxValue = other.m_maxValue;
+		m_intervalles = other.m_intervalles;
+
+		// Réinitialiser les pointeurs de l'objet déplacé
+		other.m_backgroundSlider = nullptr;
+		other.m_cursorSlider = nullptr;
+		other.m_currentValue = nullptr;
+
+		m_backgroundSlider->setTexture(m_textureBackgroundSlider);
+		m_cursorSlider->setTexture(m_textureCursorSlider);
+	}
+	return *this;
+}
+
+void GraphicalUserInteractableInterface::Slider::changeValue(sf::Vector2u mousePos) noexcept
+{
+
+}
+
+float GraphicalUserInteractableInterface::Slider::getValue() const noexcept
+{
+	return 0.0f;
+}
+
+float GraphicalUserInteractableInterface::Slider::setCursor(float relativePos) noexcept
+{
+	return 0.0f;
+}
+
