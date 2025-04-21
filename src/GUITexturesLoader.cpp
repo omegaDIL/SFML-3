@@ -19,6 +19,8 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 		transformable->setRotation(rotation);
 	};
 
+	float outlineThinkness{ shape->getOutlineThickness() };
+
 	// We need to reset the transformables of the shape to display the shape at the top left corner
 	// of the render texture. And we avoid putting the transformables as the default values of the 
 	// new sprite.
@@ -26,10 +28,10 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 	sf::Vector2f position{ shape->getPosition() };
 	sf::Vector2f scale{ shape->getScale() };
 	sf::Angle rotation{ shape->getRotation() };
-	setTransformable(shape, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ 1.f, 1.f }, sf::degrees(0));
+	setTransformable(shape, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ outlineThinkness, outlineThinkness }, sf::Vector2f{ 1.f, 1.f }, sf::degrees(0));
 
 	// Creates a render texture to draw the shape.
-	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(shape->getLocalBounds().size) };
+	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(sf::Vector2f{ shape->getLocalBounds().size.x + outlineThinkness, shape->getLocalBounds().size.y + outlineThinkness }) };
 	renderTexture.clear(sf::Color::Transparent);
 	renderTexture.draw(*shape);
 	renderTexture.display();

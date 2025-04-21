@@ -11,8 +11,11 @@ using SafeSaves::Save;
 
 int main()
 {
-	sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 720, 720 } }, "Template sfml 3" };
+	sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 1920, 1080 } }, "Template sfml 3" };
+
+	GraphicalUserInteractableInterface otherInterface{ &window };
 	GraphicalUserInteractableInterface mainInterface{ &window };
+	GraphicalFixedInterface* interface{ &mainInterface };
 	auto err = mainInterface.create();
 	if (err.has_value())
 	{
@@ -20,7 +23,9 @@ int main()
 		return -1;
 	}
 
-	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, sf::Vector2u{ 10, 100 }, 1.f);
+	mainInterface.addDynamicText("rgdf", "rgdf", sf::Vector2f{ 100, 100 }, 12, 1.f);
+	mainInterface.addButton("rgdf", [&interface, &otherInterface]() mutable -> void { interface = &otherInterface; });
+	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8, 1);
 
 	while (window.isOpen())
 	{
@@ -31,10 +36,20 @@ int main()
 
 			if (event->is<sf::Event::Resized>())
 				handleEventResize(&window);
+
+			if (event->is<sf::Event::MouseMoved>())
+				mainInterface.mouseMoved();
 		}
 
+		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+		{
+			mainInterface.mousePressed();
+			std::cout << mainInterface.getValueSlider("azerty") << "\n";
+		}
+
+
 		window.clear();
-		mainInterface.draw();
+		interface->draw();
 		window.display();
 	}
 

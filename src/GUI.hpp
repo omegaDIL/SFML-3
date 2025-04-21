@@ -6,6 +6,30 @@
  * @date   July 2024.
  *
  * @note This file depends on the SFML library.
+ * 
+ * @code Swicthing interface when pressed, sliders...
+  	GraphicalUserInteractableInterface otherInterface{ &window };
+	GraphicalUserInteractableInterface mainInterface{ &window };
+	GraphicalFixedInterface* interface{ &mainInterface };
+	auto err = mainInterface.create();
+	if (err.has_value())
+	{
+		showErrorsUsingGUI(err.value(), "Error while creating the GUI");
+		return -1;
+	}
+
+	mainInterface.addDynamicText("rgdf", "rgdf", sf::Vector2f{ 100, 100 }, 12, 1.f);
+	mainInterface.addButton("rgdf", [&interface, &otherInterface]() mutable -> void { interface = &otherInterface; });
+	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8, 1);
+	
+	...
+
+	window.clear();
+	interface->draw();
+	window.display();
+ * @endcode
+ * 
+ * 
  *********************************************************************/
 
 #ifndef GUI_HPP
@@ -236,7 +260,7 @@ protected:
 			oss << content; // Assigning the content to the variable.
 			
 			setString(oss.str());
-			setOrigin(sf::Vector2f{ getLocalBounds().size.x / 2.f, getLocalBounds().size.y / 2.f }); // Recenters the text.
+			setOrigin(getLocalBounds().getCenter()); // Recenters the text.
 		}
 
 		/**
@@ -291,7 +315,7 @@ protected:
 		inline void updateCharacterSize(unsigned int size) noexcept
 		{
 			setCharacterSize(size);
-			setOrigin(sf::Vector2f{ getLocalBounds().size.x / 2.f, getGlobalBounds().size.y / 2.f}); // Recenters the text.
+			setOrigin(getLocalBounds().getCenter()); // Recenters the text.
 		}
 
 		/**
@@ -524,10 +548,11 @@ public:
 		None,
 		Button,
 		Slider,
-		MultipleQuestionBox
+		MultipleQuestionBox,
+		DoubleCheckerMode
 	};
 
-	using IdentifierInteractableItem = std::pair<InteractableItem, std::string*>; 
+	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>; 
 
 
 	GraphicalUserInteractableInterface() noexcept = delete;
@@ -546,7 +571,7 @@ public:
 	 * @see createBackground().
 	 */
 	inline explicit GraphicalUserInteractableInterface(sf::RenderWindow* window) noexcept
-		: GraphicalDynamicInterface{ window }, m_buttons{}, m_sliders{}, m_mqbs{}, m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) }
+		: GraphicalDynamicInterface{ window }, m_buttons{}, m_sliders{}, m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) }
 	{}
 
 
@@ -574,7 +599,11 @@ public:
 	 */
 	void removeButton(std::string const& identifier) noexcept;
 
-	void addSlider(std::string const& id, sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+	void addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue = 0, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+
+	double getValueSlider(std::string const& id) const;
+
+	void removeSlider(std::string const& identifier) noexcept;
 
 	/** 
 	 * @brief Detects if the mouse is hovering over a button to update its visual state.
@@ -618,12 +647,12 @@ private:
 	{
 	public:
 
-		Slider() noexcept : m_maxValue{ 1 }, m_intervalles{ 0 } {}
+		Slider() noexcept : m_maxValue{ 1 }, m_minValue{ 0 }, m_intervalles { 0 } {}
 		Slider(Slider const&) noexcept = delete;
 		Slider& operator=(Slider const&) noexcept = delete;
 		~Slider() noexcept = default;
 
-		Slider(sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+		Slider(sf::RenderWindow* window, sf::Vector2f pos, sf::Vector2u size, float scale, int minValue = 0, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
 		
 		Slider(Slider&&) noexcept;
 
@@ -635,14 +664,14 @@ private:
 		 *
 		 * \return
 		 */
-		void changeValue(sf::Vector2u mousePos) noexcept;
+		void changeValue(float mousePosY) noexcept;
 
 		/**
 		 * .
 		 *
 		 * \return
 		 */
-		float getValue() const noexcept;
+		double getValue() const noexcept;
 
 		/**
 		 * .
@@ -650,24 +679,16 @@ private:
 		 * \param relativePos
 		 * \return 
 		 */
-		float setCursor(float relativePos = 0.0f) noexcept;
+		double setCursor(float relativePosY = 0.0f) noexcept;
 
-		inline sf::Sprite const& getBackground() const noexcept
-		{
-			return *m_backgroundSlider;
-		}
+		void draw() const noexcept;
 
-		inline sf::Sprite const& getCursor() const noexcept
-		{
-			return *m_cursorSlider;
-		}
 
 		//TODO: add a function to resize when event is triggered.
 
-
-		int m_maxValue;
-
 	private:
+
+		mutable sf::RenderWindow* m_window;
 
 		sf::Texture m_textureBackgroundSlider; // The texture of the background.
 		sf::Texture m_textureCursorSlider; // The texture of the slider
@@ -675,9 +696,13 @@ private:
 		std::unique_ptr<sf::Sprite> m_backgroundSlider; // The background of the slider.
 		std::unique_ptr<sf::Sprite> m_cursorSlider; // The slider itself.
 
-		std::unique_ptr<TextWrapper> m_currentValue;
+		std::unique_ptr<TextWrapper> m_currentValueText;
 
+		int m_maxValue;
+		int m_minValue;
 		int m_intervalles;
+
+	friend GraphicalUserInteractableInterface; //TODO: revoir friend.
 	};
 
 	class MultipleQuestionBox
@@ -722,10 +747,11 @@ private:
 
 	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
 	using MQB = MultipleQuestionBox;
+	//using DCM = DoubleCheckerMode;
 
 	std::unordered_map<std::string, Button> m_buttons; // Collection of buttons in the interface.
 	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
-	std::unordered_map<std::string, MQB> m_mqbs; // Collection of MQBs in the interface.
+	//std::unordered_map<std::string, MQB> m_mqbs; // Collection of MQBs in the interface.
 
 	IdentifierInteractableItem m_hoveredElement; // The type of the button that is currently hovered.
 };

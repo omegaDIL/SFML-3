@@ -332,22 +332,64 @@ void GraphicalUserInteractableInterface::removeButton(std::string const& identif
 	removeDText(identifier);
 }
 
-void GraphicalUserInteractableInterface::addSlider(std::string const& id, sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+void GraphicalUserInteractableInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
 {
 	if (m_sliders.find(id) != m_sliders.end())
 		return;
 	
-	m_sliders[id] = Slider{ pos, size, scale, maxValue, intervalle, displayCurrentValue };
+	unsigned int minSize{ std::min(m_window->getSize().x, m_window->getSize().y) };
+	m_sliders[id] = Slider{ m_window, pos, sf::Vector2u{ minSize / 72, length }, scale, minValue, maxValue, intervalle, displayCurrentValue };
+}
+
+double GraphicalUserInteractableInterface::getValueSlider(std::string const& id) const
+{
+	return m_sliders.at(id).getValue();// Throws an exception if not there
+}
+
+void GraphicalUserInteractableInterface::removeSlider(std::string const& identifier) noexcept
+{
+	if (m_sliders.find(identifier) == m_sliders.end())
+		return;
+
+	m_sliders.erase(identifier);
 }
 
 GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInteractableInterface::mouseMoved()
 {
-	return IdentifierInteractableItem();
+	sf::Vector2f mousePos{ static_cast<sf::Vector2f>(sf::Mouse::getPosition(*m_window)) };
+
+	for (auto& button : m_buttons)
+	{
+		if (m_texts[button.second.first].getText().getGlobalBounds().contains(mousePos))
+		{
+			m_hoveredElement = std::make_pair(InteractableItem::Button, &button.first);
+			return m_hoveredElement;
+		}
+	}
+
+	for (auto& slider : m_sliders)
+	{
+		if (slider.second.m_backgroundSlider->getGlobalBounds().contains(mousePos))
+		{
+			m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
+			return m_hoveredElement;
+		}
+	}
+
+	m_hoveredElement = std::make_pair(InteractableItem::None, nullptr);
+	return m_hoveredElement;
 }
 
 GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInteractableInterface::mousePressed() noexcept
 {
-	return IdentifierInteractableItem();
+	if (m_hoveredElement.first == InteractableItem::None)
+		return m_hoveredElement;
+	else if (m_hoveredElement.first == InteractableItem::Button)
+		getFunctionOfButton(*m_hoveredElement.second)();
+	else if (m_hoveredElement.first == InteractableItem::Slider)
+		m_sliders[*m_hoveredElement.second].changeValue(sf::Mouse::getPosition(*m_window).y);
+
+	return m_hoveredElement;
 }
 
 void GraphicalUserInteractableInterface::draw() const
@@ -355,15 +397,15 @@ void GraphicalUserInteractableInterface::draw() const
 	GraphicalDynamicInterface::draw();
 
 	for (auto const& elem : m_sliders)
-	{
-		m_window->draw(elem.second.getBackground());
-		m_window->draw(elem.second.getCursor());
-	}
+		elem.second.draw();
 }
 
-GraphicalUserInteractableInterface::Slider::Slider(sf::Vector2f pos, sf::Vector2u size, float scale, int maxValue, int intervalle, bool displayCurrentValue) noexcept
-	: m_textureBackgroundSlider{ loadDefaultSliderTexture(size) }, m_textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{ size.x * 3, size.x }) }, m_backgroundSlider{ std::make_unique<sf::Sprite>(m_textureBackgroundSlider) }, m_cursorSlider{ std::make_unique<sf::Sprite>(m_textureCursorSlider) }, m_currentValue{ nullptr }, m_maxValue{ maxValue }, m_intervalles{ intervalle }
+GraphicalUserInteractableInterface::Slider::Slider(sf::RenderWindow* window, sf::Vector2f pos, sf::Vector2u size, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+	: m_window{ window }, m_textureBackgroundSlider{ loadDefaultSliderTexture(size) }, m_textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{ size.x * 4, size.x }) }, m_backgroundSlider{ std::make_unique<sf::Sprite>(m_textureBackgroundSlider) }, m_cursorSlider{ std::make_unique<sf::Sprite>(m_textureCursorSlider) }, m_currentValueText{ nullptr }, m_intervalles{ intervalle }
 {
+	m_maxValue = std::max(minValue, maxValue);
+	m_minValue = std::min(minValue, maxValue);
+
 	m_backgroundSlider->setOrigin(m_backgroundSlider->getLocalBounds().getCenter());
 	m_backgroundSlider->setScale(sf::Vector2f{ scale, scale });
 	m_backgroundSlider->setPosition(pos);
@@ -373,22 +415,25 @@ GraphicalUserInteractableInterface::Slider::Slider(sf::Vector2f pos, sf::Vector2
 	m_cursorSlider->setPosition(pos);
 
 	if (displayCurrentValue)
-		m_currentValue = std::make_unique<TextWrapper>("", sf::Vector2f{ pos.x + size.x * 8, pos.y }, size.x, scale);
+		m_currentValueText = std::make_unique<TextWrapper>((m_maxValue - m_minValue) / 2. + m_minValue, sf::Vector2f{ pos.x + size.x * 4, pos.y }, size.x, scale);
 }
 
 GraphicalUserInteractableInterface::Slider::Slider(Slider&& other) noexcept
-	: m_textureBackgroundSlider{ std::move(other.m_textureBackgroundSlider) },
+	: m_window{ other.m_window },
+	m_textureBackgroundSlider{ std::move(other.m_textureBackgroundSlider) },
 	m_textureCursorSlider{ std::move(other.m_textureCursorSlider) },
 	m_backgroundSlider{ std::move(other.m_backgroundSlider) },
 	m_cursorSlider{ std::move(other.m_cursorSlider) },
-	m_currentValue{ std::move(other.m_currentValue) },
+	m_currentValueText{ std::move(other.m_currentValueText) },
 	m_maxValue{ other.m_maxValue },
+	m_minValue{ other.m_minValue },
 	m_intervalles{ other.m_intervalles }
 {
 	// Réinitialiser les pointeurs de l'objet déplacé
+	other.m_window = nullptr;
 	other.m_backgroundSlider = nullptr;
 	other.m_cursorSlider = nullptr;
-	other.m_currentValue = nullptr;
+	other.m_currentValueText = nullptr;
 
 	m_backgroundSlider->setTexture(m_textureBackgroundSlider);
 	m_cursorSlider->setTexture(m_textureCursorSlider);
@@ -398,18 +443,21 @@ GraphicalUserInteractableInterface::Slider& GraphicalUserInteractableInterface::
 {
 	if (this != &other)
 	{
+		m_window = other.m_window;
 		m_textureBackgroundSlider = std::move(other.m_textureBackgroundSlider);
 		m_textureCursorSlider = std::move(other.m_textureCursorSlider);
 		m_backgroundSlider = std::move(other.m_backgroundSlider);
 		m_cursorSlider = std::move(other.m_cursorSlider);
-		m_currentValue = std::move(other.m_currentValue);
+		m_currentValueText = std::move(other.m_currentValueText);
 		m_maxValue = other.m_maxValue;
+		m_minValue = other.m_minValue;
 		m_intervalles = other.m_intervalles;
 
 		// Réinitialiser les pointeurs de l'objet déplacé
+		other.m_window = nullptr;
 		other.m_backgroundSlider = nullptr;
 		other.m_cursorSlider = nullptr;
-		other.m_currentValue = nullptr;
+		other.m_currentValueText = nullptr;
 
 		m_backgroundSlider->setTexture(m_textureBackgroundSlider);
 		m_cursorSlider->setTexture(m_textureCursorSlider);
@@ -417,18 +465,57 @@ GraphicalUserInteractableInterface::Slider& GraphicalUserInteractableInterface::
 	return *this;
 }
 
-void GraphicalUserInteractableInterface::Slider::changeValue(sf::Vector2u mousePos) noexcept
+void GraphicalUserInteractableInterface::Slider::changeValue(float mousePosY) noexcept
 {
+	double yPos{ static_cast<double>(mousePosY) };
+	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
+	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
 
+	if (yPos < minPos)
+		yPos = minPos;
+	else if (yPos > maxPos)
+		yPos = maxPos;
+
+	m_cursorSlider->setPosition(sf::Vector2f{ m_cursorSlider->getPosition().x, static_cast<float>(yPos) });
+
+	if (m_currentValueText)
+	{
+		m_currentValueText->updatePosition(sf::Vector2f{ m_currentValueText->getText().getPosition().x, static_cast<float>(yPos)});
+		m_currentValueText->updateContent(getValue());
+	}
 }
 
-float GraphicalUserInteractableInterface::Slider::getValue() const noexcept
+double GraphicalUserInteractableInterface::Slider::getValue() const noexcept
 {
-	return 0.0f;
+	double yPos{ m_cursorSlider->getPosition().y };
+	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
+	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
+
+	double value{ 1 - (yPos - minPos) / (maxPos - minPos) };
+	value *= m_maxValue-m_minValue;
+	value += m_minValue;
+
+	return value;
 }
 
-float GraphicalUserInteractableInterface::Slider::setCursor(float relativePos) noexcept
+double GraphicalUserInteractableInterface::Slider::setCursor(float relativePos) noexcept
 {
-	return 0.0f;
+	changeValue(m_backgroundSlider->getGlobalBounds().position.y + m_backgroundSlider->getGlobalBounds().size.y * relativePos);
+
+	return getValue();
 }
 
+void GraphicalUserInteractableInterface::Slider::draw() const noexcept
+{
+	if (!m_window)
+		return;
+
+	m_window->draw(*m_backgroundSlider);
+	m_window->draw(*m_cursorSlider);
+	
+	if (m_currentValueText)
+		m_window->draw(m_currentValueText->getText());
+}
+//TODO; mettre draw en no except.
+//TODO: faire intervalle
+//TODO: faire double checker et MQB
