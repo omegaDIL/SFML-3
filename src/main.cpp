@@ -1,6 +1,5 @@
 ﻿#include <SFML/Graphics.hpp>
 #include <string>
-#include <iostream>
 #include <optional>
 #include "GUI.hpp"
 #include "Save.hpp"
@@ -42,10 +41,7 @@ int main()
 		}
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-		{
 			mainInterface.mousePressed();
-			std::cout << mainInterface.getValueSlider("azerty") << "\n";
-		}
 
 
 		window.clear();
