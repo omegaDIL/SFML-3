@@ -12,16 +12,16 @@ int main()
 {
 	sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 1920, 1080 } }, "Template sfml 3" };
 
-	GraphicalUserInteractableInterface otherInterface{ &window };
-	GraphicalUserInteractableInterface mainInterface{ &window };
-	GraphicalFixedInterface* interface{ &mainInterface };
+	UserInteractableGraphicalInterface otherInterface{ &window };
+	UserInteractableGraphicalInterface mainInterface{ &window };
+	FixedGraphicalInterface* interface{ &mainInterface };
 	auto err = mainInterface.create();
 	if (err.has_value())
 	{
-		showErrorsUsingGUI(err.value(), "Error while creating the GUI");
+		showErrorsUsingWindow(err.value(), "Error while creating the GUI");
 		return -1;
 	}
-
+	
 	mainInterface.addDynamicText("rgdf", "rgdf", sf::Vector2f{ 100, 100 }, 12, 1.f);
 	mainInterface.addButton("rgdf", [&interface, &otherInterface]() mutable -> void { interface = &otherInterface; });
 	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8, 1);

@@ -6,30 +6,6 @@
  * @date   July 2024.
  *
  * @note This file depends on the SFML library.
- * 
- * @code Swicthing interface when pressed, sliders...
-  	GraphicalUserInteractableInterface otherInterface{ &window };
-	GraphicalUserInteractableInterface mainInterface{ &window };
-	GraphicalFixedInterface* interface{ &mainInterface };
-	auto err = mainInterface.create();
-	if (err.has_value())
-	{
-		showErrorsUsingGUI(err.value(), "Error while creating the GUI");
-		return -1;
-	}
-
-	mainInterface.addDynamicText("rgdf", "rgdf", sf::Vector2f{ 100, 100 }, 12, 1.f);
-	mainInterface.addButton("rgdf", [&interface, &otherInterface]() mutable -> void { interface = &otherInterface; });
-	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8, 1);
-	
-	...
-
-	window.clear();
-	interface->draw();
-	window.display();
- * @endcode
- * 
- * 
  *********************************************************************/
 
 #ifndef GUI_HPP
@@ -68,74 +44,93 @@ concept Ostreamable = requires(std::ostream & os, T t)
 
 /**
  * @brief Manages items to create a basic GUI. You can display texts, sprites, shapes and a background.
- * @details All elements are fixed and can't be changed.
+ * @details All elements are fixed and can't be edited nor removed.
  *
- * @note This class stores UI componenents; it will consume a considerable amount of memory. 
- * @note Sprites refer to sf::Sprites/sf::Textures and sf::Textures.
- * @note The background will always be the first element in the vector.
+ * @note This class stores UI componenents; it will use a considerable amount of memory. 
+ * @note The background will always be the first element in the sprites collection vector.
  * @warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
+ * @warning Call the function create() at least once before adding any text to load the font.
+ * 
+ * @code
+ * sf::RenderWindow window{ ... };
+ * FixedGraphicalInterface gui{ &window };
+ * sf::CircleShape shape{ ... };
+ * ...
+ * 
+ * gui.addText("Hello World", sf::Vector2f{ 100, 100 }, 12, windowSizeMin / 1080.f);
+ * gui.addText("Hello", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
+ * gui.addShape(&shape, false);
+ * ...
+ * 
+ * window.clear();
+ * ...
+ * gui.draw();
+ * window.display();
+ * @endcode
  *
- * @see sf::RenderWindow, GraphicalFixedInterface::TextWrapper.
+ * @see sf::RenderWindow, FixedGraphicalInterface::TextWrapper.
  */
-class GraphicalFixedInterface
+class FixedGraphicalInterface
 {
 public:
 
-	GraphicalFixedInterface() noexcept = delete;
-	GraphicalFixedInterface(GraphicalFixedInterface const&) noexcept = delete;
-	GraphicalFixedInterface& operator=(GraphicalFixedInterface const&) noexcept = delete;
+	FixedGraphicalInterface() noexcept = delete;
+	FixedGraphicalInterface(FixedGraphicalInterface const&) noexcept = delete;
+	FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept;
+	FixedGraphicalInterface& operator=(FixedGraphicalInterface const&) noexcept = delete;
+	FixedGraphicalInterface& operator=(FixedGraphicalInterface&& other) noexcept;
+	virtual ~FixedGraphicalInterface() noexcept;
 
 	/**
-	 * @brief Constructs The interface with a default background.
+	 * @brief Constructs the interface with a default background.
 	 * @complexity O(1).
 	 * 
-	 * @param[out] window: The window where the interface elements will be rendered. 
+	 * @param[in,out] window: The window where the interface elements will be rendered. 
 	 * 
 	 * @see create().
 	 */
-	explicit GraphicalFixedInterface(sf::RenderWindow* window) noexcept;
+	explicit FixedGraphicalInterface(sf::RenderWindow* window) noexcept;
 
 	/**
-	 * @brief Creates the interface: adds a background and load the default font.
+	 * @brief Loads the gui ressources for the interface: adds a background   and load the default font.
 	 * @complexity O(1).
 	 * 
 	 * @param[in] fileName: The name of the background.
 	 * 
-	 * @return A string if the font or the background loading failed.
+	 * @return A string if the font or the background fails to load.
 	 * 
-	 * @pre the name should be a valid path to a file or empty.
+	 * @pre the name should be a valid within the res folder.
 	 * @throw LoadingGUIRessourceFailure if either the font or the background fails to load.
 	 * 
 	 * @pre The window must be valid.
 	 * @post This class is safe to use.
 	 * @throw std::logic_error if the window is nullptr.
 	 * 
+	 * @note This function loads the font used for all texts the first time it is called.
 	 * @note If the fileName is empty, the default background will be used.
-	 * @note If you already have a background, it will be replaced.
-	 * @note If you already have a font and don't want to load a background, it is useless to call this
-	 *		 function.
+	 * @note If you already loaded a background, it will be replaced.
+	 * @note The background is the first sprite in the sprite collection vector (index 0).
+	 * @note If you already loaded the font and want the default background, it is useless to call this function.
 	 */
 	[[nodiscard]] virtual std::optional<std::string> create(std::string const& fileName = "");
-
-	GraphicalFixedInterface(GraphicalFixedInterface&& other) noexcept;
-
-	GraphicalFixedInterface& operator=(GraphicalFixedInterface&& other) noexcept;
-
-	virtual ~GraphicalFixedInterface() noexcept;
 
 
 	/**
 	 * @brief Adds a text element to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of texts already added. If vector resizes.
+	 * @complexity O(N) : worst case, where N is the number of texts already added (if vector resizes).
 	 * 
 	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
 	 * @param[in] content: The text label.
 	 * @param[in] position: The position of the text.
 	 * @param[in] characterSize: The size of the text characters.
+	 * @param[in] scale: The scale of the text.
 	 * @param[in] color: The color of the text.
-	 * 	 * 
-	 * @see GraphicalFixedInterface::TextWrapper, addSprite(), addShape().
+	 * @param[in] rot: The rotation of the text.
+	 * 
+	 * @note The scale is the same for both x and y axis.
+	 * 
+	 * @see FixedGraphicalInterface::TextWrapper, addSprite(), addShape().
 	 */
 	template<Ostreamable T>
 	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
@@ -147,7 +142,7 @@ public:
 	/**
 	 * @brief Adds a sprite element to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites already added. If vector resizes.
+	 * @complexity O(N) : worst case, where N is the number of sprites already added (if vector resizes).
 	 *
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
@@ -159,10 +154,13 @@ public:
 	/**
 	 * @brief Adds a sprite element to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites already added. If vector resizes.
+	 * @complexity O(N) : worst case, where N is the number of sprites already added (if vector resizes).
 	 *
 	 * @param[in] shape: The shape to add.
 	 * @param[in] smooth: True if the shape needs to be smoothed.
+	 * 
+	 * @note sf::Shape is converted to a sf::Sprite/sf::Texture pair.
+	 * @note sf::Shape is left unchanged even though it is not const.
 	 * 
 	 * @see addText(), addSprite(), convertShapeToSprite().
 	 */
@@ -170,7 +168,7 @@ public:
 
 	/** 
 	 * @brief Renders the interface.
-	 * @complexity O(N + K), where N is the number of texts, and K the number of sprites.
+	 * @complexity O(N + K), where N is the number of texts, and K the number of sprites (+ shapes).
 	 *
 	 * @pre The window must have been valid when passed to the constructor and still exists.
 	 * @post The elements are drawn on the window.
@@ -181,16 +179,17 @@ public:
 
 	/**
 	 * @brief Refreshes the transformables after the window is resized.
+	 * @complexity O(N), where N is the number of graphical elements within interfaces associated with the resized window.
 	 *
 	 * @param[in] window: The window which was resized, and for which the interfaces will be resized.
 	 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
 	 * 
-	 * @note Be aware of windowSize: it should have the new size.
+	 * @note Resizes only interfaces associated with the resized window.
 	 */
 	static void windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept;
 
 
-	// The relative path to the res folder used to load ressources.
+	// The relative path to the res folder used to load ressources. Default is "../res/". DO NOT CHANGE if not needed.
 	static std::string ressourcePath;
 
 protected:
@@ -210,7 +209,7 @@ protected:
 	 * @warning Call TextWrapper::loadFont() to initialize properly the font, before creating any other
 	 *          functions.
 	 *
-	 * @see GraphicalFixedInterface, sf::Text, create().
+	 * @see FixedGraphicalInterface, sf::Text, create().
 	 */
 	struct TextWrapper : private sf::Text
 	{
@@ -227,10 +226,12 @@ protected:
 		 * @complexity O(1).
 		 *
 		 * @tparam T: Type that can be streamed to `std::basic_ostream`.
-		 * @param[in] string: Its content.
-		 * @param[in] pos: The position to place the text.
+       	 * @param[in] content: The text label.
+		 * @param[in] position: The position of the text.
 		 * @param[in] characterSize: The size of the text characters.
+		 * @param[in] scale: The scale of the text.
 		 * @param[in] color: The color of the text.
+		 * @param[in] rot: The rotation of the text.
 		 */
 		template<Ostreamable T>
 		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
@@ -295,7 +296,7 @@ protected:
 		 *
 		 * @param[in] scale: Adds the scale to the current one.
 		 * 
-		 * @note Doesn't override the previous scale : use scale() instead of setScale().
+		 * @note Doesn't override the previous scale : uses scale() instead of setScale().
 		 *
 		 * @see sf::Text::scale.
 		 */
@@ -333,8 +334,10 @@ protected:
 
 		/**
 		 * @brief Resizes the text when the window is resized.
+		 * @complexity O(1).
 		 *
 		 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
+		 * @param[in] scalingFactorMin: The scaling factor between the previous smallest window's size in x or y axis, and the new one.
 		 */
 		inline void windowResized(sf::Vector2f scalingFactor, sf::Vector2f scalingFactorMin) noexcept
 		{
@@ -356,6 +359,7 @@ protected:
 
 		/**
 		 * @brief Creates the font if it is not already created.
+		 * @complexity O(1).
 		 *
 		 * @return a string if failed.
 		 */
@@ -375,13 +379,12 @@ protected:
 	std::vector<GraphicalElement> m_sprites;
 
 	// Collection of texts in the interface.
-	std::vector<GraphicalFixedInterface::TextWrapper> m_texts; 
+	std::vector<FixedGraphicalInterface::TextWrapper> m_texts; 
 
 private:
 
-	// Collection of all interfaces to perform the same operation (resizing for example). Different 
-	// for each window.
-	static std::unordered_multimap<sf::RenderWindow*, GraphicalFixedInterface*> allInterfaces;
+	// Collection of all interfaces to perform the same operation (resizing for example). Stored by window.
+	static std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> allInterfaces;
 };
 
 
@@ -394,18 +397,18 @@ private:
  *       "background".
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
- * @see GraphicalFixedInterface, sf::RenderWindow.
+ * @see FixedGraphicalInterface, sf::RenderWindow.
  */
-class GraphicalDynamicInterface : public GraphicalFixedInterface
+class DynamicGraphicalInterface : public FixedGraphicalInterface
 {
 public:
 
-	GraphicalDynamicInterface() noexcept = delete;
-	GraphicalDynamicInterface(GraphicalDynamicInterface const&) noexcept = delete;
-	GraphicalDynamicInterface(GraphicalDynamicInterface&&) noexcept = default;
-	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface const&) noexcept = delete;
-	GraphicalDynamicInterface& operator=(GraphicalDynamicInterface&&) noexcept = default;
-	virtual ~GraphicalDynamicInterface() noexcept = default;
+	DynamicGraphicalInterface() noexcept = delete;
+	DynamicGraphicalInterface(DynamicGraphicalInterface const&) noexcept = delete;
+	DynamicGraphicalInterface(DynamicGraphicalInterface&&) noexcept = default;
+	DynamicGraphicalInterface& operator=(DynamicGraphicalInterface const&) noexcept = delete;
+	DynamicGraphicalInterface& operator=(DynamicGraphicalInterface&&) noexcept = default;
+	virtual ~DynamicGraphicalInterface() noexcept = default;
 
 	/**
 	 * @brief Constructs the interface with a default background.
@@ -415,8 +418,8 @@ public:
 	 *
 	 * @see createBackground().
 	 */
-	inline explicit GraphicalDynamicInterface(sf::RenderWindow* window) noexcept
-		: GraphicalFixedInterface{ window }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
+	inline explicit DynamicGraphicalInterface(sf::RenderWindow* window) noexcept
+		: FixedGraphicalInterface{ window }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
 	{}
 
 
@@ -491,7 +494,7 @@ public:
 	 * @post The appropriate text is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	GraphicalFixedInterface::TextWrapper& getDText(std::string const& identifier);
+	FixedGraphicalInterface::TextWrapper& getDText(std::string const& identifier);
 
 	/**
 	 * @brief Allows you to change some attributes of a dyanmic sprite.
@@ -537,9 +540,9 @@ protected:
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
- * @see GraphicalDynamicInterface, Slider, sf::RenderWindow.
+ * @see DynamicGraphicalInterface, Slider, sf::RenderWindow.
  */
-class GraphicalUserInteractableInterface : public GraphicalDynamicInterface
+class UserInteractableGraphicalInterface : public DynamicGraphicalInterface
 {
 public:
 
@@ -555,12 +558,12 @@ public:
 	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>; 
 
 
-	GraphicalUserInteractableInterface() noexcept = delete;
-	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface const&) noexcept = delete;
-	GraphicalUserInteractableInterface(GraphicalUserInteractableInterface&&) noexcept = default;
-	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface const&) noexcept = delete;
-	GraphicalUserInteractableInterface& operator=(GraphicalUserInteractableInterface&&) noexcept = default;
-	virtual ~GraphicalUserInteractableInterface() noexcept = default;
+	UserInteractableGraphicalInterface() noexcept = delete;
+	UserInteractableGraphicalInterface(UserInteractableGraphicalInterface const&) noexcept = delete;
+	UserInteractableGraphicalInterface(UserInteractableGraphicalInterface&&) noexcept = default;
+	UserInteractableGraphicalInterface& operator=(UserInteractableGraphicalInterface const&) noexcept = delete;
+	UserInteractableGraphicalInterface& operator=(UserInteractableGraphicalInterface&&) noexcept = default;
+	virtual ~UserInteractableGraphicalInterface() noexcept = default;
 
 	/**
 	 * @brief Constructs the interface with a default background.
@@ -570,8 +573,8 @@ public:
 	 *
 	 * @see createBackground().
 	 */
-	inline explicit GraphicalUserInteractableInterface(sf::RenderWindow* window) noexcept
-		: GraphicalDynamicInterface{ window }, m_buttons{}, m_sliders{}, m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) }
+	inline explicit UserInteractableGraphicalInterface(sf::RenderWindow* window) noexcept
+		: DynamicGraphicalInterface{ window }, m_buttons{}, m_sliders{}, m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) }
 	{}
 
 
@@ -702,7 +705,7 @@ private:
 		int m_minValue;
 		int m_intervalles;
 
-	friend GraphicalUserInteractableInterface; //TODO: revoir friend.
+	friend UserInteractableGraphicalInterface; //TODO: revoir friend.
 	};
 
 	class MultipleQuestionBox
@@ -757,9 +760,9 @@ private:
 };
 
 
-using GInterface = GraphicalFixedInterface;
-using GDynamicInterface = GraphicalDynamicInterface;
-using GInteractableInterface = GraphicalUserInteractableInterface;
-using GUI = GraphicalUserInteractableInterface;
+using FGInterface = FixedGraphicalInterface;
+using DGInterface = DynamicGraphicalInterface;
+using IGInterface = UserInteractableGraphicalInterface;
+using GUI = IGInterface;
 
 #endif // GUI_HPP

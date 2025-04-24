@@ -110,7 +110,7 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
  *
  * @see sf::RenderWindow.
  */
-void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept;
+void showErrorsUsingWindow(std::string const& errorMessage, std::string const& errorTitle) noexcept;
 
 
 /**

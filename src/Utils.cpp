@@ -31,13 +31,13 @@ sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int charac
 }//TODO: characterSize
 
 
-void showErrorsUsingGUI(std::string const& errorMessage, std::string const& errorTitle) noexcept
+void showErrorsUsingWindow(std::string const& errorMessage, std::string const& errorTitle) noexcept
 {
 	// Calculate the size needed to display the whole string.
 	sf::VideoMode const windowErrorSize{ getStringSizeForDisplay(errorMessage) };
 	
 	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
-	GraphicalFixedInterface gui{ &errorWindow }; // Create the interface to use the GUI.
+	FixedGraphicalInterface gui{ &errorWindow }; // Create the interface to use the GUI.
 	gui.addText(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12, 1.f);
 
 	while (errorWindow.isOpen())
@@ -84,7 +84,7 @@ void handleEventResize(sf::RenderWindow* window) noexcept
 
 	window->setView(view);
 	window->setSize(newSize); // Avoid having a window that is larger than the screen.
-	GraphicalFixedInterface::windowResized(window, scalingFactor);
+	FixedGraphicalInterface::windowResized(window, scalingFactor);
 }
 
-//TODO: fix showErrorsUsingGUI
+//TODO: fix showErrorsUsingWindow

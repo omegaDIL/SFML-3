@@ -18,12 +18,12 @@
 #include "GUITexturesLoader.hpp"
 #include "Exceptions.hpp"
 
-sf::Font GraphicalFixedInterface::TextWrapper::m_font{};
-std::string GraphicalFixedInterface::ressourcePath{ "../res/" };
-std::unordered_multimap<sf::RenderWindow*, GraphicalFixedInterface*> GraphicalFixedInterface::allInterfaces{};
+sf::Font FixedGraphicalInterface::TextWrapper::m_font{};
+std::string FixedGraphicalInterface::ressourcePath{ "../res/" };
+std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
 
 
-GraphicalFixedInterface::GraphicalFixedInterface(sf::RenderWindow* window) noexcept
+FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window) noexcept
 	: m_window{ window }, m_sprites{}, m_texts{}
 {	
 	// Add this interface to the collection.
@@ -37,7 +37,7 @@ GraphicalFixedInterface::GraphicalFixedInterface(sf::RenderWindow* window) noexc
 	addShape(&background, false); // Adds the background to the interface.
 }
 
-std::optional<std::string> GraphicalFixedInterface::create(std::string const& fileName)
+std::optional<std::string> FixedGraphicalInterface::create(std::string const& fileName)
 {
 	if (!m_window)
 		throw std::logic_error{ "Window of an interface is nullptr." };
@@ -77,7 +77,7 @@ std::optional<std::string> GraphicalFixedInterface::create(std::string const& fi
 	return (oss.str().empty()) ? std::nullopt : std::make_optional<std::string>(oss.str());
 }
 
-GraphicalFixedInterface::GraphicalFixedInterface(GraphicalFixedInterface&& other) noexcept
+FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
 	: m_window{ other.m_window }, m_sprites{ std::move(other.m_sprites) }, m_texts{ std::move(other.m_texts) }
 {
 	// Update the static collection of interfaces to point to the new object
@@ -91,54 +91,42 @@ GraphicalFixedInterface::GraphicalFixedInterface(GraphicalFixedInterface&& other
 		}
 	}
 	
-	for (auto& sprite : m_sprites)
-		sprite.first.setTexture(sprite.second);
-	
 	// Leave the moved-from object in a valid state
 	other.m_window = nullptr;
 }
 
-GraphicalFixedInterface& GraphicalFixedInterface::operator=(GraphicalFixedInterface&& other) noexcept
+FixedGraphicalInterface& FixedGraphicalInterface::operator=(FixedGraphicalInterface&& other) noexcept
 {
-	if (this != &other) // Avoid self-assignment
+	auto interfaceRange = allInterfaces.equal_range(m_window);
+
+	// Remove this object from the static collection if it already exists
+	for (auto it = interfaceRange.first; it != interfaceRange.second;)
 	{
-		// Remove this object from the static collection if it already exists
-		auto interfaceRange = allInterfaces.equal_range(m_window);
-		for (auto it = interfaceRange.first; it != interfaceRange.second;)
-		{
-			if (it->second == this)
-				it = allInterfaces.erase(it);
-			else
-				++it;
+		if (it->second == this)
+		{	// Remove the interface from the collection as it is being moved.
+			it = allInterfaces.erase(it);
 		}
-
-		// Transfer ownership of resources
-		m_window = other.m_window;
-		m_sprites = std::move(other.m_sprites);
-		m_texts = std::move(other.m_texts);
-
-		// Update the static collection of interfaces to point to the new object
-		interfaceRange = allInterfaces.equal_range(m_window);
-		for (auto it = interfaceRange.first; it != interfaceRange.second; ++it)
-		{
-			if (it->second == &other)
-			{
-				it->second = this;
-				break;
-			}
+		else if (this != &other && it->second == &other)
+		{	// Update the moved object's to this object, except in self move where both are the same.
+			it->second = this;
+			it++;
 		}
+		else
+		{
+			it++;
+		}
+	}	
 
-		// Reset textures for sprites to ensure they are valid
-		for (auto& sprite : m_sprites)
-			sprite.first.setTexture(sprite.second);
-		
-		// Leave the moved-from object in a valid state
-		other.m_window = nullptr;
-	}
+	// Transfer ownership of resources
+	std::swap(m_sprites, other.m_sprites);
+	std::swap(m_texts, other.m_texts);
+	m_window = other.m_window;
+	other.m_window = nullptr; // Leave the moved-from object in a valid state
+
 	return *this;
 }
 
-GraphicalFixedInterface::~GraphicalFixedInterface() noexcept
+FixedGraphicalInterface::~FixedGraphicalInterface() noexcept
 {
 	auto interfaceRange{ allInterfaces.equal_range(m_window) }; // All interfaces associated with the resized window.
 
@@ -151,7 +139,7 @@ GraphicalFixedInterface::~GraphicalFixedInterface() noexcept
 	}
 }
 
-void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
+void FixedGraphicalInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
 {
 	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
 
@@ -159,7 +147,7 @@ void GraphicalFixedInterface::addSprite(sf::Sprite sprite, sf::Texture texture) 
 	resetTextureForSprites();
 }
 
-void GraphicalFixedInterface::addShape(sf::Shape* shape, bool smooth) noexcept
+void FixedGraphicalInterface::addShape(sf::Shape* shape, bool smooth) noexcept
 {
 	std::unique_ptr<sf::Sprite> sprite{ nullptr };
 	std::unique_ptr<sf::Texture> texture{ nullptr };
@@ -168,7 +156,7 @@ void GraphicalFixedInterface::addShape(sf::Shape* shape, bool smooth) noexcept
 	addSprite(std::move(*sprite), std::move(*texture));
 }
 
-void GraphicalFixedInterface::draw() const
+void FixedGraphicalInterface::draw() const
 {
 	if (!m_window)
 		throw std::logic_error{ "Window of an interface is nullptr." };
@@ -179,7 +167,7 @@ void GraphicalFixedInterface::draw() const
 		m_window->draw(text.getText());
 }
 
-void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
+void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
 {
 	float minOfCurrentWindowSize{ static_cast<float>(std::min(window->getSize().x, window->getSize().y)) };
 	float minOfPreviousWindowSize{ static_cast<float>(std::min(window->getSize().x / scalingFactor.x, window->getSize().y / scalingFactor.y)) };
@@ -207,20 +195,20 @@ void GraphicalFixedInterface::windowResized(sf::RenderWindow* window, sf::Vector
 	}
 }
 
-void GraphicalFixedInterface::resetTextureForSprites() noexcept
+void FixedGraphicalInterface::resetTextureForSprites() noexcept
 {
 	for (auto& sprite : m_sprites)
 		sprite.first.setTexture(sprite.second);
 }
 
-std::optional<std::string> GraphicalFixedInterface::TextWrapper::loadFont() noexcept
+std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noexcept
 {
 	if (m_font.getInfo().family != "")
 		return std::nullopt; // Font already loaded.
 
 	try
 	{
-		std::string path{ GraphicalFixedInterface::ressourcePath + "font.ttf" };
+		std::string path{ FixedGraphicalInterface::ressourcePath + "font.ttf" };
 
 		if (!m_font.openFromFile(path))
 			throw LoadingGUIRessourceFailure{ "Failed to load font at: " + path };
@@ -238,7 +226,7 @@ std::optional<std::string> GraphicalFixedInterface::TextWrapper::loadFont() noex
 }
 
 
-void GraphicalDynamicInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
+void DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
 {
 	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
 		return;
@@ -247,7 +235,7 @@ void GraphicalDynamicInterface::addDynamicSprite(std::string const& identifier, 
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
 }
 
-void GraphicalDynamicInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
+void DynamicGraphicalInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
 {
 	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
 		return;
@@ -256,12 +244,12 @@ void GraphicalDynamicInterface::addDynamicShape(std::string const& identifier, s
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
 }
 
-GraphicalFixedInterface::TextWrapper& GraphicalDynamicInterface::getDText(std::string const& identifier)
+FixedGraphicalInterface::TextWrapper& DynamicGraphicalInterface::getDText(std::string const& identifier)
 {
 	return m_texts[m_dynamicTextsIds.at(identifier)]; // Throw an exception if not there.
 }
 
-std::pair<sf::Sprite*, sf::Texture*> GraphicalDynamicInterface::getDSprite(std::string const& identifier)
+std::pair<sf::Sprite*, sf::Texture*> DynamicGraphicalInterface::getDSprite(std::string const& identifier)
 {
 	std::pair<sf::Sprite*, sf::Texture*> sprite{ std::make_pair(nullptr, nullptr) };
 	auto& pair{ m_sprites[m_dynamicSpritesIds.at(identifier)] }; // Throw an exception if not there.
@@ -272,7 +260,7 @@ std::pair<sf::Sprite*, sf::Texture*> GraphicalDynamicInterface::getDSprite(std::
 	return sprite;
 }
 
-void GraphicalDynamicInterface::removeDText(std::string const& identifier) noexcept
+void DynamicGraphicalInterface::removeDText(std::string const& identifier) noexcept
 {
 	auto toRemove{ m_dynamicTextsIds.find(identifier) };
 
@@ -289,7 +277,7 @@ void GraphicalDynamicInterface::removeDText(std::string const& identifier) noexc
 	m_dynamicTextsIds.erase(toRemove); // Erase from the "dynamic" map.
 }
 
-void GraphicalDynamicInterface::removeDSprite(std::string const& identifier) noexcept
+void DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noexcept
 {
 	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
 
@@ -310,7 +298,7 @@ void GraphicalDynamicInterface::removeDSprite(std::string const& identifier) noe
 }
 
 
-void GraphicalUserInteractableInterface::addButton(std::string const& id, std::function<void()> function) noexcept
+void UserInteractableGraphicalInterface::addButton(std::string const& id, std::function<void()> function) noexcept
 {
 	if (m_buttons.find(id) != m_buttons.end() || m_dynamicTextsIds.find(id) == m_dynamicTextsIds.end())
 		return;
@@ -318,12 +306,12 @@ void GraphicalUserInteractableInterface::addButton(std::string const& id, std::f
 	m_buttons[id] = std::make_pair(m_dynamicTextsIds.find(id)->second, function);
 }
 
-std::function<void()>& GraphicalUserInteractableInterface::getFunctionOfButton(std::string const& identifier)
+std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(std::string const& identifier)
 {
 	return m_buttons.at(identifier).second; // Throw an exception if not there.
 }
 
-void GraphicalUserInteractableInterface::removeButton(std::string const& identifier) noexcept
+void UserInteractableGraphicalInterface::removeButton(std::string const& identifier) noexcept
 {
 	if (m_buttons.find(identifier) == m_buttons.end())
 		return;
@@ -332,7 +320,7 @@ void GraphicalUserInteractableInterface::removeButton(std::string const& identif
 	removeDText(identifier);
 }
 
-void GraphicalUserInteractableInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+void UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
 {
 	if (m_sliders.find(id) != m_sliders.end())
 		return;
@@ -341,12 +329,12 @@ void GraphicalUserInteractableInterface::addSlider(std::string const& id, sf::Ve
 	m_sliders[id] = Slider{ m_window, pos, sf::Vector2u{ minSize / 72, length }, scale, minValue, maxValue, intervalle, displayCurrentValue };
 }
 
-double GraphicalUserInteractableInterface::getValueSlider(std::string const& id) const
+double UserInteractableGraphicalInterface::getValueSlider(std::string const& id) const
 {
 	return m_sliders.at(id).getValue();// Throws an exception if not there
 }
 
-void GraphicalUserInteractableInterface::removeSlider(std::string const& identifier) noexcept
+void UserInteractableGraphicalInterface::removeSlider(std::string const& identifier) noexcept
 {
 	if (m_sliders.find(identifier) == m_sliders.end())
 		return;
@@ -354,7 +342,7 @@ void GraphicalUserInteractableInterface::removeSlider(std::string const& identif
 	m_sliders.erase(identifier);
 }
 
-GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInteractableInterface::mouseMoved()
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseMoved()
 {
 	sf::Vector2f mousePos{ static_cast<sf::Vector2f>(sf::Mouse::getPosition(*m_window)) };
 
@@ -380,7 +368,7 @@ GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInte
 	return m_hoveredElement;
 }
 
-GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInteractableInterface::mousePressed() noexcept
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mousePressed() noexcept
 {
 	if (m_hoveredElement.first == InteractableItem::None)
 		return m_hoveredElement;
@@ -392,15 +380,15 @@ GraphicalUserInteractableInterface::IdentifierInteractableItem GraphicalUserInte
 	return m_hoveredElement;
 }
 
-void GraphicalUserInteractableInterface::draw() const
+void UserInteractableGraphicalInterface::draw() const
 {
-	GraphicalDynamicInterface::draw();
+	DynamicGraphicalInterface::draw();
 
 	for (auto const& elem : m_sliders)
 		elem.second.draw();
 }
 
-GraphicalUserInteractableInterface::Slider::Slider(sf::RenderWindow* window, sf::Vector2f pos, sf::Vector2u size, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+UserInteractableGraphicalInterface::Slider::Slider(sf::RenderWindow* window, sf::Vector2f pos, sf::Vector2u size, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
 	: m_window{ window }, m_textureBackgroundSlider{ loadDefaultSliderTexture(size) }, m_textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{ size.x * 4, size.x }) }, m_backgroundSlider{ std::make_unique<sf::Sprite>(m_textureBackgroundSlider) }, m_cursorSlider{ std::make_unique<sf::Sprite>(m_textureCursorSlider) }, m_currentValueText{ nullptr }, m_intervalles{ intervalle }
 {
 	m_maxValue = std::max(minValue, maxValue);
@@ -418,7 +406,7 @@ GraphicalUserInteractableInterface::Slider::Slider(sf::RenderWindow* window, sf:
 		m_currentValueText = std::make_unique<TextWrapper>((m_maxValue - m_minValue) / 2. + m_minValue, sf::Vector2f{ pos.x + size.x * 4, pos.y }, size.x, scale);
 }
 
-GraphicalUserInteractableInterface::Slider::Slider(Slider&& other) noexcept
+UserInteractableGraphicalInterface::Slider::Slider(Slider&& other) noexcept
 	: m_window{ other.m_window },
 	m_textureBackgroundSlider{ std::move(other.m_textureBackgroundSlider) },
 	m_textureCursorSlider{ std::move(other.m_textureCursorSlider) },
@@ -439,7 +427,7 @@ GraphicalUserInteractableInterface::Slider::Slider(Slider&& other) noexcept
 	m_cursorSlider->setTexture(m_textureCursorSlider);
 }
 
-GraphicalUserInteractableInterface::Slider& GraphicalUserInteractableInterface::Slider::operator=(Slider&& other) noexcept
+UserInteractableGraphicalInterface::Slider& UserInteractableGraphicalInterface::Slider::operator=(Slider&& other) noexcept
 {
 	if (this != &other)
 	{
@@ -465,7 +453,7 @@ GraphicalUserInteractableInterface::Slider& GraphicalUserInteractableInterface::
 	return *this;
 }
 
-void GraphicalUserInteractableInterface::Slider::changeValue(float mousePosY) noexcept
+void UserInteractableGraphicalInterface::Slider::changeValue(float mousePosY) noexcept
 {
 	double yPos{ static_cast<double>(mousePosY) };
 	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
@@ -485,7 +473,7 @@ void GraphicalUserInteractableInterface::Slider::changeValue(float mousePosY) no
 	}
 }
 
-double GraphicalUserInteractableInterface::Slider::getValue() const noexcept
+double UserInteractableGraphicalInterface::Slider::getValue() const noexcept
 {
 	double yPos{ m_cursorSlider->getPosition().y };
 	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
@@ -498,14 +486,14 @@ double GraphicalUserInteractableInterface::Slider::getValue() const noexcept
 	return value;
 }
 
-double GraphicalUserInteractableInterface::Slider::setCursor(float relativePos) noexcept
+double UserInteractableGraphicalInterface::Slider::setCursor(float relativePos) noexcept
 {
 	changeValue(m_backgroundSlider->getGlobalBounds().position.y + m_backgroundSlider->getGlobalBounds().size.y * relativePos);
 
 	return getValue();
 }
 
-void GraphicalUserInteractableInterface::Slider::draw() const noexcept
+void UserInteractableGraphicalInterface::Slider::draw() const noexcept
 {
 	if (!m_window)
 		return;

@@ -108,7 +108,7 @@ private:
 
 	/// File stream managed by the wrapper.
 	std::unique_ptr<std::ifstream> m_fileStream;
-};  // class ReadingStreamRAIIWrapper
+};
 
 /**
  * @brief Use RAII to ensure proper handling errors while saving data.
