@@ -240,9 +240,6 @@ public:
 	 */
 	[[nodiscard]] static std::optional<std::string> createFile(std::string const& fileName) noexcept;
 
-
-	static std::string savesPath; // The relative path to the saves folder.
-
 private:
 
 	/**
@@ -319,7 +316,8 @@ private:
 	static std::string encryptDecrypt(std::string const& data, std::string const& key = "7gK9!wZp2FhJ8@qL") noexcept;
 
 	
-	static std::string m_tokensOfConfirmation; // The tokens that confirm that the file has been correctly saved.
+	static std::string const savesPath; // The relative path to the saves folder.
+	static std::string const tokensOfConfirmation; // The tokens that confirm that the file has been correctly saved.
 };
 } // namespace SafeSaves
 

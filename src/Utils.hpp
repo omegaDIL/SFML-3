@@ -84,17 +84,6 @@ inline std::vector<T> convertBackFromString(std::vector<std::string> const& toCo
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Conversion functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
- 
-
-/**
- * @brief Analyzes a string to determine the size needed of the text when displayed.
- * 
- * @param[in] str: The string to analyze.
- * @param[in] characterSize: The size of the characters in the string.
- * 
- * @return A Vector2f containing the width and height of the string when displayed.
- */
-sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int characterSize = 12) noexcept;
 
 
 /**

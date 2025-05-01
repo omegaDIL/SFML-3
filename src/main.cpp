@@ -15,12 +15,6 @@ int main()
 	UserInteractableGraphicalInterface otherInterface{ &window };
 	UserInteractableGraphicalInterface mainInterface{ &window };
 	FixedGraphicalInterface* interface{ &mainInterface };
-	auto err = mainInterface.create();
-	if (err.has_value())
-	{
-		showErrorsUsingWindow(err.value(), "Error while creating the GUI");
-		return -1;
-	}
 	
 	mainInterface.addDynamicText("rgdf", "rgdf", sf::Vector2f{ 100, 100 }, 12, 1.f);
 	mainInterface.addButton("rgdf", [&interface, &otherInterface]() mutable -> void { interface = &otherInterface; });
@@ -38,6 +32,9 @@ int main()
 
 			if (event->is<sf::Event::MouseMoved>())
 				mainInterface.mouseMoved();
+
+			if (event->is<sf::Event::MouseButtonReleased>())
+				mainInterface.mouseUnpressed();
 		}
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))

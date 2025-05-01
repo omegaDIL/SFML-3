@@ -10,35 +10,18 @@
 #include "GUI.hpp"
 
 
-sf::Vector2u getStringSizeForDisplay(std::string const& str, unsigned int characterSize) noexcept
-{
-	unsigned int const sizeHeight{ 20 + static_cast<unsigned int>(std::count(str.begin(), str.end(), '\n'))*20 };
-	unsigned int sizeWidth{ 10 };
-
-	std::istringstream stream{ str };
-	// Count the max number of characters in one single line.
-	std::vector<std::string> lines{ std::istream_iterator<std::string>{ stream }, std::istream_iterator<std::string>{} };
-
-	auto longest = std::max_element(lines.begin(), lines.end(), [](const std::string& a, const std::string& b) -> size_t
-	{
-		return a.length() < b.length();
-	});
-
-	if (longest != lines.end())
-		sizeWidth = static_cast<unsigned int>(longest->length()) * 10;
-
-	return { sizeWidth, sizeHeight };
-}//TODO: characterSize
-
-
 void showErrorsUsingWindow(std::string const& errorMessage, std::string const& errorTitle) noexcept
 {
-	// Calculate the size needed to display the whole string.
-	sf::VideoMode const windowErrorSize{ getStringSizeForDisplay(errorMessage) };
-	
-	sf::RenderWindow errorWindow{ windowErrorSize, errorTitle };
-	FixedGraphicalInterface gui{ &errorWindow }; // Create the interface to use the GUI.
-	gui.addText(errorMessage, sf::Vector2f{ windowErrorSize.size.x / 2.f, windowErrorSize.size.y / 2.f }, 12, 1.f);
+	sf::RenderWindow errorWindow{ sf::VideoMode{ sf::Vector2u{ 100, 100 } }, errorTitle };
+	DynamicGraphicalInterface gui{ &errorWindow }; // Create the interface to use the GUI.
+	gui.addDynamicText("text", errorMessage, errorWindow.getView().getCenter(), 18, 1.f);
+
+	sf::Vector2f sizeOfText{ gui.getDText("text").getText().getGlobalBounds().size };
+	sizeOfText.x += 20.f;
+	sizeOfText.y += 20.f;
+
+	errorWindow.setSize(static_cast<sf::Vector2u>(sizeOfText));
+	handleEventResize(&errorWindow); // Resize the window to fit the text.
 
 	while (errorWindow.isOpen())
 	{	// The function is blocking.
@@ -48,7 +31,7 @@ void showErrorsUsingWindow(std::string const& errorMessage, std::string const& e
 				errorWindow.close();
 
 			if (event->is<sf::Event::Resized>())
-				errorWindow.setSize(sf::Vector2u{ windowErrorSize.size.x, windowErrorSize.size.y });
+				handleEventResize(&errorWindow);
 		}
 
 		errorWindow.clear();

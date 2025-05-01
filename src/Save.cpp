@@ -11,8 +11,8 @@
 
 using namespace SafeSaves;
 
-std::string Save::savesPath{ "../saves/" };
-std::string Save::m_tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
+std::string const Save::savesPath{ "../saves/" };
+std::string const Save::tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
 
 
 void ReadingStreamRAIIWrapper::create(std::string const& path, std::ios::openmode mode)
@@ -104,7 +104,7 @@ std::optional<std::string> Save::writing(std::string const& fileName, std::vecto
 		}
 
 		// Last tokens: confirm that every lines before has been successfully saved.
-		*savingStream << m_tokensOfConfirmation; 
+		*savingStream << tokensOfConfirmation; 
 	}
 	catch (FileFailureWhileInUse const& error)
 	{
@@ -130,7 +130,7 @@ std::optional<std::string> SafeSaves::Save::createFile(std::string const& fileNa
 		// We don't need to check the validity of the pointer using has_value()
 		// The call to create() would have thrown an exception if badly instantiated
 		std::ofstream* savingStream{ fileWrapped.stream().value() };
-		*savingStream << m_tokensOfConfirmation;
+		*savingStream << tokensOfConfirmation;
 		 
 		if (savingStream->fail()) [[unlikely]]
 			throw FileFailureWhileInUse{ "Error writing confirmation tokens into the file: " + path };
@@ -236,7 +236,7 @@ bool Save::checkingContentValdity(std::ifstream* reading) noexcept
 
 	std::string fileConfirmation{ (std::istreambuf_iterator<char>(*reading)), std::istreambuf_iterator<char>() }; 
 
-	return ((reading->fail()) ? false : fileConfirmation == m_tokensOfConfirmation);
+	return ((reading->fail()) ? false : fileConfirmation == tokensOfConfirmation);
 }
 
 std::string Save::encryptDecrypt(std::string const& data, std::string const& key) noexcept

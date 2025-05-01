@@ -49,22 +49,25 @@ concept Ostreamable = requires(std::ostream & os, T t)
  * @note This class stores UI componenents; it will use a considerable amount of memory. 
  * @note The background will always be the first element in the sprites collection vector.
  * @warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
- * @warning Call the function create() at least once before adding any text to load the font.
  * 
  * @code
  * sf::RenderWindow window{ ... };
  * FixedGraphicalInterface gui{ &window };
- * sf::CircleShape shape{ ... };
+ * 
  * ...
  * 
  * gui.addText("Hello World", sf::Vector2f{ 100, 100 }, 12, windowSizeMin / 1080.f);
  * gui.addText("Hello", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
+ * 
+ * sf::CircleShape shape{ ... };
+ * ...
  * gui.addShape(&shape, false);
+ * 
  * ...
  * 
  * window.clear();
- * ...
  * gui.draw();
+ * ...
  * window.display();
  * @endcode
  *
@@ -86,33 +89,25 @@ public:
 	 * @complexity O(1).
 	 * 
 	 * @param[in,out] window: The window where the interface elements will be rendered. 
+	 * @param[in] backgroundFileName: The file name of the background.
 	 * 
-	 * @see create().
+	 * @pre The window must be valid, and have a valid size.
+	 * @post The instance is safe to use and the background is set with the appropriate size.
+	 * @throw std::logic_error Basic exception guarrantee.
+	 * 
+	 * @pre The font should be named font.ttf and located at where ressourcePath points to.
+	 * @post The font is loaded.
+	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but no text can be displayed.
+	 * 
+	 * @pre The path of the background should be valid within the res folder.
+	 * @post Your background is loaded.
+	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but the default background is used.
+	 * 
+	 * @note If you don't want a background, just pass an empty string and no exceptions will be thrown.
+	 * @note The font is loaded is common to all texts, and therefore, it is loaded once (when the
+	 *		 first gui instance is created).
 	 */
-	explicit FixedGraphicalInterface(sf::RenderWindow* window) noexcept;
-
-	/**
-	 * @brief Loads the gui ressources for the interface: adds a background   and load the default font.
-	 * @complexity O(1).
-	 * 
-	 * @param[in] fileName: The name of the background.
-	 * 
-	 * @return A string if the font or the background fails to load.
-	 * 
-	 * @pre the name should be a valid within the res folder.
-	 * @throw LoadingGUIRessourceFailure if either the font or the background fails to load.
-	 * 
-	 * @pre The window must be valid.
-	 * @post This class is safe to use.
-	 * @throw std::logic_error if the window is nullptr.
-	 * 
-	 * @note This function loads the font used for all texts the first time it is called.
-	 * @note If the fileName is empty, the default background will be used.
-	 * @note If you already loaded a background, it will be replaced.
-	 * @note The background is the first sprite in the sprite collection vector (index 0).
-	 * @note If you already loaded the font and want the default background, it is useless to call this function.
-	 */
-	[[nodiscard]] virtual std::optional<std::string> create(std::string const& fileName = "");
+	explicit FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "");
 
 
 	/**
@@ -170,9 +165,9 @@ public:
 	 * @brief Renders the interface.
 	 * @complexity O(N + K), where N is the number of texts, and K the number of sprites (+ shapes).
 	 *
-	 * @pre The window must have been valid when passed to the constructor and still exists.
-	 * @post The elements are drawn on the window.
-	 * @throw std::logic_error if window is nullptr.
+	 * @pre The window must (still) be valid.
+	 * @post Safe to draw.
+	 * @throw std::logic_error Basic exception guarrantee.
 	 */
 	virtual void draw() const;
 
@@ -188,10 +183,6 @@ public:
 	 */
 	static void windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept;
 
-
-	// The relative path to the res folder used to load ressources. Default is "../res/". DO NOT CHANGE if not needed.
-	static std::string ressourcePath;
-
 protected:
 
 	/**
@@ -200,6 +191,17 @@ protected:
 	 * @complexity O(N), where N is the size of 'm_sprites'
 	 */
 	void resetTextureForSprites() noexcept;
+
+	/**
+	 * @brief Loads/Resizes the background image and resizes it to fit the window.
+	 * @details Loads the default background first, and then loads the custom background (if needed, that
+	 * 			is to say if the file name is not empty). If it fails, it uses the default background.
+	 * 
+	 * @param[in] fileName The file name of the background.
+	 * 
+	 * @return A string containing an error message if the loading failed.
+	 */
+	std::optional<std::string> loadBackground(std::string const& backgroundFileName) noexcept;
 
 
 	/**
@@ -259,7 +261,7 @@ protected:
 		{
 			std::ostringstream oss{}; // Convert the content to a string
 			oss << content; // Assigning the content to the variable.
-			
+
 			setString(oss.str());
 			setOrigin(getLocalBounds().getCenter()); // Recenters the text.
 		}
@@ -381,6 +383,10 @@ protected:
 	// Collection of texts in the interface.
 	std::vector<FixedGraphicalInterface::TextWrapper> m_texts; 
 
+
+	// The relative path to the res folder used to load ressources. Default is "../res/". DO NOT CHANGE if not needed.
+	static std::string const ressourcePath;
+
 private:
 
 	// Collection of all interfaces to perform the same operation (resizing for example). Stored by window.
@@ -434,6 +440,8 @@ public:
 	 * @param[in] position:       The position of the text.
 	 * @param[in] characterSize:  The size of the text characters.
 	 * @param[in] color:		  The color of the text.
+	 * 
+	 * @return True if added.
 	 *
 	 * @note No effect if a text has the same id.
 	 * @note The identifiers must be unique between texts.
@@ -442,13 +450,15 @@ public:
 	 * @see addText().
 	 */
 	template<Ostreamable T>
-	void addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
+	bool addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
 	{
 		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
-			return;
+			return false;
 
 		addText(content, position, characterSize, scale, color, rot);
 		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
+
+		return true;
 	}
 
 	/**
@@ -459,13 +469,15 @@ public:
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
 	 *
+	 * @return True if added.
+	 * 
 	 * @note No effect if a sprite has the same id.
 	 * @note The identifiers must be unique between shapes/sprites.
 	 * @note The ids between one text and one sprite can be the same.
 	 *
 	 * @see addSprite().
 	 */
-	void addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept;
+	bool addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept;
 
 	/**
 	 * @brief Adds a dynamic shape element to the interface.
@@ -475,13 +487,15 @@ public:
 	 * @param[in] shape: The shape to add.
 	 * @param[in] smooth: True if the shape needs to be smoothed.
 	 *
+	 * @return True if added.
+	 *
 	 * @note No effect if a sprite has the same id.
 	 * @note The identifiers must be unique between shapes/sprites.
 	 * @note The ids between one text and one shape can be the same.
 	 *
 	 * @see addShape().
 	 */
-	void addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
+	bool addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
 
 	/**
 	 * @brief Allows you to change some attributes of a dynamic text.
@@ -514,18 +528,22 @@ public:
 	 *
 	 * @param[in] identifier: The id of the text you want to remove.
 	 * 
+	 * @return True if added.
+	 *
 	 * @note No effect if not there.
 	 */
-	virtual void removeDText(std::string const& identifier) noexcept;
+	virtual bool removeDText(std::string const& identifier) noexcept;
 
 	/**
 	 * @brief Removes a sprite
 	 *
 	 * @param[in] identifier: The id of the sprite you want to remove.
 	 * 
+	 * @return True if added.
+	 *
 	 * @note No effect if not there.
 	 */
-	virtual void removeDSprite(std::string const& identifier) noexcept;
+	virtual bool removeDSprite(std::string const& identifier) noexcept;
 
 protected:
 
@@ -589,7 +607,7 @@ public:
 	 * @note You can still access the text turned with the function getDText().
 	 * @warning Don't remove the button using removeDText(), use removeButton() instead.
 	 */
-	void addButton(std::string const& id, std::function<void()> function = [](){}) noexcept;
+	bool addButton(std::string const& id, std::function<void()> function = [](){}) noexcept;
 
 	[[nodiscard]] std::function<void()>& getFunctionOfButton(std::string const& identifier);
 
@@ -600,13 +618,13 @@ public:
 	 *
 	 * @note No effect if not there.
 	 */
-	void removeButton(std::string const& identifier) noexcept;
+	bool removeButton(std::string const& identifier) noexcept;
 
-	void addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue = 0, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+	bool addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue = 0, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
 
 	double getValueSlider(std::string const& id) const;
 
-	void removeSlider(std::string const& identifier) noexcept;
+	bool removeSlider(std::string const& identifier) noexcept;
 
 	/** 
 	 * @brief Detects if the mouse is hovering over a button to update its visual state.
@@ -622,6 +640,9 @@ public:
 	IdentifierInteractableItem mouseMoved();
 
 	IdentifierInteractableItem mousePressed() noexcept;
+
+	IdentifierInteractableItem mouseUnpressed() noexcept;
+
 
 	/**
 	 * @complexity O(1).

@@ -19,62 +19,28 @@
 #include "Exceptions.hpp"
 
 sf::Font FixedGraphicalInterface::TextWrapper::m_font{};
-std::string FixedGraphicalInterface::ressourcePath{ "../res/" };
+std::string const FixedGraphicalInterface::ressourcePath{ "../res/" };
 std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
 
 
-FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window) noexcept
+FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName)
 	: m_window{ window }, m_sprites{}, m_texts{}
-{	
+{		
+	if (!m_window || m_window->getSize() == sf::Vector2u{ 0, 0 })
+		throw std::logic_error{ "Window of an interface is nullptr or invalid." };
+
 	// Add this interface to the collection.
 	allInterfaces.emplace(std::make_pair(window, this));
 
-	// Creating the background.
-	sf::RectangleShape background{ static_cast<sf::Vector2f>(window->getSize()) };
-	background.setFillColor(sf::Color{ 20, 20, 20 });
-	background.setOrigin(window->getView().getCenter()); // Putting the origin at the center 
-	background.setPosition(window->getView().getCenter());
-	addShape(&background, false); // Adds the background to the interface.
-}
-
-std::optional<std::string> FixedGraphicalInterface::create(std::string const& fileName)
-{
-	if (!m_window)
-		throw std::logic_error{ "Window of an interface is nullptr." };
-
-	std::ostringstream oss{};
-
 	// Loads the font.
-	auto error{ TextWrapper::loadFont() };
-	if (error.has_value())
-		oss << error.value() ;
-
-	// If default background is used, no need to load its texture.
-	if (fileName.empty())
-		return (oss.str().empty()) ? std::nullopt : std::make_optional<std::string>(oss.str());
+	auto errorFont{ TextWrapper::loadFont() };
+	if (errorFont.has_value())
+		throw LoadingGUIRessourceFailure{ errorFont.value() };
 
 	// Loads the background.
-	try
-	{
-		std::string path{ ressourcePath + fileName };
-
-		sf::Texture textureBackground{};
-		if (!textureBackground.loadFromFile(path))
-			throw LoadingGUIRessourceFailure{ "Failed to load background at: " + path };
-
-		textureBackground.setSmooth(true);
-		m_sprites[0].second = std::move(textureBackground); // The first sprite is the background.
-		m_sprites[0].first = sf::Sprite{ m_sprites[0].second };
-	}
-	catch (LoadingGUIRessourceFailure const& error)
-	{
-		oss << error.what() << "\n";
-		oss << "error: the default background is displayed instead\n\n";
-		
-		return std::make_optional<std::string>(oss.str());
-	}	
-	
-	return (oss.str().empty()) ? std::nullopt : std::make_optional<std::string>(oss.str());
+	auto errorBackground{ loadBackground(backgroundFileName) };
+	if (errorBackground.has_value())
+		throw LoadingGUIRessourceFailure{ errorBackground.value() };
 }
 
 FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
@@ -201,6 +167,43 @@ void FixedGraphicalInterface::resetTextureForSprites() noexcept
 		sprite.first.setTexture(sprite.second);
 }
 
+std::optional<std::string> FixedGraphicalInterface::loadBackground(std::string const& backgroundFileName) noexcept
+{
+	sf::RectangleShape background{ static_cast<sf::Vector2f>(m_window->getSize()) };
+	background.setFillColor(sf::Color{ 20, 20, 20 });
+	background.setOrigin(m_window->getView().getCenter()); // Putting the origin at the center 
+	background.setPosition(m_window->getView().getCenter());
+	addShape(&background, false); // Adds the background to the interface.
+
+	// Creating the background.
+	if (backgroundFileName.empty())
+		return std::nullopt; // No need to load the background if it is empty.
+
+	try
+	{
+		std::string path{ ressourcePath + backgroundFileName };
+
+		sf::Texture textureBackground{};
+		if (!textureBackground.loadFromFile(path))
+			throw LoadingGUIRessourceFailure{ "Failed to load background at: " + path };
+
+		textureBackground.setSmooth(true);
+		m_sprites[0].second = std::move(textureBackground); // The first sprite is the background.
+		m_sprites[0].first.setTexture(m_sprites[0].second);
+	}
+	catch (LoadingGUIRessourceFailure const& error)
+	{
+		std::ostringstream oss{};
+
+		oss << error.what() << "\n";
+		oss << "error: the default background is displayed instead\n\n";
+
+		return std::make_optional<std::string>(oss.str());
+	}
+
+	return std::nullopt;
+}
+
 std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noexcept
 {
 	if (m_font.getInfo().family != "")
@@ -226,22 +229,26 @@ std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noex
 }
 
 
-void DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
+bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
 {
 	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
-		return;
+		return false;
 
 	addSprite(std::move(sprite), std::move(texture));
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
+
+	return true;
 }
 
-void DynamicGraphicalInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
+bool DynamicGraphicalInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
 {
 	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
-		return;
+		return false;
 
 	addShape(shape, smooth);
 	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
+
+	return true;
 }
 
 FixedGraphicalInterface::TextWrapper& DynamicGraphicalInterface::getDText(std::string const& identifier)
@@ -260,12 +267,12 @@ std::pair<sf::Sprite*, sf::Texture*> DynamicGraphicalInterface::getDSprite(std::
 	return sprite;
 }
 
-void DynamicGraphicalInterface::removeDText(std::string const& identifier) noexcept
+bool DynamicGraphicalInterface::removeDText(std::string const& identifier) noexcept
 {
 	auto toRemove{ m_dynamicTextsIds.find(identifier) };
 
 	if (toRemove == m_dynamicTextsIds.end())
-		return; // No effect if it does not exist.
+		return false; // No effect if it does not exist.
 
 	// For all Indexes that are greater than the one we want to remove, we decrease their index by 1.
 	// Otherwise, we will have a gap in the vector.
@@ -275,14 +282,16 @@ void DynamicGraphicalInterface::removeDText(std::string const& identifier) noexc
 
 	m_texts.erase(std::next(m_texts.begin(), toRemove->second)); // Erase from the vector.
 	m_dynamicTextsIds.erase(toRemove); // Erase from the "dynamic" map.
+
+	return true;
 }
 
-void DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noexcept
+bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noexcept
 {
 	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
 
 	if (toRemove == m_dynamicSpritesIds.end())
-		return; // No effect if it does not exist.
+		return false; // No effect if it does not exist.
 
 	// For all Indexes that are greater than the one we want to remove, we decrease their index by 1.
 	// Otherwise, we will have a gap in the vector.
@@ -295,15 +304,19 @@ void DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noe
 
 	// The pointer to the texture becomes invalid because we removed something to the vector.
 	resetTextureForSprites();
+
+	return true;
 }
 
 
-void UserInteractableGraphicalInterface::addButton(std::string const& id, std::function<void()> function) noexcept
+bool UserInteractableGraphicalInterface::addButton(std::string const& id, std::function<void()> function) noexcept
 {
 	if (m_buttons.find(id) != m_buttons.end() || m_dynamicTextsIds.find(id) == m_dynamicTextsIds.end())
-		return;
+		return false; 
 
 	m_buttons[id] = std::make_pair(m_dynamicTextsIds.find(id)->second, function);
+
+	return true;
 }
 
 std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(std::string const& identifier)
@@ -311,22 +324,26 @@ std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(s
 	return m_buttons.at(identifier).second; // Throw an exception if not there.
 }
 
-void UserInteractableGraphicalInterface::removeButton(std::string const& identifier) noexcept
+bool UserInteractableGraphicalInterface::removeButton(std::string const& identifier) noexcept
 {
 	if (m_buttons.find(identifier) == m_buttons.end())
-		return;
+		return false;
 
 	m_buttons.erase(identifier);
 	removeDText(identifier);
+
+	return true;
 }
 
-void UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
+bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue, int maxValue, int intervalle, bool displayCurrentValue) noexcept
 {
 	if (m_sliders.find(id) != m_sliders.end())
-		return;
+		return false;
 	
 	unsigned int minSize{ std::min(m_window->getSize().x, m_window->getSize().y) };
 	m_sliders[id] = Slider{ m_window, pos, sf::Vector2u{ minSize / 72, length }, scale, minValue, maxValue, intervalle, displayCurrentValue };
+
+	return true;
 }
 
 double UserInteractableGraphicalInterface::getValueSlider(std::string const& id) const
@@ -334,12 +351,14 @@ double UserInteractableGraphicalInterface::getValueSlider(std::string const& id)
 	return m_sliders.at(id).getValue();// Throws an exception if not there
 }
 
-void UserInteractableGraphicalInterface::removeSlider(std::string const& identifier) noexcept
+bool UserInteractableGraphicalInterface::removeSlider(std::string const& identifier) noexcept
 {
 	if (m_sliders.find(identifier) == m_sliders.end())
-		return;
+		return false;
 
 	m_sliders.erase(identifier);
+
+	return true;
 }
 
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseMoved()
@@ -376,6 +395,14 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 		getFunctionOfButton(*m_hoveredElement.second)();
 	else if (m_hoveredElement.first == InteractableItem::Slider)
 		m_sliders[*m_hoveredElement.second].changeValue(sf::Mouse::getPosition(*m_window).y);
+
+	return m_hoveredElement;
+}
+
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseUnpressed() noexcept
+{
+	if (m_hoveredElement.first == InteractableItem::Button)
+		getFunctionOfButton(*m_hoveredElement.second)();
 
 	return m_hoveredElement;
 }
