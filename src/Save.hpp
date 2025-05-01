@@ -91,6 +91,20 @@ public:
 	 * @throw FileFailure if the file cannot be accessed.
 	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
 	 */
+	ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode, bool create);
+
+	/**
+	 * @brief Opens a file for reading and throws an error if the operation fails.
+	 * @complexity O(1)
+	 *
+	 * @param[in] path: Path to the file.
+	 * @param[in] mode: File open mode.
+	 *
+	 * @pre The file must exist.
+	 * @post The file is opened for reading.
+	 * @throw FileFailure if the file cannot be accessed.
+	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
+	 */
 	void create(std::string const& path, std::ios::openmode mode = std::ios::in);
 
 
@@ -136,6 +150,21 @@ public:
 		if (m_fileStream && m_fileStream->is_open())
 			m_fileStream->close();
 	}
+
+	/**
+	 * @brief Opens a file for writing and throws an error if the operation fails.
+	 * @complexity O(1)
+	 *
+	 * @param[in] path: Path to the file.
+	 * @param[in] mode: File open mode.
+	 * @param[in] create: True if the file has to be created.
+	 *
+	 * @pre The file must exist and be writable.
+	 * @post The file is opened for writing.
+	 * @throw FileFailureWhileOpening if the file cannot be accessed.
+	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
+	 */
+	WritingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode = std::ios::out | std::ios::trunc, bool create = false);
 
 	/**
 	 * @brief Opens a file for writing and throws an error if the operation fails.
@@ -299,7 +328,7 @@ private:
 	 * 
 	 * @see CleanUpFiles().
 	 */
-	static bool checkingContentValdity(std::ifstream* loading) noexcept;
+	[[nodiscard]] static bool checkingContentValdity(std::ifstream* loading) noexcept;
 
 	/**
 	 * @brief Encrypt or decrypt the data using several involutive algorithms.
@@ -313,7 +342,7 @@ private:
 	 * 
 	 * @return the data encrypted.
 	 */
-	static std::string encryptDecrypt(std::string const& data, std::string const& key = "7gK9!wZp2FhJ8@qL") noexcept;
+	[[nodiscard]] static std::string encryptDecrypt(std::string const& data, std::string const& key = "7gK9!wZp2FhJ8@qL") noexcept;
 
 	
 	static std::string const savesPath; // The relative path to the saves folder.

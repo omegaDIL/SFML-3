@@ -24,7 +24,7 @@ std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphi
 
 
 FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName)
-	: m_window{ window }, m_sprites{}, m_texts{}
+	: m_window{ window }, m_sprites{}, m_texts{}, m_defaultBackground{ true }
 {		
 	if (!m_window || m_window->getSize() == sf::Vector2u{ 0, 0 })
 		throw std::logic_error{ "Window of an interface is nullptr or invalid." };
@@ -144,9 +144,13 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 	{
 		auto* curInterface{ elem->second };
 
-		// The background is the first sprite.
-		curInterface->m_sprites[0].first.setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
-		//curInterface->m_sprites[0].first.setScale(static_cast<sf::Vector2f>(window->getSize()));
+		for (auto& text : curInterface->m_texts)
+			text.windowResized(scalingFactor, minScalingFactor);
+
+		if (curInterface->m_defaultBackground)
+			curInterface->loadBackground("");
+		else
+			curInterface->m_sprites[0].first.setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
 
 		for (int j{ 1 }; j < curInterface->m_sprites.size(); j++)
 		{	// Avoiding the background by skipping index 0.
@@ -155,9 +159,6 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 			curSprite.scale(minScalingFactor);
 			curSprite.setPosition(sf::Vector2f{ curSprite.getPosition().x * scalingFactor.x, curSprite.getPosition().y * scalingFactor.y });
 		}
-
-		for (auto& text : curInterface->m_texts)
-			text.windowResized(scalingFactor, minScalingFactor);
 	}
 }
 
@@ -190,6 +191,7 @@ std::optional<std::string> FixedGraphicalInterface::loadBackground(std::string c
 		textureBackground.setSmooth(true);
 		m_sprites[0].second = std::move(textureBackground); // The first sprite is the background.
 		m_sprites[0].first.setTexture(m_sprites[0].second);
+		m_defaultBackground = false; // The default background is not used anymore.
 	}
 	catch (LoadingGUIRessourceFailure const& error)
 	{
@@ -290,7 +292,7 @@ bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noe
 {
 	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
 
-	if (toRemove == m_dynamicSpritesIds.end())
+	if (toRemove == m_dynamicSpritesIds.end() || identifier == "background")
 		return false; // No effect if it does not exist.
 
 	// For all Indexes that are greater than the one we want to remove, we decrease their index by 1.

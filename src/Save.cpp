@@ -15,6 +15,21 @@ std::string const Save::savesPath{ "../saves/" };
 std::string const Save::tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
 
 
+ReadingStreamRAIIWrapper::ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode, bool create)
+	: m_fileStream{ nullptr }
+{
+	if (!checkFileExistence(path))
+		throw FileFailureWhileOpening{ "File does not exist: " + path };
+
+	m_fileStream = std::make_unique<std::ifstream>(path, mode);
+
+	if (!m_fileStream->is_open()) [[unlikely]]
+	{
+		m_fileStream.reset(); // Resetting the pointer to nullptr.
+		throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);
+	}
+}
+
 void ReadingStreamRAIIWrapper::create(std::string const& path, std::ios::openmode mode)
 {
 	if (!checkFileExistence(path))
@@ -27,6 +42,23 @@ void ReadingStreamRAIIWrapper::create(std::string const& path, std::ios::openmod
 		m_fileStream.reset(); // Resetting the pointer to nullptr.
 		throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);
 	}
+}
+
+WritingStreamRAIIWrapper::WritingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode, bool create)
+	: m_fileStream{ nullptr }
+{
+	if (!create && !checkFileExistence(path))
+		throw FileFailureWhileOpening{ "File does not exist: " + path };
+	if (!create && !checkFileWritable(path)) [[unlikely]]
+		throw FileFailureWhileOpening{ "File exists but cannot be opened for writing: " + path };
+
+		m_fileStream = std::make_unique<std::ofstream>(path, mode);
+
+		if (!m_fileStream->is_open()) [[unlikely]]
+		{
+			m_fileStream.reset(); // Resetting the pointer to nullptr.
+			throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);
+		}
 }
 
 void WritingStreamRAIIWrapper::create(std::string const& path, std::ios::openmode mode, bool create)
@@ -124,11 +156,10 @@ std::optional<std::string> SafeSaves::Save::createFile(std::string const& fileNa
 
 	try
 	{
-		WritingStreamRAIIWrapper fileWrapped{};
-		fileWrapped.create(path, std::ios::out | std::ios::trunc, true);
+		WritingStreamRAIIWrapper fileWrapped{ path, std::ios::out | std::ios::trunc, true };
 
 		// We don't need to check the validity of the pointer using has_value()
-		// The call to create() would have thrown an exception if badly instantiated
+		// The constructor would have thrown an exception if badly instantiated
 		std::ofstream* savingStream{ fileWrapped.stream().value() };
 		*savingStream << tokensOfConfirmation;
 		 

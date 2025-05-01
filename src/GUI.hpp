@@ -47,7 +47,6 @@ concept Ostreamable = requires(std::ostream & os, T t)
  * @details All elements are fixed and can't be edited nor removed.
  *
  * @note This class stores UI componenents; it will use a considerable amount of memory. 
- * @note The background will always be the first element in the sprites collection vector.
  * @warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  * 
  * @code
@@ -137,7 +136,7 @@ public:
 	/**
 	 * @brief Adds a sprite element to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites already added (if vector resizes).
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
 	 *
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
@@ -149,7 +148,7 @@ public:
 	/**
 	 * @brief Adds a sprite element to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites already added (if vector resizes).
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
 	 *
 	 * @param[in] shape: The shape to add.
 	 * @param[in] smooth: True if the shape needs to be smoothed.
@@ -196,6 +195,7 @@ protected:
 	 * @brief Loads/Resizes the background image and resizes it to fit the window.
 	 * @details Loads the default background first, and then loads the custom background (if needed, that
 	 * 			is to say if the file name is not empty). If it fails, it uses the default background.
+	 * @complexity O(1).
 	 * 
 	 * @param[in] fileName The file name of the background.
 	 * 
@@ -391,19 +391,40 @@ private:
 
 	// Collection of all interfaces to perform the same operation (resizing for example). Stored by window.
 	static std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> allInterfaces;
+
+	bool m_defaultBackground{ true }; // True if the default background is used.
 };
 
 
 /**
  * @brief  Manages an interface with changeable contents of elements (texts and shapes).
  *
- * @note D stands for dynamic.
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
- * @note The background is dynamic and changeable with the getSprite() function using the attribut
- *       "background".
+ * @note The background is dynamic and changeable with the getDSprite() function using the identifier
+ *       "background". Note that is not removable.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
- * @see FixedGraphicalInterface, sf::RenderWindow.
+ * @code
+ * sf::RenderWindow window{ ... };
+ * DynamicGraphicalInterface gui{ &window };
+ *
+ * ...
+ *
+ * gui.addDynamicText("text 1", "Hello", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
+ * gui.addDynamicText("text 2", "Hallo", sf::Vector2f{ 100, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
+ * gui.addDynamicSprite("sprite", std::move(player), std::move(texturePlayer));
+ * 
+ * gui.getDText("text 1").updateContent("Hello World");
+ *
+ * ...
+ *
+ * window.clear();
+ * gui.draw();
+ * ...
+ * window.display();
+ * @endcode
+ *
+ * @see FixedGraphicalInterface.
  */
 class DynamicGraphicalInterface : public FixedGraphicalInterface
 {
@@ -421,18 +442,18 @@ public:
 	 * @complexity O(1).
 	 *
 	 * @param[out] window: The window where the interface elements will be rendered.
-	 *
-	 * @see createBackground().
 	 */
-	inline explicit DynamicGraphicalInterface(sf::RenderWindow* window) noexcept
-		: FixedGraphicalInterface{ window }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
-	{}
+	explicit DynamicGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "")
+		: FixedGraphicalInterface{ window, backgroundFileName }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
+	{
+		m_dynamicSpritesIds.emplace("background", 0); // The background is the first element in the vector.
+	}
 
 
 	/**
 	 * @brief Adds a dynamic text to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of texts already added (static and dynamic).
+	 * @complexity O(N) : worst case, where N is the number of texts already added (if vector resizes).
 	 * 
 	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
 	 * @param[in] identifier:     The text identifier.
@@ -445,7 +466,7 @@ public:
 	 *
 	 * @note No effect if a text has the same id.
 	 * @note The identifiers must be unique between texts.
-	 * @note The ids between one text and one sprite can be the same.
+	 * @note The ids between one text and one sprite/shape can be the same.
 	 * 
 	 * @see addText().
 	 */
@@ -463,7 +484,8 @@ public:
 
 	/**
 	 * @brief Adds a dynamic sprite element to the interface.
-	 * @complexity O(N) where N is the number of shapes + sprites already added.
+	 * @complexity O(1) : average case.
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
 	 *
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] sprite: The sprite to add.
@@ -471,9 +493,9 @@ public:
 	 *
 	 * @return True if added.
 	 * 
-	 * @note No effect if a sprite has the same id.
+	 * @note No effect if a sprite/shape has the same id.
 	 * @note The identifiers must be unique between shapes/sprites.
-	 * @note The ids between one text and one sprite can be the same.
+	 * @note The ids between one text and one sprite/shape can be the same.
 	 *
 	 * @see addSprite().
 	 */
@@ -481,7 +503,8 @@ public:
 
 	/**
 	 * @brief Adds a dynamic shape element to the interface.
-	 * @complexity O(N) where N is the number of shapes + sprites already added.
+	 * @complexity O(1) : average case.
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
 	 *
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] shape: The shape to add.
@@ -489,16 +512,39 @@ public:
 	 *
 	 * @return True if added.
 	 *
-	 * @note No effect if a sprite has the same id.
+	 * @note No effect if a sprite/shape has the same id.
 	 * @note The identifiers must be unique between shapes/sprites.
-	 * @note The ids between one text and one shape can be the same.
+	 * @note The ids between one text and one sprite/shape can be the same.
 	 *
 	 * @see addShape().
 	 */
 	bool addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
 
 	/**
+	 * @param[in] identifier: The id of the text you want to check.
+	 * @complexity O(1).
+	 * 
+	 * @return True if it exists.
+	 */
+	[[nodiscard]] inline bool doesDTextExist(std::string const& identifier) const noexcept
+	{
+		return m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end();
+	}
+
+	/**
+	 * @param[in] identifier: The id of the sprite you want to check.
+	 * @complexity O(1).
+	 * 
+	 * @return True if it exists.
+	 */
+	[[nodiscard]] inline bool doesDSpriteExist(std::string const& identifier) const noexcept
+	{
+		return m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end();
+	}
+
+	/**
 	 * @brief Allows you to change some attributes of a dynamic text.
+	 * @complexity O(1).
 	 * 
 	 * @param[in] identifier: The id of the text you want to access.
 	 * 
@@ -508,27 +554,29 @@ public:
 	 * @post The appropriate text is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	FixedGraphicalInterface::TextWrapper& getDText(std::string const& identifier);
+	[[nodiscard]] FixedGraphicalInterface::TextWrapper& getDText(std::string const& identifier);
 
 	/**
 	 * @brief Allows you to change some attributes of a dyanmic sprite.
+	 * @complexity O(1).
 	 *
 	 * @param[in] identifier: The id of the sprite you want to access.
 	 *
 	 * @return A reference to the sprite you want to access.
 	 *
-	 * @pre Be sure that you added the sprite with this id.
-	 * @post The appropriate sprite is returned.
+	 * @pre Be sure that you added the sprite/shape with this id.
+	 * @post The appropriate sprite/texture is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	std::pair<sf::Sprite*, sf::Texture*> getDSprite(std::string const& identifier);
+	[[nodiscard]] std::pair<sf::Sprite*, sf::Texture*> getDSprite(std::string const& identifier);
 
 	/**
 	 * @brief Removes a dynamic text.
+	 * @complexity O(N), where N is the number of texts (static + dynamic).
 	 *
 	 * @param[in] identifier: The id of the text you want to remove.
 	 * 
-	 * @return True if added.
+	 * @return True if removed.
 	 *
 	 * @note No effect if not there.
 	 */
@@ -536,14 +584,16 @@ public:
 
 	/**
 	 * @brief Removes a sprite
+	 * @complexity O(N), where N is the number of sprites/shapes (static + dynamic).
 	 *
 	 * @param[in] identifier: The id of the sprite you want to remove.
 	 * 
-	 * @return True if added.
+	 * @return True if removed.
 	 *
 	 * @note No effect if not there.
+	 * @note You can't remove the background : it has no effect.
 	 */
-	virtual bool removeDSprite(std::string const& identifier) noexcept;
+	bool removeDSprite(std::string const& identifier) noexcept;
 
 protected:
 
@@ -553,7 +603,7 @@ protected:
 
 
 /** 
- * @brief  Manages an interface in which the user can interact such as writing, pressing buttons...
+ * @brief Manages an interface in which the user can interact such as writing, pressing buttons...
  *
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
