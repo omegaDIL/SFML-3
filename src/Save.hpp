@@ -91,7 +91,7 @@ public:
 	 * @throw FileFailure if the file cannot be accessed.
 	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
 	 */
-	ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode, bool create);
+	ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode);
 
 	/**
 	 * @brief Opens a file for reading and throws an error if the operation fails.

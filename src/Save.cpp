@@ -15,7 +15,7 @@ std::string const Save::savesPath{ "../saves/" };
 std::string const Save::tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
 
 
-ReadingStreamRAIIWrapper::ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode, bool create)
+ReadingStreamRAIIWrapper::ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode)
 	: m_fileStream{ nullptr }
 {
 	if (!checkFileExistence(path))

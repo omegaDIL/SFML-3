@@ -135,8 +135,7 @@ public:
 
 	/**
 	 * @brief Adds a sprite element to the interface.
-	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+	 * @complexity O(N) : where N is the number of sprites/shapes.
 	 *
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
@@ -147,8 +146,7 @@ public:
 
 	/**
 	 * @brief Adds a sprite element to the interface.
-	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+	 * @complexity O(N) : where N is the number of sprites/shapes.
 	 *
 	 * @param[in] shape: The shape to add.
 	 * @param[in] smooth: True if the shape needs to be smoothed.
@@ -162,7 +160,7 @@ public:
 
 	/** 
 	 * @brief Renders the interface.
-	 * @complexity O(N + K), where N is the number of texts, and K the number of sprites (+ shapes).
+	 * @complexity O(N), where N is the number of graphical elements.
 	 *
 	 * @pre The window must (still) be valid.
 	 * @post Safe to draw.
@@ -197,7 +195,7 @@ protected:
 	 * 			is to say if the file name is not empty). If it fails, it uses the default background.
 	 * @complexity O(1).
 	 * 
-	 * @param[in] fileName The file name of the background.
+	 * @param[in] fileName: The file name of the background.
 	 * 
 	 * @return A string containing an error message if the loading failed.
 	 */
@@ -228,7 +226,7 @@ protected:
 		 * @complexity O(1).
 		 *
 		 * @tparam T: Type that can be streamed to `std::basic_ostream`.
-       	 * @param[in] content: The text label.
+		 * @param[in] content: The text label.
 		 * @param[in] position: The position of the text.
 		 * @param[in] characterSize: The size of the text characters.
 		 * @param[in] scale: The scale of the text.
@@ -392,7 +390,7 @@ private:
 	// Collection of all interfaces to perform the same operation (resizing for example). Stored by window.
 	static std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> allInterfaces;
 
-	bool m_defaultBackground{ true }; // True if the default background is used.
+	bool m_defaultBackground; // True if the default background is used.
 };
 
 
@@ -411,10 +409,11 @@ private:
  * ...
  *
  * gui.addDynamicText("text 1", "Hello", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
- * gui.addDynamicText("text 2", "Hallo", sf::Vector2f{ 100, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
+ * gui.addDynamicText("text 2", "Hallo", sf::Vector2f{ 100, 100 }, 14, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
  * gui.addDynamicSprite("sprite", std::move(player), std::move(texturePlayer));
  * 
  * gui.getDText("text 1").updateContent("Hello World");
+ * auto charSize = gui.getDText("text 2").getText().getCharacterSize(); // 14.
  *
  * ...
  *
@@ -453,7 +452,7 @@ public:
 	/**
 	 * @brief Adds a dynamic text to the interface.
 	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of texts already added (if vector resizes).
+	 * @complexity O(N) : worst case, where N is the number of texts already added (static + dynamic) (if vector resizes).
 	 * 
 	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
 	 * @param[in] identifier:     The text identifier.
@@ -484,8 +483,7 @@ public:
 
 	/**
 	 * @brief Adds a dynamic sprite element to the interface.
-	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+	 * @complexity O(N) : where N is the number of sprites/shapes (static + dynamic).
 	 *
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] sprite: The sprite to add.
@@ -503,8 +501,7 @@ public:
 
 	/**
 	 * @brief Adds a dynamic shape element to the interface.
-	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+     * @complexity O(N) : where N is the number of sprites/shapes (static + dynamic).
 	 *
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] shape: The shape to add.
@@ -597,8 +594,8 @@ public:
 
 protected:
 
-	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All index of dynamic texts in the interface.
-	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All index of dynamic sprites in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All indexes of dynamic texts in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All indexes of dynamic sprites in the interface.
 };
 
 
@@ -606,9 +603,11 @@ protected:
  * @brief Manages an interface in which the user can interact such as writing, pressing buttons...
  *
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
+ * @note The background is dynamic and changeable with the getDSprite() function using the identifier
+ *       "background". Note that is not removable.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
- * @see DynamicGraphicalInterface, Slider, sf::RenderWindow.
+ * @see DynamicGraphicalInterface.
  */
 class UserInteractableGraphicalInterface : public DynamicGraphicalInterface
 {
@@ -619,8 +618,8 @@ public:
 		None,
 		Button,
 		Slider,
-		MultipleQuestionBox,
-		DoubleCheckerMode
+		//MultipleQuestionBox,
+		//DoubleCheckerMode
 	};
 
 	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>; 
@@ -642,145 +641,190 @@ public:
 	 * @see createBackground().
 	 */
 	inline explicit UserInteractableGraphicalInterface(sf::RenderWindow* window) noexcept
-		: DynamicGraphicalInterface{ window }, m_buttons{}, m_sliders{}, m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) }
+		: DynamicGraphicalInterface{ window }, m_buttons{}, m_sliders{}
 	{}
 
 
 	/**
 	 * @brief Adds a button to the interface by turning a text into a button.
+	 * @complexity O(1).
 	 *
 	 * @param[in] id: The id of the text you want to turn into a button
 	 * @param[in] function: The function executed when the button is pressed.
 	 *
 	 * @note No effect if no text with the id, or there's already a button with the same id.
 	 * @note The button id is the same as the text id.
-	 * @note You can still access the text turned with the function getDText().
-	 * @warning Don't remove the button using removeDText(), use removeButton() instead.
+	 * @note You can still access the text turned with the function getDText(), and remove it with removeDText().
 	 */
 	bool addButton(std::string const& id, std::function<void()> function = [](){}) noexcept;
 
-	[[nodiscard]] std::function<void()>& getFunctionOfButton(std::string const& identifier);
+	bool addSlider(std::string const& id, float length, bool displayValue, float size, float maxValue = 1.f, float minValue = 0.f) noexcept;
 
 	/**
-	 * @brief Removes a button
+	 * @param[in] identifier: The id of the button you want to check.
+	 * @complexity O(1).
 	 *
-	 * @param[in] identifier: The id of the button you want to remove.
-	 *
-	 * @note No effect if not there.
+	 * @return True if it exists.
 	 */
-	bool removeButton(std::string const& identifier) noexcept;
-
-	bool addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, int minValue = 0, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
-
-	double getValueSlider(std::string const& id) const;
-
-	bool removeSlider(std::string const& identifier) noexcept;
-
-	/** 
-	 * @brief Detects if the mouse is hovering over a button to update its visual state.
-	 * @complexity O(N), where N is the number of buttons.
-	 *
-	 * @note You should call this function when you change the menu to position the button's background 
-	 *       accordingly.
-	 * 
-	 * @pre The window must have been valid when passed to the constructor and still exists.
-	 * @post The elements are drawn on the window.
-	 * @throw std::logic_error if window is nullptr.
-	 */
-	IdentifierInteractableItem mouseMoved();
-
-	IdentifierInteractableItem mousePressed() noexcept;
-
-	IdentifierInteractableItem mouseUnpressed() noexcept;
-
+	[[nodiscard]] inline bool doesButtonExist(std::string const& identifier) const noexcept
+	{
+		return m_buttons.find(identifier) != m_buttons.end();
+	}
 
 	/**
 	 * @complexity O(1).
 	 * 
-	 * @return The id of the button that is currently hovered.
+	 * @param[in] identifier: the id of the button you want to access.
+	 * 
+	 * @return A reference to the function lambda you want to access.
+	 *
+	 * @pre Be sure that you added a button with this id.
+	 * @post The appropriate lambda is returned.
+	 * @throw std::out_of_range if id not there.
 	 */
-	[[nodiscard]] inline IdentifierInteractableItem getHoveredInteractableItem() const noexcept
+	[[nodiscard]] std::function<void()>& getFunctionOfButton(std::string const& identifier);
+
+	/**
+	 * @brief Removes a dynamic text, and the button associated (if it exists).
+	 * @complexity O(N), where N is the number of texts (static + dynamic) (if vector resizes).
+	 *
+	 * @param[in] identifier: The id of the text you want to remove.
+	 *
+	 * @return True if removed.
+	 *
+	 * @note No effect if not there.
+	 */
+	virtual bool removeDText(std::string const& identifier) noexcept final;
+
+
+	/**
+	 * @brief Updates the hovered element.
+	 * @details You (might not) want to call this function every time the mouse moved. You should
+	 * 			rather call it when the mouse mouve AND you want to update the hovered element. It may be
+	 *			each time the mouse move. However, if you have a slider and want to let the user update the
+	 *			slider as long as he keeps the mouse pressed, then you should call this function while when
+	 *			the mouse is unpressed.
+	 * @complexity O(N), where N is the number of interactable elements in your active interface.
+	 * 
+	 * @param[out] activeGUI: The active GUI tu update.
+	 * 
+	 * @return The type + the id of the element that is currently hovered.
+	 * 
+	 * @note No effect if the active GUI is not an interactable GUI.
+	 */
+	static IdentifierInteractableItem mouseMoved(FixedGraphicalInterface* activeGUI) noexcept;
+
+	/**
+	 * @brief Tells the active GUI that the mouse is pressed.
+	 * @complexity O(1).
+	 * 
+	 * @param[out] activeGUI: The active GUI to update.
+	 * 
+	 * @return The type + the id of the element that is currently hovered.
+	 * 
+	 * @note No effect if the active GUI is not an interactable GUI or nothing is hovered.
+	 * @note You should not call this function when the mouse pressed EVENT is triggered. Instead, you
+	 * 		 should call it as long as the mouse is pressed and if there's an event (the first frame it/
+	 *		 is pressed/the mouse moved).
+	 * 
+	 * @code
+	 * while (const std::optional event = window.pollEvent())
+	 * {
+	 *		if (event->is<sf::Event::Closed>())
+	 *			window.close();
+	 *
+	 *		...
+     *		
+     *		// When the mouse is pressed + if there's an event.
+	 *		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+	 *			IGInterface::mousePressed(interface); 
+	 * }
+	 * @endcode
+	 */
+	static IdentifierInteractableItem mousePressed(FixedGraphicalInterface* activeGUI) noexcept;
+
+	/**
+	 * @brief Tells the active GUI that the mouse is released.
+	 * @complexity O(1).
+	 *
+	 * @param[out] activeGUI: The active GUI to update.
+	 *
+	 * @return The type + the id of the element that is currently hovered.
+	 *
+	 * @note No effect if the active GUI is not an interactable GUI or nothing is hovered.
+	 * @note You should call this function when the mouse released event is triggered.
+	 */
+	static IdentifierInteractableItem mouseUnpressed(FixedGraphicalInterface* activeGUI) noexcept;
+
+	/**
+	 * @complexity O(1).
+	 *
+	 * @return The type + the id of the element that is currently hovered.
+	 */
+	[[nodiscard]] static inline IdentifierInteractableItem getHoveredInteractableItem() noexcept
 	{
 		return m_hoveredElement;
 	}
 
-	/**
-	 * @brief Renders the interface.
-	 * @complexity O(N + K + M), where N is the number of texts, K the number of shapes, and M the number
-	 *			   of sliders.
-	 *
-	 * @pre The window must have been valid when passed to the constructor and still exists.
-	 * @post The elements are drawn on the window.
-	 * @throw std::logic_error if window is nullptr.
-	 */
-	virtual void draw() const override;
-
 private:
 
-	class Slider
+	struct Slider
 	{
-	public:
+		Slider(size_t index, size_t* textIndex = nullptr, float maxValue = 1, float minValue = 0) noexcept
+			: m_index{ index }, m_textIndex{ textIndex }, m_maxValue{ maxValue }, m_minValue{ minValue }
+		{}
 
-		Slider() noexcept : m_maxValue{ 1 }, m_minValue{ 0 }, m_intervalles { 0 } {}
-		Slider(Slider const&) noexcept = delete;
-		Slider& operator=(Slider const&) noexcept = delete;
-		~Slider() noexcept = default;
+		float m_maxValue; // The maximum value of the slider.
+		float m_minValue; // The minimum value of the slider.
 
-		Slider(sf::RenderWindow* window, sf::Vector2f pos, sf::Vector2u size, float scale, int minValue = 0, int maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
-		
-		Slider(Slider&&) noexcept;
-
-		Slider& operator=(Slider&&) noexcept;
-
-
-		/**
-		 * .
-		 *
-		 * \return
-		 */
-		void changeValue(float mousePosY) noexcept;
-
-		/**
-		 * .
-		 *
-		 * \return
-		 */
-		double getValue() const noexcept;
-
-		/**
-		 * .
-		 * 
-		 * \param relativePos
-		 * \return 
-		 */
-		double setCursor(float relativePosY = 0.0f) noexcept;
-
-		void draw() const noexcept;
-
-
-		//TODO: add a function to resize when event is triggered.
-
-	private:
-
-		mutable sf::RenderWindow* m_window;
-
-		sf::Texture m_textureBackgroundSlider; // The texture of the background.
-		sf::Texture m_textureCursorSlider; // The texture of the slider
-
-		std::unique_ptr<sf::Sprite> m_backgroundSlider; // The background of the slider.
-		std::unique_ptr<sf::Sprite> m_cursorSlider; // The slider itself.
-
-		std::unique_ptr<TextWrapper> m_currentValueText;
-
-		int m_maxValue;
-		int m_minValue;
-		int m_intervalles;
-
-	friend UserInteractableGraphicalInterface; //TODO: revoir friend.
+		size_t m_index; // The index of the slider in the interface.
+		std::unique_ptr<size_t> m_textIndex; // The index of the text that displays the current value of the slider.
 	};
 
-	class MultipleQuestionBox
-	{
+	void changeValueSlider(std::string const& id, int mousePosY) noexcept;
+
+
+	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
+	std::unordered_map<std::string, Button> m_buttons; // Collection of buttons in the interface.
+	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
+
+
+	static IdentifierInteractableItem m_hoveredElement; // The type of the button that is currently hovered.
+};
+
+
+//class WritableGraphicalInterface : public UserInteractableGraphicalInterface
+//{};
+
+
+using FGInterface = FixedGraphicalInterface;
+using DGInterface = DynamicGraphicalInterface;
+using IGInterface = UserInteractableGraphicalInterface;
+//using WGInterface = WritableGraphicalInterface;
+using GUI = IGInterface;
+
+#endif // GUI_HPP
+
+
+
+
+
+
+//bool addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, float minValue = 0, float maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
+//
+//double getValueSlider(std::string const& id) const;
+//
+//bool removeSlider(std::string const& identifier) noexcept;
+
+
+
+
+//using MQB = MultipleQuestionBox;
+//using DCM = DoubleCheckerMode;
+//std::unordered_map<std::string, MQB> m_mqbs; // Collection of MQBs in the interface.
+//std::unordered_map<std::string, DCM> m_dcms; // Collection of MQBs in the interface.
+//class MultipleQuestionBox
+//{
 	//public:
 
 	//	MultipleQuestionBox() noexcept = delete;
@@ -816,24 +860,4 @@ private:
 	//	std::vector<std::pair<sf::Sprite, bool>> m_boxes; // The boxes of the MQB.
 	//	sf::Texture m_textureBoxUnchecked; // The texture of the boxes.
 	//	sf::Texture m_textureBoxChecked; // The texture of the boxes.
-	};
-
-
-	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
-	using MQB = MultipleQuestionBox;
-	//using DCM = DoubleCheckerMode;
-
-	std::unordered_map<std::string, Button> m_buttons; // Collection of buttons in the interface.
-	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
-	//std::unordered_map<std::string, MQB> m_mqbs; // Collection of MQBs in the interface.
-
-	IdentifierInteractableItem m_hoveredElement; // The type of the button that is currently hovered.
-};
-
-
-using FGInterface = FixedGraphicalInterface;
-using DGInterface = DynamicGraphicalInterface;
-using IGInterface = UserInteractableGraphicalInterface;
-using GUI = IGInterface;
-
-#endif // GUI_HPP
+//};

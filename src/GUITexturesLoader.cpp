@@ -50,7 +50,7 @@ sf::Image loadDefaultSliderTexture(sf::Vector2u size) noexcept
 {
 	sf::RectangleShape slider{ static_cast<sf::Vector2f>(size) };
 	slider.setFillColor(sf::Color{ 20, 20, 20 });
-	slider.setOutlineThickness(std::min(size.x, size.y) / 5);
+	slider.setOutlineThickness(std::min(size.x, size.y) / 5.f);
 	slider.setOutlineColor(sf::Color{ 80, 80, 80 });
 
 	std::unique_ptr<sf::Sprite> buffer{ nullptr }; // Is not used. It was created to satisfy the paraemters of the function 'convertShapeToSprite()'.

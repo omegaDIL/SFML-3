@@ -69,5 +69,3 @@ void handleEventResize(sf::RenderWindow* window) noexcept
 	window->setSize(newSize); // Avoid having a window that is larger than the screen.
 	FixedGraphicalInterface::windowResized(window, scalingFactor);
 }
-
-//TODO: fix showErrorsUsingWindow

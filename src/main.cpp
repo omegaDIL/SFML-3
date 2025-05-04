@@ -14,38 +14,39 @@ int main()
 
 	UserInteractableGraphicalInterface otherInterface{ &window };
 	UserInteractableGraphicalInterface mainInterface{ &window };
-	FixedGraphicalInterface* interface{ &mainInterface };
+	FixedGraphicalInterface* curInterface{ &mainInterface };
 	
-	mainInterface.addDynamicText("rgdf", "rgdf", sf::Vector2f{ 100, 100 }, 12, 1.f);
-	mainInterface.addButton("rgdf", [&interface, &otherInterface]() mutable -> void { interface = &otherInterface; });
-	mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8, 1);
+	mainInterface.addDynamicText("d", "rgdf", sf::Vector2f{ 300, 100 }, 12, 1.f);
+	mainInterface.addButton("d", [&curInterface, &otherInterface]() mutable -> void { curInterface = &otherInterface; });
+	//mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8.7f, 1);
 
 	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())
 		{
-			if (event->is<sf::Event::Closed>())
+			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 				window.close();
 
 			if (event->is<sf::Event::Resized>())
 				handleEventResize(&window);
 
-			if (event->is<sf::Event::MouseMoved>())
-				mainInterface.mouseMoved();
+			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+				IGInterface::mouseMoved(curInterface);
 
 			if (event->is<sf::Event::MouseButtonReleased>())
-				mainInterface.mouseUnpressed();
+				IGInterface::mouseUnpressed(curInterface);
+
+			if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+				IGInterface::mousePressed(curInterface);
 		}
 
-		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-			mainInterface.mousePressed();
-
-
 		window.clear();
-		interface->draw();
+		curInterface->draw();
 		window.display();
 	}
 
 	return 0;
 }
-//Faire les testes
+
+//TODO: Faire les testes
+//TODO: Refactor Utils.cpp, GUITexturesLoader.cpp (+ GUIInitializer).
