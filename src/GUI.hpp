@@ -152,7 +152,7 @@ public:
 	 * @param[in] smooth: True if the shape needs to be smoothed.
 	 * 
 	 * @note sf::Shape is converted to a sf::Sprite/sf::Texture pair.
-	 * @note sf::Shape is left unchanged even though it is not const.
+	 * @note sf::Shape is left unchanged even though it is not qualified with const.
 	 * 
 	 * @see addText(), addSprite(), convertShapeToSprite().
 	 */
@@ -399,7 +399,9 @@ private:
  *
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
  * @note The background is dynamic and changeable with the getDSprite() function using the identifier
- *       "background". Note that is not removable.
+ *       "_background".
+ * @note You should not put an underscore before dynamic elements' identifiers, as they are reserved for the class.
+ * @note You should not add elements with identifiers that begin with '_', as they are reserved for the class.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
  * @code
@@ -410,6 +412,7 @@ private:
  *
  * gui.addDynamicText("text 1", "Hello", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
  * gui.addDynamicText("text 2", "Hallo", sf::Vector2f{ 100, 100 }, 14, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
+ * gui.addText("text 3", "Bonjour", sf::Vector2f{ 200, 200 }, 14, windowSizeMin / 1080.f, sf::Color{ 0, 255, 0 }); // Not dynamic.
  * gui.addDynamicSprite("sprite", std::move(player), std::move(texturePlayer));
  * 
  * gui.getDText("text 1").updateContent("Hello World");
@@ -418,7 +421,7 @@ private:
  * ...
  *
  * window.clear();
- * gui.draw();
+ * gui.draw(); // First to be drawn.
  * ...
  * window.display();
  * @endcode
@@ -445,7 +448,7 @@ public:
 	explicit DynamicGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "")
 		: FixedGraphicalInterface{ window, backgroundFileName }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
 	{
-		m_dynamicSpritesIds.emplace("background", 0); // The background is the first element in the vector.
+		m_dynamicSpritesIds.emplace("_background", 0); // The background is the first element in the vector.
 	}
 
 
@@ -463,7 +466,7 @@ public:
 	 * 
 	 * @return True if added.
 	 *
-	 * @note No effect if a text has the same id.
+	 * @note No effect if a text has the same id, or the id is empty.
 	 * @note The identifiers must be unique between texts.
 	 * @note The ids between one text and one sprite/shape can be the same.
 	 * 
@@ -472,7 +475,7 @@ public:
 	template<Ostreamable T>
 	bool addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
 	{
-		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end())
+		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end() || identifier.empty())
 			return false;
 
 		addText(content, position, characterSize, scale, color, rot);
@@ -491,7 +494,7 @@ public:
 	 *
 	 * @return True if added.
 	 * 
-	 * @note No effect if a sprite/shape has the same id.
+	 * @note No effect if a sprite/shape has the same id, or the id is empty.
 	 * @note The identifiers must be unique between shapes/sprites.
 	 * @note The ids between one text and one sprite/shape can be the same.
 	 *
@@ -509,7 +512,8 @@ public:
 	 *
 	 * @return True if added.
 	 *
-	 * @note No effect if a sprite/shape has the same id.
+	 * @note No effect if a sprite/shape has the same id, or the id is empty
+	 * .
 	 * @note The identifiers must be unique between shapes/sprites.
 	 * @note The ids between one text and one sprite/shape can be the same.
 	 *
@@ -677,7 +681,7 @@ public:
 	 * @param[in] identifier: the id of the button you want to access.
 	 * 
 	 * @return A reference to the function lambda you want to access.
-	 *
+	 * 
 	 * @pre Be sure that you added a button with this id.
 	 * @post The appropriate lambda is returned.
 	 * @throw std::out_of_range if id not there.

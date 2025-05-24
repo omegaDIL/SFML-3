@@ -234,7 +234,7 @@ std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noex
 
 bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
 {
-	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
+	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end() || identifier.empty())
 		return false;
 
 	addSprite(std::move(sprite), std::move(texture));
@@ -245,7 +245,7 @@ bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, 
 
 bool DynamicGraphicalInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
 {
-	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end())
+	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end() || identifier.empty())
 		return false;
 
 	addShape(shape, smooth);
@@ -272,9 +272,9 @@ std::pair<sf::Sprite*, sf::Texture*> DynamicGraphicalInterface::getDSprite(std::
 
 bool DynamicGraphicalInterface::removeDText(std::string const& identifier) noexcept
 {
-	auto toRemove{ m_dynamicTextsIds.find(identifier) };
+	auto toRemoveText{ m_dynamicTextsIds.find(identifier) };
 
-	if (toRemove == m_dynamicTextsIds.end())
+	if (toRemoveText == m_dynamicTextsIds.end())
 		return false; // No effect if it does not exist.
 
 	// Decreases the indexes of the items that points to a graphical element, "higher" in the
@@ -282,20 +282,20 @@ bool DynamicGraphicalInterface::removeDText(std::string const& identifier) noexc
 	// indexes 1, 4, 6 will have to be updated to 1, 3, 5. The index 1 don't need to change because
 	// it is lower than 2. The index 4 will be updated to 3 because it is higher, and so on.
 	for (auto& it : m_dynamicTextsIds)
-		if (it.second > toRemove->second)
+		if (it.second > toRemoveText->second)
 			it.second--;
 
-	m_texts.erase(std::next(m_texts.begin(), toRemove->second)); // Erase from the vector.
-	m_dynamicTextsIds.erase(toRemove); // Erase from the "dynamic" map.
+	m_texts.erase(std::next(m_texts.begin(), toRemoveText->second)); // Erase from the vector.
+	m_dynamicTextsIds.erase(toRemoveText); // Erase from the "dynamic" map.
 
 	return true;
 }
 
 bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noexcept
 {
-	auto toRemove{ m_dynamicSpritesIds.find(identifier) };
+	auto toRemoveSprite{ m_dynamicSpritesIds.find(identifier) };
 
-	if (toRemove == m_dynamicSpritesIds.end() || identifier == "background")
+	if (toRemoveSprite == m_dynamicSpritesIds.end() || identifier == "_background")
 		return false; // No effect if it does not exist.
 
 	// Decreases the indexes of the items that points to a graphical element, "higher" in the
@@ -303,11 +303,11 @@ bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noe
 	// indexes 1, 4, 6 will have to be updated to 1, 3, 5. The index 1 don't need to change because
 	// it is lower than 2. The index 4 will be updated to 3 because it is higher, and so on.
 	for (auto& it : m_dynamicSpritesIds)
-		if (it.second > toRemove->second)
+		if (it.second > toRemoveSprite->second)
 			it.second--; 
 
-	m_sprites.erase(std::next(m_sprites.begin(), toRemove->second)); // Erase from the vector.
-	m_dynamicSpritesIds.erase(toRemove); // Erase from the "dynamic" map.
+	m_sprites.erase(std::next(m_sprites.begin(), toRemoveSprite->second)); // Erase from the vector.
+	m_dynamicSpritesIds.erase(toRemoveSprite); // Erase from the "dynamic" map.
 
 	// The pointer to the texture becomes invalid because we removed something to the vector.
 	resetTextureForSprites();
@@ -338,21 +338,25 @@ std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(s
 
 bool UserInteractableGraphicalInterface::removeDText(std::string const& identifier) noexcept
 {
-	auto toRemove{ m_buttons.find(identifier) };
+	auto toUpdateButton{ m_dynamicTextsIds.find(identifier) };
 
-	if (toRemove != m_buttons.end())
-	{
-		// Decreases the indexes of the items that points to a graphical element, "higher" in the
-		// vector, than the one that'll be removed. If we remove an item at index 2, the map that had the
-		// indexes 1, 3, 6 will have to be updated to 1, 2, 5. The index 1 don't need to change because
-		// it is lower than 2. The index 3 will be updated to 2 because it is higher, and so on.
+	if (toUpdateButton == m_dynamicTextsIds.end())
+		return false; // No effect if it does not exist.
 
-		for (auto& it : m_buttons)
-			if (it.second.first > toRemove->second.first)
-				it.second.first--;
+	// Decreases the indexes of the items that points to a graphical element, "higher" in the
+	// vector, than the one that'll be removed. If we remove an item at index 2, the map that had the
+	// indexes 1, 4, 6 will have to be updated to 1, 3, 5. The index 1 don't need to change because
+	// it is lower than 2. The index 4 will be updated to 3 because it is higher, and so on.
+	for (auto& it : m_buttons) // An element of the inner graphical elements vector is removed so adjusting the indexes of the buttons.
+		if (it.second.first > toUpdateButton->second)
+			it.second.first--;
 
-		m_buttons.erase(toRemove); // Erase from the map.
-	}
+	DynamicGraphicalInterface::removeDText(identifier); // Actually Removing the text + updating the map of the dynamic texts
+
+	auto toRemoveButton{ m_buttons.find(identifier) };
+
+	if (toRemoveButton != m_buttons.end())
+		m_buttons.erase(toRemoveButton); // Erase from the map.
 
 	return DynamicGraphicalInterface::removeDText(identifier);
 }
@@ -416,71 +420,71 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 	return getHoveredInteractableItem();
 }
 
-void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY) 
+void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY) noexcept
 {
-	sf::Sprite* background{ &m_sprites[m_sliders.at(id).m_index].first }; // Throws an exception if not there.
-	sf::Sprite* cursor{ &m_sprites[m_sliders.at(id).m_index + 1].first }; // Throws an exception if not there.
+	//sf::Sprite* background{ &m_sprites[m_sliders.at(id).m_index].first }; // Throws an exception if not there.
+	//sf::Sprite* cursor{ &m_sprites[m_sliders.at(id).m_index + 1].first }; // Throws an exception if not there.
 
-	double yPos{ static_cast<double>(mousePosY) };
-	double minPos{ background->getGlobalBounds().position.y };
-	double maxPos{ minPos + background->getGlobalBounds().size.y };
+	//double yPos{ static_cast<double>(mousePosY) };
+	//double minPos{ background->getGlobalBounds().position.y };
+	//double maxPos{ minPos + background->getGlobalBounds().size.y };
 
-	if (yPos < minPos)
-		yPos = minPos;
-	else if (yPos > maxPos)
-		yPos = maxPos;
+	//if (yPos < minPos)
+	//	yPos = minPos;
+	//else if (yPos > maxPos)
+	//	yPos = maxPos;
 
-	cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, static_cast<float>(yPos) });
+	//cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, static_cast<float>(yPos) });
 
-	TextWrapper* text{ &m_texts[*m_sliders.at(id).m_textIndex] }; // Throws an exception if not there.
-	if (text)
-	{
-		text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, static_cast<float>(yPos) });
-		text->updateContent(getValue());
-	}
+	//TextWrapper* text{ &m_texts[*m_sliders.at(id).m_textIndex] }; // Throws an exception if not there.
+	//if (text)
+	//{
+	//	text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, static_cast<float>(yPos) });
+	//	text->updateContent(getValue());
+	//}
 }
 
 
 
-void UserInteractableGraphicalInterface::Slider::changeValue(float mousePosY) noexcept
-{
-	double yPos{ static_cast<double>(mousePosY) };
-	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
-	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
-
-	if (yPos < minPos)
-		yPos = minPos;
-	else if (yPos > maxPos)
-		yPos = maxPos;
-
-	m_cursorSlider->setPosition(sf::Vector2f{ m_cursorSlider->getPosition().x, static_cast<float>(yPos) });
-
-	if (m_currentValueText)
-	{
-		m_currentValueText->updatePosition(sf::Vector2f{ m_currentValueText->getText().getPosition().x, static_cast<float>(yPos)});
-		m_currentValueText->updateContent(getValue());
-	}
-}
-
-double UserInteractableGraphicalInterface::Slider::getValue() const noexcept
-{
-	double yPos{ m_cursorSlider->getPosition().y };
-	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
-	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
-
-	double value{ 1 - (yPos - minPos) / (maxPos - minPos) };
-	value *= m_maxValue-m_minValue;
-	value += m_minValue;
-
-	return value;
-}
-
-double UserInteractableGraphicalInterface::Slider::setCursor(float relativePos) noexcept
-{
-	changeValue(m_backgroundSlider->getGlobalBounds().position.y + m_backgroundSlider->getGlobalBounds().size.y * relativePos);
-
-	return getValue();
-}
+//void UserInteractableGraphicalInterface::Slider::changeValue(float mousePosY) noexcept
+//{
+//	double yPos{ static_cast<double>(mousePosY) };
+//	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
+//	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
+//
+//	if (yPos < minPos)
+//		yPos = minPos;
+//	else if (yPos > maxPos)
+//		yPos = maxPos;
+//
+//	m_cursorSlider->setPosition(sf::Vector2f{ m_cursorSlider->getPosition().x, static_cast<float>(yPos) });
+//
+//	if (m_currentValueText)
+//	{
+//		m_currentValueText->updatePosition(sf::Vector2f{ m_currentValueText->getText().getPosition().x, static_cast<float>(yPos)});
+//		m_currentValueText->updateContent(getValue());
+//	}
+//}
+//
+//double UserInteractableGraphicalInterface::Slider::getValue() const noexcept
+//{
+//	double yPos{ m_cursorSlider->getPosition().y };
+//	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
+//	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
+//
+//	double value{ 1 - (yPos - minPos) / (maxPos - minPos) };
+//	value *= m_maxValue-m_minValue;
+//	value += m_minValue;
+//
+//	return value;
+//}
+//
+//double UserInteractableGraphicalInterface::Slider::setCursor(float relativePos) noexcept
+//{
+//	changeValue(m_backgroundSlider->getGlobalBounds().position.y + m_backgroundSlider->getGlobalBounds().size.y * relativePos);
+//
+//	return getValue();
+//}
 
 
 //bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, float minValue, float maxValue, int intervalle, bool displayCurrentValue) noexcept
@@ -510,6 +514,6 @@ double UserInteractableGraphicalInterface::Slider::setCursor(float relativePos) 
 //}
 
 
-//TODO: FIX THE SLIDER AND FIX REMOVEDTEXT
+//TODO: FIX THE SLIDER
 //TODO: faire intervalle et logarithme
 //TODO: faire double checker et MQB

@@ -16,8 +16,16 @@ int main()
 	UserInteractableGraphicalInterface mainInterface{ &window };
 	FixedGraphicalInterface* curInterface{ &mainInterface };
 	
-	mainInterface.addDynamicText("d", "rgdf", sf::Vector2f{ 300, 100 }, 12, 1.f);
+	mainInterface.addDynamicText("d", "bouton", sf::Vector2f{ 300, 100 }, 12, 1.f);
+	mainInterface.addDynamicText("de", "simple", sf::Vector2f{ 200, 200 }, 12, 1.f);
+	mainInterface.addDynamicText("da", "simple", sf::Vector2f{ 300, 300 }, 12, 1.f);
+	mainInterface.addDynamicText("dr", "bouton", sf::Vector2f{ 100, 300 }, 12, 1.f);
 	mainInterface.addButton("d", [&curInterface, &otherInterface]() mutable -> void { curInterface = &otherInterface; });
+	mainInterface.addButton("dr", [&curInterface, &otherInterface]() mutable -> void { curInterface = &otherInterface; });
+
+	mainInterface.removeDText("dr"); // Removing a dynamic text, which is not a button.
+
+
 	//mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8.7f, 1);
 
 	while (window.isOpen())
