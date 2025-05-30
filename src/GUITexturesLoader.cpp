@@ -53,7 +53,7 @@ sf::Image loadDefaultSliderTexture(sf::Vector2u size) noexcept
 	slider.setOutlineThickness(std::min(size.x, size.y) / 5.f);
 	slider.setOutlineColor(sf::Color{ 80, 80, 80 });
 
-	std::unique_ptr<sf::Sprite> buffer{ nullptr }; // Is not used. It was created to satisfy the paraemters of the function 'convertShapeToSprite()'.
+	std::unique_ptr<sf::Sprite> buffer{ nullptr }; // Is not used. It was created to satisfy the paramters of the function 'convertShapeToSprite()'.
 	std::unique_ptr<sf::Texture> newTextureSlider{ nullptr };
 	convertShapeToSprite(&slider, buffer, newTextureSlider, true);
 

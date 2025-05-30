@@ -45,7 +45,7 @@ FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::
 }
 
 FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
-	: m_window{ other.m_window }, m_sprites{ std::move(other.m_sprites) }, m_texts{ std::move(other.m_texts) }
+	: m_window{ other.m_window }, m_sprites{ std::move(other.m_sprites) }, m_texts{ std::move(other.m_texts) }, m_defaultBackground{ other.m_defaultBackground }
 {
 	// Update the static collection of interfaces to point to the new object
 	auto interfaceRange = allInterfaces.equal_range(m_window);
@@ -145,14 +145,16 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 	{
 		auto* curInterface{ elem->second };
 
+		// Updating texts.
 		for (auto& text : curInterface->m_texts)
 			text.windowResized(scalingFactor, minScalingFactor);
 
-		if (curInterface->m_defaultBackground)
-			curInterface->loadBackground("");
-		else
-			curInterface->m_sprites[0].first.setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
-
+		// Background is always the first sprite, so it is at index 0.
+		curInterface->m_sprites[0].first.setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
+		if (curInterface->m_defaultBackground) // Only if the default background is used.	
+			curInterface->m_sprites[0].first.scale(scalingFactor); // The default background is a solid color, so we can scale it without issues.
+		
+		// Updating sprites.
 		for (int j{ 1 }; j < curInterface->m_sprites.size(); j++)
 		{	// Avoiding the background by skipping index 0.
 			sf::Sprite& curSprite{ curInterface->m_sprites[j].first };
@@ -326,14 +328,49 @@ bool UserInteractableGraphicalInterface::addButton(std::string const& id, std::f
 	return true;
 }
 
-bool UserInteractableGraphicalInterface::addSlider(std::string const& id, float length, bool displayValue, float size, float maxValue, float minValue) noexcept
+bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> valueFunction, bool showValueWithText) noexcept
 {
-	return false;
+	if (m_sliders.find(id) != m_sliders.end())
+		return false;
+
+	sf::Texture textureBackgroundSlider{ loadDefaultSliderTexture(size) }; // Loads the default slider texture.
+	sf::Sprite sliderBackgroundSprite{textureBackgroundSlider};
+	sliderBackgroundSprite.setPosition(pos);
+	sliderBackgroundSprite.setOrigin(sliderBackgroundSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
+
+	sf::Texture textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
+	sf::Sprite sliderCursorSprite{ textureCursorSlider };
+	sliderCursorSprite.setPosition(sliderBackgroundSprite.getGlobalBounds().getCenter());
+	sliderCursorSprite.setOrigin(sliderCursorSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
+
+	if (showValueWithText)
+		addDynamicText('_' + id, valueFunction(0.5), sf::Vector2f{ sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y }, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
+
+	addDynamicSprite('-' + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
+	addDynamicSprite("_cursor" + id, std::move(sliderCursorSprite), std::move(textureCursorSlider)); // Adds a sprite for the slider cursor.
+	
+	m_sliders[id] = Slider{ m_sprites.size() - 2, valueFunction, ((showValueWithText) ? std::make_unique<size_t>(m_texts.size() - 1) : nullptr)};
+	// The -2 is because the first sprite is the background, and the second is the cursor.
+
+	return true;
 }
 
 std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(std::string const& identifier)
 {
 	return m_buttons.at(identifier).second; // Throw an exception if not there.
+}
+
+float UserInteractableGraphicalInterface::getValueOfSlider(std::string const& identifier)
+{
+	Slider* slider{ &m_sliders.at(identifier) }; // Throws an exception if not there.
+	sf::Sprite* cursor{ &m_sprites[slider->m_index + 1].first };
+	sf::Sprite* background{ &m_sprites[slider->m_index].first };
+
+	float minPos{ background->getGlobalBounds().position.y };
+	float maxPos{ minPos + background->getGlobalBounds().size.y };
+	float curPos{ cursor->getPosition().y};
+
+	return slider->m_valueFunction(1 - (curPos- minPos) / (maxPos - minPos));
 }
 
 bool UserInteractableGraphicalInterface::removeDText(std::string const& identifier) noexcept
@@ -383,14 +420,14 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 		}
 	}
 
-	//for (auto& slider : isDerived->m_sliders)
-	//{
-	//	if (isDerived->m_sprites[slider.second.m_index].first.getGlobalBounds().contains(mousePos))
-	//	{
-	//		m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
-	//		return getHoveredInteractableItem();
-	//	}
-	//}
+	for (auto& slider : isDerived->m_sliders)
+	{
+		if (isDerived->m_sprites[slider.second.m_index +1 ].first.getGlobalBounds().contains(mousePos))
+		{
+			m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
+			return getHoveredInteractableItem();
+		}
+	}
 
 	return getHoveredInteractableItem();
 }
@@ -398,12 +435,12 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mousePressed(FixedGraphicalInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
-
 	if (m_hoveredElement.first == InteractableItem::None || !isDerived)
 		return getHoveredInteractableItem(); // Check if the gui is an interactable one.
-	//if (m_hoveredElement.first == InteractableItem::Slider)
-		//
-	// Button is executed when the mouse is released to avoid multiple calls for each frame it is kept pressed.
+
+	if (m_hoveredElement.first == InteractableItem::Slider)
+		isDerived->changeValueSlider(*m_hoveredElement.second, sf::Mouse::getPosition(*(isDerived->m_window)).y);
+	//Button is executed when the mouse is released to avoid multiple calls for each frame it is kept pressed.
 
 	return getHoveredInteractableItem();
 }
@@ -411,109 +448,40 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseUnpressed(FixedGraphicalInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
-
 	if (m_hoveredElement.first == InteractableItem::None || !isDerived)
 		return getHoveredInteractableItem(); // Check if the gui is an interactable one.
+
 	if (m_hoveredElement.first == InteractableItem::Button)
 		isDerived->getFunctionOfButton(*m_hoveredElement.second)();
 
 	return getHoveredInteractableItem();
 }
 
-void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY) noexcept
+void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY)
 {
-	//sf::Sprite* background{ &m_sprites[m_sliders.at(id).m_index].first }; // Throws an exception if not there.
-	//sf::Sprite* cursor{ &m_sprites[m_sliders.at(id).m_index + 1].first }; // Throws an exception if not there.
+	Slider* slider{ &m_sliders.at(id) }; // Throws an exception if not there.
+	sf::Sprite* cursor{ &m_sprites[slider->m_index + 1].first };
+	sf::Sprite* background{ &m_sprites[slider->m_index].first };
 
-	//double yPos{ static_cast<double>(mousePosY) };
-	//double minPos{ background->getGlobalBounds().position.y };
-	//double maxPos{ minPos + background->getGlobalBounds().size.y };
+	float minPos{ background->getGlobalBounds().position.y};
+	float maxPos{ minPos + background->getGlobalBounds().size.y };
+	float yPos{ static_cast<float>(mousePosY) };
 
-	//if (yPos < minPos)
-	//	yPos = minPos;
-	//else if (yPos > maxPos)
-	//	yPos = maxPos;
+	if (yPos < minPos)
+		yPos = minPos;
+	else if (yPos > maxPos)
+		yPos = maxPos;
+	
+	cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, yPos });
 
-	//cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, static_cast<float>(yPos) });
+	if (slider->m_textIndex)
+	{
+		TextWrapper* text{ &m_texts[*slider->m_textIndex] };
 
-	//TextWrapper* text{ &m_texts[*m_sliders.at(id).m_textIndex] }; // Throws an exception if not there.
-	//if (text)
-	//{
-	//	text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, static_cast<float>(yPos) });
-	//	text->updateContent(getValue());
-	//}
+		text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
+		text->updateContent(getValueOfSlider(id));
+	}
 }
 
-
-
-//void UserInteractableGraphicalInterface::Slider::changeValue(float mousePosY) noexcept
-//{
-//	double yPos{ static_cast<double>(mousePosY) };
-//	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
-//	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
-//
-//	if (yPos < minPos)
-//		yPos = minPos;
-//	else if (yPos > maxPos)
-//		yPos = maxPos;
-//
-//	m_cursorSlider->setPosition(sf::Vector2f{ m_cursorSlider->getPosition().x, static_cast<float>(yPos) });
-//
-//	if (m_currentValueText)
-//	{
-//		m_currentValueText->updatePosition(sf::Vector2f{ m_currentValueText->getText().getPosition().x, static_cast<float>(yPos)});
-//		m_currentValueText->updateContent(getValue());
-//	}
-//}
-//
-//double UserInteractableGraphicalInterface::Slider::getValue() const noexcept
-//{
-//	double yPos{ m_cursorSlider->getPosition().y };
-//	double minPos{ m_backgroundSlider->getGlobalBounds().position.y };
-//	double maxPos{ minPos + m_backgroundSlider->getGlobalBounds().size.y };
-//
-//	double value{ 1 - (yPos - minPos) / (maxPos - minPos) };
-//	value *= m_maxValue-m_minValue;
-//	value += m_minValue;
-//
-//	return value;
-//}
-//
-//double UserInteractableGraphicalInterface::Slider::setCursor(float relativePos) noexcept
-//{
-//	changeValue(m_backgroundSlider->getGlobalBounds().position.y + m_backgroundSlider->getGlobalBounds().size.y * relativePos);
-//
-//	return getValue();
-//}
-
-
-//bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, float minValue, float maxValue, int intervalle, bool displayCurrentValue) noexcept
-//{
-//	if (m_sliders.find(id) != m_sliders.end())
-//		return false;
-//
-//	unsigned int minSize{ std::min(m_window->getSize().x, m_window->getSize().y) };
-//	m_sliders[id] = Slider{ m_window, pos, sf::Vector2u{ minSize / 72, length }, scale, minValue, maxValue, intervalle, displayCurrentValue };
-//
-//	return true;
-//}
-//
-//double UserInteractableGraphicalInterface::getValueSlider(std::string const& id) const
-//{
-//	return m_sliders.at(id).getValue();// Throws an exception if not there
-//}
-//
-//bool UserInteractableGraphicalInterface::removeSlider(std::string const& identifier) noexcept
-//{
-//	if (m_sliders.find(identifier) == m_sliders.end())
-//		return false;
-//
-//	m_sliders.erase(identifier);
-//
-//	return true;
-//}
-
-
-//TODO: FIX THE SLIDER
-//TODO: faire intervalle et logarithme
+//TODO: faire intervalle
 //TODO: faire double checker et MQB

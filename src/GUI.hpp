@@ -662,7 +662,7 @@ public:
 	 */
 	bool addButton(std::string const& id, std::function<void()> function = [](){}) noexcept;
 
-	bool addSlider(std::string const& id, float length, bool displayValue, float size, float maxValue = 1.f, float minValue = 0.f) noexcept;
+	bool addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> valueFunction = [](float x) {return x; }, bool showValueWithText = true) noexcept;
 
 	/**
 	 * @param[in] identifier: The id of the button you want to check.
@@ -673,6 +673,17 @@ public:
 	[[nodiscard]] inline bool doesButtonExist(std::string const& identifier) const noexcept
 	{
 		return m_buttons.find(identifier) != m_buttons.end();
+	}
+
+	/**
+	 * @param[in] identifier: The id of the slider you want to check.
+	 * @complexity O(1).
+	 *
+	 * @return True if it exists.
+	 */
+	[[nodiscard]] inline bool doesSliderExist(std::string const& identifier) const noexcept
+	{
+		return m_sliders.find(identifier) != m_sliders.end();
 	}
 
 	/**
@@ -687,6 +698,19 @@ public:
 	 * @throw std::out_of_range if id not there.
 	 */
 	[[nodiscard]] std::function<void()>& getFunctionOfButton(std::string const& identifier);
+
+	/**
+	 * @complexity O(1).
+	 *
+	 * @param[in] identifier: the id of the slider you want to access.
+	 *
+	 * @return The current value of the slider.
+	 *
+	 * @pre Be sure that you added a slider with this id.
+	 * @post The appropriate value is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	[[nodiscard]] float getValueOfSlider(std::string const& identifier);
 
 	/**
 	 * @brief Removes a dynamic text, and the button associated (if it exists).
@@ -739,7 +763,7 @@ public:
 	 *
 	 *		...
      *		
-     *		// When the mouse is pressed + if there's an event.
+     *		// When the mouse is pressed + if there's an event (which is entering the loop).
 	 *		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 	 *			IGInterface::mousePressed(interface); 
 	 * }
@@ -774,18 +798,23 @@ private:
 
 	struct Slider
 	{
-		Slider(size_t index, size_t* textIndex = nullptr, float maxValue = 1, float minValue = 0) noexcept
-			: m_index{ index }, m_textIndex{ textIndex }, m_maxValue{ maxValue }, m_minValue{ minValue }
-		{}
+		Slider() noexcept = default;
+		Slider(Slider const&) noexcept = delete;
+		Slider(Slider&&) noexcept = default;
+		Slider& operator=(Slider const&) noexcept = delete;
+		Slider& operator=(Slider&&) noexcept = default;
+		~Slider() noexcept = default;
 
-		float m_maxValue; // The maximum value of the slider.
-		float m_minValue; // The minimum value of the slider.
+		Slider(size_t index, std::function<float(float)> valueFunction = [](float x) {return x; }, std::unique_ptr<size_t> textIndex = nullptr) noexcept
+			: m_index{ index }, m_textIndex{ std::move(textIndex) }, m_valueFunction{ valueFunction }
+		{}
 
 		size_t m_index; // The index of the slider in the interface.
 		std::unique_ptr<size_t> m_textIndex; // The index of the text that displays the current value of the slider.
+		std::function<float(float)> m_valueFunction; // The function to apply to the value of the slider when it is changed.
 	};
 
-	void changeValueSlider(std::string const& id, int mousePosY) noexcept;
+	void changeValueSlider(std::string const& id, int mousePosY);
 
 
 	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
