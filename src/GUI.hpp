@@ -662,7 +662,7 @@ public:
 	 */
 	bool addButton(std::string const& id, std::function<void()> function = [](){}) noexcept;
 
-	bool addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> valueFunction = [](float x) {return x; }, bool showValueWithText = true) noexcept;
+	bool addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> valueFunction = [](float x){return x;}, std::function<void(float)> changeFunction = [](float x){}, bool showValueWithText = true) noexcept;
 
 	/**
 	 * @param[in] identifier: The id of the button you want to check.
@@ -805,19 +805,35 @@ private:
 		Slider& operator=(Slider&&) noexcept = default;
 		~Slider() noexcept = default;
 
-		Slider(size_t index, std::function<float(float)> valueFunction = [](float x) {return x; }, std::unique_ptr<size_t> textIndex = nullptr) noexcept
-			: m_index{ index }, m_textIndex{ std::move(textIndex) }, m_valueFunction{ valueFunction }
+		Slider(std::unordered_map<std::string, size_t>::iterator iterator, std::unordered_map<std::string, size_t>::iterator textIterator, std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange) noexcept
+			: m_iterator{ iterator }, m_textIterator{ textIterator }, m_mathFunction{ mathFunction }, m_userFunction{ functionOfChange }
 		{}
 
-		size_t m_index; // The index of the slider in the interface.
-		std::unique_ptr<size_t> m_textIndex; // The index of the text that displays the current value of the slider.
-		std::function<float(float)> m_valueFunction; // The function to apply to the value of the slider when it is changed.
+		std::unordered_map<std::string, size_t>::iterator m_iterator; // The index of the slider in the interface.
+		std::unordered_map<std::string, size_t>::iterator m_textIterator; // The index of the text that displays the current value of the slider.
+		std::function<float(float)> m_mathFunction; // The function to apply to the value of the slider when it is changed.
+		std::function<void(float)> m_userFunction; // The function to call when the slider value is changed (e.g. to update the text displaying the current value).
+	};
+
+	struct Button
+	{
+		Button() noexcept = default;
+		Button(Button const&) noexcept = delete;
+		Button(Button&&) noexcept = default;
+		Button& operator=(Button const&) noexcept = delete;
+		Button& operator=(Button&&) noexcept = default;
+		~Button() noexcept = default;
+
+		Button(std::unordered_map<std::string, size_t>::iterator iterator, std::function<void()> mathFunction) noexcept
+			: m_iterator{ iterator }, m_userFunction{ std::move(mathFunction) }
+		{}
+
+		std::unordered_map<std::string, size_t>::iterator m_iterator; // The index of the button in the interface.	
+		std::function<void()> m_userFunction; // The function to execute when the button is pressed.
 	};
 
 	void changeValueSlider(std::string const& id, int mousePosY);
 
-
-	using Button = std::pair<size_t, std::function<void()>>; // The first is the element's index and the second is the text's index.
 	std::unordered_map<std::string, Button> m_buttons; // Collection of buttons in the interface.
 	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
 

@@ -323,12 +323,12 @@ bool UserInteractableGraphicalInterface::addButton(std::string const& id, std::f
 	if (m_buttons.find(id) != m_buttons.end() || m_dynamicTextsIds.find(id) == m_dynamicTextsIds.end())
 		return false; 
 
-	m_buttons[id] = std::make_pair(m_dynamicTextsIds.at(id), function);
+	m_buttons[id] = Button{ m_dynamicTextsIds.find(id), function }; // Adds the button with the text id and the function.
 
 	return true;
 }
 
-bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> valueFunction, bool showValueWithText) noexcept
+bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> mathFunction, std::function<void(float)> changeFunction, bool showValueWithText) noexcept
 {
 	if (m_sliders.find(id) != m_sliders.end())
 		return false;
@@ -344,56 +344,40 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 	sliderCursorSprite.setOrigin(sliderCursorSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 
 	if (showValueWithText)
-		addDynamicText('_' + id, valueFunction(0.5), sf::Vector2f{ sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y }, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
+		addDynamicText('_' + id, mathFunction(0.5), sf::Vector2f{ sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y }, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
 
-	addDynamicSprite('-' + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
+	addDynamicSprite('_' + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
 	addDynamicSprite("_cursor" + id, std::move(sliderCursorSprite), std::move(textureCursorSlider)); // Adds a sprite for the slider cursor.
 	
-	m_sliders[id] = Slider{ m_sprites.size() - 2, valueFunction, ((showValueWithText) ? std::make_unique<size_t>(m_texts.size() - 1) : nullptr)};
-	// The -2 is because the first sprite is the background, and the second is the cursor.
+	m_sliders[id] = Slider{ m_dynamicSpritesIds.find('_' + id), ((showValueWithText) ? m_dynamicTextsIds.find('_' + id) : m_dynamicTextsIds.end()), mathFunction, changeFunction };
 
 	return true;
 }
 
 std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(std::string const& identifier)
 {
-	return m_buttons.at(identifier).second; // Throw an exception if not there.
+	return m_buttons.at(identifier).m_userFunction; // Throw an exception if not there.
 }
 
 float UserInteractableGraphicalInterface::getValueOfSlider(std::string const& identifier)
 {
 	Slider* slider{ &m_sliders.at(identifier) }; // Throws an exception if not there.
-	sf::Sprite* cursor{ &m_sprites[slider->m_index + 1].first };
-	sf::Sprite* background{ &m_sprites[slider->m_index].first };
+	sf::Sprite* cursor{ &m_sprites[slider->m_iterator->second + 1].first };
+	sf::Sprite* background{ &m_sprites[slider->m_iterator->second].first };
 
 	float minPos{ background->getGlobalBounds().position.y };
 	float maxPos{ minPos + background->getGlobalBounds().size.y };
 	float curPos{ cursor->getPosition().y};
 
-	return slider->m_valueFunction(1 - (curPos- minPos) / (maxPos - minPos));
+	return slider->m_mathFunction(1 - (curPos- minPos) / (maxPos - minPos));
 }
 
 bool UserInteractableGraphicalInterface::removeDText(std::string const& identifier) noexcept
 {
-	auto toUpdateButton{ m_dynamicTextsIds.find(identifier) };
+	auto removeInButtons{ m_buttons.find(identifier) }; // Check if the identifier is in the buttons map.
 
-	if (toUpdateButton == m_dynamicTextsIds.end())
-		return false; // No effect if it does not exist.
-
-	// Decreases the indexes of the items that points to a graphical element, "higher" in the
-	// vector, than the one that'll be removed. If we remove an item at index 2, the map that had the
-	// indexes 1, 4, 6 will have to be updated to 1, 3, 5. The index 1 don't need to change because
-	// it is lower than 2. The index 4 will be updated to 3 because it is higher, and so on.
-	for (auto& it : m_buttons) // An element of the inner graphical elements vector is removed so adjusting the indexes of the buttons.
-		if (it.second.first > toUpdateButton->second)
-			it.second.first--;
-
-	DynamicGraphicalInterface::removeDText(identifier); // Actually Removing the text + updating the map of the dynamic texts
-
-	auto toRemoveButton{ m_buttons.find(identifier) };
-
-	if (toRemoveButton != m_buttons.end())
-		m_buttons.erase(toRemoveButton); // Erase from the map.
+	if (removeInButtons != m_buttons.end())
+		m_buttons.erase(removeInButtons); // Erase from the buttons map if it exists.
 
 	return DynamicGraphicalInterface::removeDText(identifier);
 }
@@ -413,7 +397,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 	// Check if the mouse is over a button or a slider.
 	for (auto& button : isDerived->m_buttons)
 	{
-		if (isDerived->m_texts[button.second.first].getText().getGlobalBounds().contains(mousePos))
+		if (isDerived->m_texts[button.second.m_iterator->second].getText().getGlobalBounds().contains(mousePos))
 		{
 			m_hoveredElement = std::make_pair(InteractableItem::Button, &button.first);
 			return getHoveredInteractableItem();
@@ -422,7 +406,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 
 	for (auto& slider : isDerived->m_sliders)
 	{
-		if (isDerived->m_sprites[slider.second.m_index +1 ].first.getGlobalBounds().contains(mousePos))
+		if (isDerived->m_sprites[slider.second.m_iterator->second+1].first.getGlobalBounds().contains(mousePos))
 		{
 			m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
 			return getHoveredInteractableItem();
@@ -460,8 +444,8 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY)
 {
 	Slider* slider{ &m_sliders.at(id) }; // Throws an exception if not there.
-	sf::Sprite* cursor{ &m_sprites[slider->m_index + 1].first };
-	sf::Sprite* background{ &m_sprites[slider->m_index].first };
+	sf::Sprite* cursor{ &m_sprites[slider->m_iterator->second + 1].first };
+	sf::Sprite* background{ &m_sprites[slider->m_iterator->second].first};
 
 	float minPos{ background->getGlobalBounds().position.y};
 	float maxPos{ minPos + background->getGlobalBounds().size.y };
@@ -473,14 +457,17 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 		yPos = maxPos;
 	
 	cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, yPos });
+	float value{ slider->m_mathFunction(1 - (yPos - minPos) / (maxPos - minPos)) }; // Get the value of the slider.
 
-	if (slider->m_textIndex)
+	if (slider->m_textIterator != m_dynamicTextsIds.end()) // If the slider has a text associated with it.
 	{
-		TextWrapper* text{ &m_texts[*slider->m_textIndex] };
+		TextWrapper* text{ &m_texts[slider->m_textIterator->second] };
 
 		text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
-		text->updateContent(getValueOfSlider(id));
+		text->updateContent(value);
 	}
+
+	slider->m_userFunction(value); // Call the function associated with the slider.
 }
 
 //TODO: faire intervalle
