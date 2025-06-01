@@ -15,11 +15,8 @@ int main()
 	UserInteractableGraphicalInterface mainInterface{ &window };
 	FixedGraphicalInterface* curInterface{ &mainInterface };
 
-	mainInterface.addSlider("slider1", sf::Vector2u{ 20, 400 }, sf::Vector2f{ 500, 500 }, [](float x) { return -200 * x-6; }, [&mainInterface](float x) mutable {mainInterface.getDText("a").updatePosition(sf::Vector2f{ 200, 200 + x }); });
 	mainInterface.addDynamicText("a", "ca marche", sf::Vector2f{ 200, 200 }, 20, 1.F);
-	mainInterface.addDynamicText("b", "test", sf::Vector2f{ 500, 100 }, 20, 1.f, sf::Color{ 255, 0, 0 });
-
-	//mainInterface.addSlider("azerty", sf::Vector2f{ 500, 500 }, 500, 1.f, 2, 8.7f, 1);
+	mainInterface.addSlider("slider1", sf::Vector2u{ 20, 400 }, sf::Vector2f{ 500, 500 }, [](float x) { return 200 * x+40; }, [&mainInterface](float x) mutable {mainInterface.getDText("a").updateColor(sf::Color(x/2, x, 255)); }, -1, false);
 
 	while (window.isOpen())
 	{

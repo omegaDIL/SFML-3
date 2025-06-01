@@ -110,7 +110,7 @@ void FixedGraphicalInterface::addSprite(sf::Sprite sprite, sf::Texture texture) 
 {
 	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
 
-	// The pointer to the texture becomes invalid because we added something to the vector.
+	// As we add something from the vector, the vector may resize and all pointers could become invalid.
 	resetTextureForSprites();
 }
 
@@ -311,7 +311,7 @@ bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noe
 	m_sprites.erase(std::next(m_sprites.begin(), toRemoveSprite->second)); // Erase from the vector.
 	m_dynamicSpritesIds.erase(toRemoveSprite); // Erase from the "dynamic" map.
 
-	// The pointer to the texture becomes invalid because we removed something to the vector.
+	// As we remove something from the vector, the vector has to resize and all pointers become invalid.
 	resetTextureForSprites();
 
 	return true;
@@ -328,28 +328,34 @@ bool UserInteractableGraphicalInterface::addButton(std::string const& id, std::f
 	return true;
 }
 
-bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> mathFunction, std::function<void(float)> changeFunction, bool showValueWithText) noexcept
+bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> mathFunction, std::function<void(float)> changeFunction, int interval, bool showValueWithText) noexcept
 {
 	if (m_sliders.find(id) != m_sliders.end())
-		return false;
+		return false; // Already added.
 
+	// Instantiating the slider's background.
 	sf::Texture textureBackgroundSlider{ loadDefaultSliderTexture(size) }; // Loads the default slider texture.
 	sf::Sprite sliderBackgroundSprite{textureBackgroundSlider};
 	sliderBackgroundSprite.setPosition(pos);
 	sliderBackgroundSprite.setOrigin(sliderBackgroundSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
-
+	
+	// Instantiating the slider's cursor.
 	sf::Texture textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
 	sf::Sprite sliderCursorSprite{ textureCursorSlider };
-	sliderCursorSprite.setPosition(sliderBackgroundSprite.getGlobalBounds().getCenter());
+	sliderCursorSprite.setPosition(sliderBackgroundSprite.getGlobalBounds().getCenter()); // Set the position of the cursor to the center of its background.
 	sliderCursorSprite.setOrigin(sliderCursorSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
-
+	
+	// Adding the slider's text.
 	if (showValueWithText)
-		addDynamicText('_' + id, mathFunction(0.5), sf::Vector2f{ sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y }, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
+		addDynamicText('_' + id, "", sf::Vector2f{sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y}, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
 
+	// Adding the slider's graphical items.
 	addDynamicSprite('_' + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
 	addDynamicSprite("_cursor" + id, std::move(sliderCursorSprite), std::move(textureCursorSlider)); // Adds a sprite for the slider cursor.
-	
-	m_sliders[id] = Slider{ m_dynamicSpritesIds.find('_' + id), ((showValueWithText) ? m_dynamicTextsIds.find('_' + id) : m_dynamicTextsIds.end()), mathFunction, changeFunction };
+
+	// Instantiate the slider.
+	m_sliders[id] = Slider{ m_dynamicSpritesIds.find('_' + id), ((showValueWithText) ? m_dynamicTextsIds.find('_' + id) : m_dynamicTextsIds.end()), mathFunction, changeFunction, interval };
+	changeValueSlider(id, getDSprite('_' + id).first->getPosition().y); // Set the initial value of the slider.
 
 	return true;
 }
@@ -406,7 +412,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 
 	for (auto& slider : isDerived->m_sliders)
 	{
-		if (isDerived->m_sprites[slider.second.m_iterator->second+1].first.getGlobalBounds().contains(mousePos))
+		if (isDerived->m_sprites[slider.second.m_iterator->second].first.getGlobalBounds().contains(mousePos))
 		{
 			m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
 			return getHoveredInteractableItem();
@@ -456,6 +462,14 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 	else if (yPos > maxPos)
 		yPos = maxPos;
 	
+	if (slider->m_intervals >= 0)
+	{
+		float interval = 1.f / (slider->m_intervals + 1); // The intervals exclude the min and max positions, so we add 1 to the number of intervals.
+		float relativePos = (yPos - minPos) / (maxPos - minPos); // Between 0 and 1.
+		float intervalPos = round(relativePos / interval) * interval; // Rounding to the nearest interval position.
+		yPos = minPos + ((maxPos - minPos) * intervalPos); // Recalculating the position based on the intervals.
+	}
+
 	cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, yPos });
 	float value{ slider->m_mathFunction(1 - (yPos - minPos) / (maxPos - minPos)) }; // Get the value of the slider.
 
@@ -471,4 +485,5 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 }
 
 //TODO: faire intervalle
+//TODO: faire fonction de suppression des obj
 //TODO: faire double checker et MQB
