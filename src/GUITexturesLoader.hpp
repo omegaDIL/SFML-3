@@ -32,7 +32,8 @@
  * @note The shape is converted into a sf::Texture and a sf::Sprite by sf::RenderTexture, so please
  * 		 keep in mind that it is a slow action.
  */
-void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite, std::unique_ptr<sf::Texture>& texture, bool smooth = false) noexcept;
+std::shared_ptr<sf::Texture> createTextureFromShape(sf::Shape& shape, bool smooth = false) noexcept;
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Helper functions
@@ -42,7 +43,7 @@ void convertShapeToSprite(sf::Shape* shape, std::unique_ptr<sf::Sprite>& sprite,
 /// Image loader functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-sf::Image loadDefaultSliderTexture(sf::Vector2u size) noexcept;
+std::shared_ptr<sf::Texture> loadDefaultSliderTexture(sf::Vector2u size) noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Image loader functions

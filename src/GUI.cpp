@@ -24,30 +24,13 @@ std::string const FixedGraphicalInterface::ressourcePath{ "../res/" };
 std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
 
 
-FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName)
-	: m_window{ window }, m_sprites{}, m_texts{}, m_defaultBackground{ true }
-{		
-	if (!m_window || m_window->getSize() == sf::Vector2u{ 0, 0 })
-		throw std::logic_error{ "Window of an interface is nullptr or invalid." };
-
-	// Add this interface to the collection.
-	allInterfaces.emplace(std::make_pair(window, this));
-
-	// Loads the font.
-	auto errorFont{ TextWrapper::loadFont() };
-	if (errorFont.has_value())
-		throw LoadingGUIRessourceFailure{ errorFont.value() };
-
-	// Loads the background.
-	auto errorBackground{ loadBackground(backgroundFileName) };
-	if (errorBackground.has_value())
-		throw LoadingGUIRessourceFailure{ errorBackground.value() };
-}
 
 FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
 	: m_window{ other.m_window }, m_sprites{ std::move(other.m_sprites) }, m_texts{ std::move(other.m_texts) }, m_defaultBackground{ other.m_defaultBackground }
 {
-	// Update the static collection of interfaces to point to the new object
+	resetTextureForSprites(); // Reset the textures for the sprites after moving them.
+
+	// Update the static collection of interfaces to point to the new object.
 	auto interfaceRange = allInterfaces.equal_range(m_window);
 	for (auto it = interfaceRange.first; it != interfaceRange.second; ++it)
 	{
@@ -64,17 +47,24 @@ FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other
 
 FixedGraphicalInterface& FixedGraphicalInterface::operator=(FixedGraphicalInterface&& other) noexcept
 {
-	auto interfaceRange = allInterfaces.equal_range(m_window);
+	std::swap(m_sprites, other.m_sprites);
+	std::swap(m_texts, other.m_texts);
+	std::swap(m_defaultBackground, other.m_defaultBackground);
+	resetTextureForSprites(); // Reset the textures for the sprites after moving them.
 
-	// Remove this object from the static collection if it already exists
+	if (m_window == other.m_window)
+		return *this; // No need to update the GUI map.
+
+	// Update the static collection of interfaces to update to the new memory address.
+	auto interfaceRange = allInterfaces.equal_range(m_window);
 	for (auto it = interfaceRange.first; it != interfaceRange.second;)
 	{
 		if (it->second == this)
 		{	// Remove the interface from the collection as it is being moved.
 			it = allInterfaces.erase(it);
 		}
-		else if (this != &other && it->second == &other)
-		{	// Update the moved object's to this object, except in self move where both are the same.
+		else if (it->second == &other)
+		{	// Update the moved object's to this object.
 			it->second = this;
 			it++;
 		}
@@ -84,9 +74,6 @@ FixedGraphicalInterface& FixedGraphicalInterface::operator=(FixedGraphicalInterf
 		}
 	}	
 
-	// Transfer ownership of resources
-	std::swap(m_sprites, other.m_sprites);
-	std::swap(m_texts, other.m_texts);
 	m_window = other.m_window;
 	other.m_window = nullptr; // Leave the moved-from object in a valid state
 
@@ -106,21 +93,51 @@ FixedGraphicalInterface::~FixedGraphicalInterface() noexcept
 	}
 }
 
-void FixedGraphicalInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
+FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName)
+	: m_window{ window }, m_sprites{}, m_texts{}, m_defaultBackground{ true }
 {
-	m_sprites.push_back(std::make_pair(std::move(sprite), std::move(texture)));
+	if (!m_window || m_window->getSize() == sf::Vector2u{ 0, 0 })
+		throw std::logic_error{ "Window of an interface is nullptr or invalid." };
 
-	// As we add something from the vector, the vector may resize and all pointers could become invalid.
-	resetTextureForSprites();
+	// Add this interface to the collection.
+	allInterfaces.emplace(std::make_pair(window, this));
+
+	// Loads the font.
+	auto errorFont{ TextWrapper::loadFont() };
+	if (errorFont.has_value())
+		throw LoadingGUIRessourceFailure{ errorFont.value() };
+
+	// Loads the background.
+	auto errorBackground{ loadBackground(backgroundFileName) };
+	if (errorBackground.has_value())
+		throw LoadingGUIRessourceFailure{ errorBackground.value() };
 }
 
-void FixedGraphicalInterface::addShape(sf::Shape* shape, bool smooth) noexcept
+void FixedGraphicalInterface::addSprite(sf::Sprite sprite, std::shared_ptr<sf::Texture> texture) noexcept
 {
-	std::unique_ptr<sf::Sprite> sprite{ nullptr };
-	std::unique_ptr<sf::Texture> texture{ nullptr };
+	// Tracking capacity.
+	size_t capacity{ m_sprites.capacity() };
 
-	convertShapeToSprite(shape, sprite, texture, smooth);
-	addSprite(std::move(*sprite), std::move(*texture));
+	m_sprites.push_back(std::make_pair(std::move(sprite), texture));
+	m_sprites.back().first.setTexture(*m_sprites.back().second); // Reset the texture of the sprite.
+
+	// As we add something to the vector, the vector may resize and all pointers could become invalid.
+	if (capacity != m_sprites.capacity())
+		resetTextureForSprites();
+}
+
+void FixedGraphicalInterface::addShape(sf::Shape& shape, bool smooth) noexcept
+{
+	auto texture{ createTextureFromShape(shape, smooth) };
+	sf::Sprite sprite{ *texture };
+
+	// Setting the transformables of the sprite to match the shape.
+	sprite.setOrigin(shape.getOrigin());
+	sprite.setPosition(shape.getPosition());
+	sprite.setScale(shape.getScale());
+	sprite.setRotation(shape.getRotation());
+
+	addSprite(std::move(sprite), texture);
 }
 
 void FixedGraphicalInterface::draw() const
@@ -167,17 +184,17 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 
 void FixedGraphicalInterface::resetTextureForSprites() noexcept
 {
-	for (auto& sprite : m_sprites)
-		sprite.first.setTexture(sprite.second);
+	for (auto& sprite : m_sprites) // Resetting the textures for all sprites.
+		sprite.first.setTexture(*sprite.second);
 }
 
 std::optional<std::string> FixedGraphicalInterface::loadBackground(std::string const& backgroundFileName) noexcept
 {
 	sf::RectangleShape background{ static_cast<sf::Vector2f>(m_window->getSize()) };
 	background.setFillColor(sf::Color{ 20, 20, 20 });
-	background.setOrigin(m_window->getView().getCenter()); // Putting the origin at the center 
+	background.setOrigin(m_window->getView().getCenter());
 	background.setPosition(m_window->getView().getCenter());
-	addShape(&background, false); // Adds the background to the interface.
+	addShape(background, false); // Adds the background to the interface.
 
 	// Creating the background.
 	if (backgroundFileName.empty())
@@ -187,13 +204,13 @@ std::optional<std::string> FixedGraphicalInterface::loadBackground(std::string c
 	{
 		std::string path{ ressourcePath + backgroundFileName };
 
-		sf::Texture textureBackground{};
-		if (!textureBackground.loadFromFile(path))
+		std::shared_ptr<sf::Texture> textureBackground{ std::make_shared<sf::Texture>() };
+		if (!textureBackground->loadFromFile(path))
 			throw LoadingGUIRessourceFailure{ "Failed to load background at: " + path };
 
-		textureBackground.setSmooth(true);
+		textureBackground->setSmooth(true);
 		m_sprites[0].second = std::move(textureBackground); // The first sprite is the background.
-		m_sprites[0].first.setTexture(m_sprites[0].second);
+		m_sprites[0].first.setTexture(*m_sprites[0].second); // Reset the texture of the background sprite.
 		m_defaultBackground = false; // The default background is not used anymore.
 	}
 	catch (LoadingGUIRessourceFailure const& error)
@@ -234,42 +251,36 @@ std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noex
 }
 
 
-bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept
+bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Sprite sprite, std::shared_ptr<sf::Texture> texture) noexcept
 {
 	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end() || identifier.empty())
-		return false;
+		return false; // Not already added or identifier is empty.
 
 	addSprite(std::move(sprite), std::move(texture));
-	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
+	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1; // The last sprite added has the highest index.
 
 	return true;
 }
 
-bool DynamicGraphicalInterface::addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth) noexcept
+bool DynamicGraphicalInterface::addDynamicShape(std::string const& identifier, sf::Shape& shape, bool smooth) noexcept
 {
 	if (m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end() || identifier.empty())
-		return false;
+		return false; // Not already added or identifier is empty.
 
 	addShape(shape, smooth);
-	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1;
+	m_dynamicSpritesIds[identifier] = m_sprites.size() - 1; // The last sprite added has the highest index.
 
 	return true;
 }
 
 FixedGraphicalInterface::TextWrapper& DynamicGraphicalInterface::getDText(std::string const& identifier)
 {
-	return m_texts[m_dynamicTextsIds.at(identifier)]; // Throw an exception if not there.
+	return m_texts[m_dynamicTextsIds.at(identifier)]; // Throws an exception if not there.
 }
 
-std::pair<sf::Sprite*, sf::Texture*> DynamicGraphicalInterface::getDSprite(std::string const& identifier)
+FixedGraphicalInterface::GraphicalElement* DynamicGraphicalInterface::getDSprite(std::string const& identifier)
 {
-	std::pair<sf::Sprite*, sf::Texture*> sprite{ std::make_pair(nullptr, nullptr) };
-	auto& pair{ m_sprites[m_dynamicSpritesIds.at(identifier)] }; // Throw an exception if not there.
-
-	sprite.first = &pair.first;
-	sprite.second = &pair.second;
-
-	return sprite;
+	return &m_sprites[m_dynamicSpritesIds.at(identifier)]; // Throws an exception if not there.
 }
 
 bool DynamicGraphicalInterface::removeDText(std::string const& identifier) noexcept
@@ -279,9 +290,9 @@ bool DynamicGraphicalInterface::removeDText(std::string const& identifier) noexc
 	if (toRemoveText == m_dynamicTextsIds.end())
 		return false; // No effect if it does not exist.
 
-	// Decreases the indexes of the items that points to a graphical element, "higher" in the
-	// vector, than the one that'll be removed. If we remove an item at index 2, the map that had the
-	// indexes 1, 4, 6 will have to be updated to 1, 3, 5. The index 1 don't need to change because
+	// Decreases the indexes of the items that points to a graphical element "higher" in the
+	// vector than the one that'll be removed. If we remove an item at index 2, the map that had the
+	// indexes 1, 4, 6 need to be updated to 1, 3, 5. The index 1 doesn't need to change because
 	// it is lower than 2. The index 4 will be updated to 3 because it is higher, and so on.
 	for (auto& it : m_dynamicTextsIds)
 		if (it.second > toRemoveText->second)
@@ -300,9 +311,9 @@ bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noe
 	if (toRemoveSprite == m_dynamicSpritesIds.end() || identifier == "_background")
 		return false; // No effect if it does not exist.
 
-	// Decreases the indexes of the items that points to a graphical element, "higher" in the
-	// vector, than the one that'll be removed. If we remove an item at index 2, the map that had the
-	// indexes 1, 4, 6 will have to be updated to 1, 3, 5. The index 1 don't need to change because
+	// Decreases the indexes of the items that points to a graphical element "higher" in the
+	// vector than the one that'll be removed. If we remove an item at index 2, the map that had the
+	// indexes 1, 4, 6 need to be updated to 1, 3, 5. The index 1 doesn't need to change because
 	// it is lower than 2. The index 4 will be updated to 3 because it is higher, and so on.
 	for (auto& it : m_dynamicSpritesIds)
 		if (it.second > toRemoveSprite->second)
@@ -334,14 +345,14 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 		return false; // Already added.
 
 	// Instantiating the slider's background.
-	sf::Texture textureBackgroundSlider{ loadDefaultSliderTexture(size) }; // Loads the default slider texture.
-	sf::Sprite sliderBackgroundSprite{textureBackgroundSlider};
+	std::shared_ptr<sf::Texture> textureBackgroundSlider{ loadDefaultSliderTexture(size) }; // Loads the default slider texture.
+	sf::Sprite sliderBackgroundSprite{ *textureBackgroundSlider };
 	sliderBackgroundSprite.setPosition(pos);
 	sliderBackgroundSprite.setOrigin(sliderBackgroundSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 	
 	// Instantiating the slider's cursor.
-	sf::Texture textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
-	sf::Sprite sliderCursorSprite{ textureCursorSlider };
+	std::shared_ptr<sf::Texture> textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
+	sf::Sprite sliderCursorSprite{ *textureCursorSlider };
 	sliderCursorSprite.setPosition(sliderBackgroundSprite.getGlobalBounds().getCenter()); // Set the position of the cursor to the center of its background.
 	sliderCursorSprite.setOrigin(sliderCursorSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 	
@@ -355,7 +366,7 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 
 	// Instantiate the slider.
 	m_sliders[id] = Slider{ m_dynamicSpritesIds.find('_' + id), ((showValueWithText) ? m_dynamicTextsIds.find('_' + id) : m_dynamicTextsIds.end()), mathFunction, changeFunction, interval };
-	changeValueSlider(id, getDSprite('_' + id).first->getPosition().y); // Set the initial value of the slider.
+	changeValueSlider(id, getDSprite('_' + id)->first.getPosition().y); // Set the initial value of the slider.
 
 	return true;
 }
@@ -390,13 +401,13 @@ bool UserInteractableGraphicalInterface::removeDText(std::string const& identifi
 
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseMoved(FixedGraphicalInterface* activeGUI) noexcept
 {
+	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
+
 	// Resets the hovered element.
 	m_hoveredElement = std::make_pair(InteractableItem::None, nullptr);
 
-	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
-
 	if (!isDerived)
-		return getHoveredInteractableItem(); // Check if the gui is an interactable one.
+		return m_hoveredElement; // Check if the gui is an interactable one.
 
 	sf::Vector2f mousePos{ static_cast<sf::Vector2f>(sf::Mouse::getPosition(*(isDerived->m_window))) };
 
@@ -406,7 +417,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 		if (isDerived->m_texts[button.second.m_iterator->second].getText().getGlobalBounds().contains(mousePos))
 		{
 			m_hoveredElement = std::make_pair(InteractableItem::Button, &button.first);
-			return getHoveredInteractableItem();
+			return m_hoveredElement;
 		}
 	}
 
@@ -415,11 +426,11 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 		if (isDerived->m_sprites[slider.second.m_iterator->second].first.getGlobalBounds().contains(mousePos))
 		{
 			m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
-			return getHoveredInteractableItem();
+			return m_hoveredElement;
 		}
 	}
 
-	return getHoveredInteractableItem();
+	return m_hoveredElement;
 }
 
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mousePressed(FixedGraphicalInterface* activeGUI) noexcept
@@ -484,6 +495,6 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 	slider->m_userFunction(value); // Call the function associated with the slider.
 }
 
-//TODO: faire intervalle
 //TODO: faire fonction de suppression des obj
 //TODO: faire double checker et MQB
+//TODO: update window resize

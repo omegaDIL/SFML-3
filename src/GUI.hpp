@@ -70,7 +70,7 @@ concept Ostreamable = requires(std::ostream & os, T t)
  * window.display();
  * @endcode
  *
- * @see sf::RenderWindow, FixedGraphicalInterface::TextWrapper.
+ * @see sf::RenderWindow, FixedGraphicalInterface::TextWrapper, DynamicGraphicalInterface.
  */
 class FixedGraphicalInterface
 {
@@ -111,7 +111,7 @@ public:
 
 	/**
 	 * @brief Adds a text element to the interface.
-	 * @complexity O(1) : average case.
+	 * @complexity O(1) : best case.
 	 * @complexity O(N) : worst case, where N is the number of texts already added (if vector resizes).
 	 * 
 	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
@@ -135,18 +135,24 @@ public:
 
 	/**
 	 * @brief Adds a sprite element to the interface.
-	 * @complexity O(N) : where N is the number of sprites/shapes.
-	 *
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+	 * 
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
 	 * 
+	 * @note The texture is not copied and therefore has to point somewhere that remains valid as long
+	 *		 as the sprite is used. You could (and should) either point to a newly dynamically allocated
+	 *		 texture, or to a texture that is already stored in the interface.
+	 * 
 	 * @see addText(), addShape().
 	 */
-	void addSprite(sf::Sprite sprite, sf::Texture texture) noexcept;
+	void addSprite(sf::Sprite sprite, std::shared_ptr<sf::Texture> texture) noexcept;
 
 	/**
 	 * @brief Adds a sprite element to the interface.
-	 * @complexity O(N) : where N is the number of sprites/shapes.
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
 	 *
 	 * @param[in] shape: The shape to add.
 	 * @param[in] smooth: True if the shape needs to be smoothed.
@@ -156,13 +162,13 @@ public:
 	 * 
 	 * @see addText(), addSprite(), convertShapeToSprite().
 	 */
-	void addShape(sf::Shape* shape, bool smooth = true) noexcept;
+	void addShape(sf::Shape& shape, bool smooth = true) noexcept;
 
 	/** 
 	 * @brief Renders the interface.
 	 * @complexity O(N), where N is the number of graphical elements.
 	 *
-	 * @pre The window must (still) be valid.
+	 * @pre The window must be valid.
 	 * @post Safe to draw.
 	 * @throw std::logic_error Basic exception guarrantee.
 	 */
@@ -171,7 +177,7 @@ public:
 
 	/**
 	 * @brief Refreshes the transformables after the window is resized.
-	 * @complexity O(N), where N is the number of graphical elements within interfaces associated with the resized window.
+	 * @complexity O(N), where N is the number of graphical elements within all interfaces associated with the resized window.
 	 *
 	 * @param[in] window: The window which was resized, and for which the interfaces will be resized.
 	 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
@@ -183,9 +189,9 @@ public:
 protected:
 
 	/**
-	 * @details The pointers to the textures become invalid when adding or removing an element
+	 * @details The pointers to the textures can become invalid when adding or removing an element
 	 *          to the sprite vector.
-	 * @complexity O(N), where N is the size of 'm_sprites'
+	 * @complexity O(N), where N is the number of sprites/shapes.
 	 */
 	void resetTextureForSprites() noexcept;
 
@@ -234,7 +240,7 @@ protected:
 		 * @param[in] rot: The rotation of the text.
 		 */
 		template<Ostreamable T>
-		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
+		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, float scale, sf::Color color, sf::Angle rot) noexcept
 			: sf::Text{ m_font, "", characterSize}
 		{
 			setFillColor(color);
@@ -337,7 +343,7 @@ protected:
 		 * @complexity O(1).
 		 *
 		 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
-		 * @param[in] scalingFactorMin: The scaling factor between the previous smallest window's size in x or y axis, and the new one.
+		 * @param[in] scalingFactorMin: The scaling factor between the previous smallest window's size in x or y axis, and the new smallest one.
 		 */
 		inline void windowResized(sf::Vector2f scalingFactor, sf::Vector2f scalingFactorMin) noexcept
 		{
@@ -374,7 +380,7 @@ protected:
 	// Pointer to the window.
 	mutable sf::RenderWindow* m_window; 
 	
-	using GraphicalElement = std::pair<sf::Sprite, sf::Texture>;
+	using GraphicalElement = std::pair<sf::Sprite, std::shared_ptr<sf::Texture>>;
 	// Collection of sprites in the interface.
 	std::vector<GraphicalElement> m_sprites;
 
@@ -400,8 +406,10 @@ private:
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
  * @note The background is dynamic and changeable with the getDSprite() function using the identifier
  *       "_background".
- * @note You should not put an underscore before dynamic elements' identifiers, as they are reserved for the class.
- * @note You should not add elements with identifiers that begin with '_', as they are reserved for the class.
+ * @note You should not put an underscore before dynamic elements' identifiers, as they are reserved
+ *       for the class.
+ * @note Ids must be unique within the text vector, and the shape/sprite vector. However, they can 
+ * 		 be the same between a text and a sprite/shape.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
  * @code
@@ -426,7 +434,7 @@ private:
  * window.display();
  * @endcode
  *
- * @see FixedGraphicalInterface.
+ * @see FixedGraphicalInterface, UserInteractableGraphicalInterface.
  */
 class DynamicGraphicalInterface : public FixedGraphicalInterface
 {
@@ -453,22 +461,22 @@ public:
 
 
 	/**
-	 * @brief Adds a dynamic text to the interface.
-	 * @complexity O(1) : average case.
-	 * @complexity O(N) : worst case, where N is the number of texts already added (static + dynamic) (if vector resizes).
-	 * 
+	 * @brief Adds a dynamic text element to the interface.
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of fixed AND dynamic texts already added
+	 *  			      (if vector resizes).
+	 *
 	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
-	 * @param[in] identifier:     The text identifier.
-	 * @param[in] content:		  The text label.
-	 * @param[in] position:       The position of the text.
-	 * @param[in] characterSize:  The size of the text characters.
-	 * @param[in] color:		  The color of the text.
+	 * @param[in] content: The text label.
+	 * @param[in] position: The position of the text.
+	 * @param[in] characterSize: The size of the text characters.
+	 * @param[in] scale: The scale of the text.
+	 * @param[in] color: The color of the text.
+	 * @param[in] rot: The rotation of the text.
 	 * 
 	 * @return True if added.
-	 *
-	 * @note No effect if a text has the same id, or the id is empty.
-	 * @note The identifiers must be unique between texts.
-	 * @note The ids between one text and one sprite/shape can be the same.
+	 * 
+	 * @note The scale is the same for both x and y axis.
 	 * 
 	 * @see addText().
 	 */
@@ -486,25 +494,29 @@ public:
 
 	/**
 	 * @brief Adds a dynamic sprite element to the interface.
-	 * @complexity O(N) : where N is the number of sprites/shapes (static + dynamic).
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of fixed AND dynamic sprites/shapes already
+	 *				      added (if vector resizes).
 	 *
-	 * @param[in] identifier: The text identifier.
+	 * @param[in] identifier: The sprite identifier.
 	 * @param[in] sprite: The sprite to add.
 	 * @param[in] texture: The texture of the sprite.
 	 *
 	 * @return True if added.
 	 * 
-	 * @note No effect if a sprite/shape has the same id, or the id is empty.
-	 * @note The identifiers must be unique between shapes/sprites.
-	 * @note The ids between one text and one sprite/shape can be the same.
+	 * @note The texture is not copied and therefore has to point somewhere that remains valid as long
+	 *		 as the sprite is used. You could (and should) either point to a newly dynamically allocated
+	 *		 texture, or to a texture that is already stored in the interface.
 	 *
-	 * @see addSprite().
+	 * @see addSprite(), addDynamicShape().
 	 */
-	bool addDynamicSprite(std::string const& identifier, sf::Sprite sprite, sf::Texture texture) noexcept;
+	bool addDynamicSprite(std::string const& identifier, sf::Sprite sprite, std::shared_ptr<sf::Texture> texture) noexcept;
 
 	/**
 	 * @brief Adds a dynamic shape element to the interface.
-     * @complexity O(N) : where N is the number of sprites/shapes (static + dynamic).
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of fixed AND dynamic sprites/shapes already
+	 *				      added (if vector resizes).
 	 *
 	 * @param[in] identifier: The text identifier.
 	 * @param[in] shape: The shape to add.
@@ -512,17 +524,15 @@ public:
 	 *
 	 * @return True if added.
 	 *
-	 * @note No effect if a sprite/shape has the same id, or the id is empty
-	 * .
-	 * @note The identifiers must be unique between shapes/sprites.
-	 * @note The ids between one text and one sprite/shape can be the same.
+	 * @note sf::Shape is converted to a sf::Sprite/sf::Texture pair.
+	 * @note sf::Shape is left unchanged even though it is not qualified with const.
 	 *
-	 * @see addShape().
+	 * @see addShape(), addDynamicSprite().
 	 */
-	bool addDynamicShape(std::string const& identifier, sf::Shape* shape, bool smooth = true) noexcept;
+	bool addDynamicShape(std::string const& identifier, sf::Shape& shape, bool smooth = true) noexcept;
 
 	/**
-	 * @param[in] identifier: The id of the text you want to check.
+	 * @param[in] identifier: The id of the dynamic text you want to check.
 	 * @complexity O(1).
 	 * 
 	 * @return True if it exists.
@@ -533,7 +543,7 @@ public:
 	}
 
 	/**
-	 * @param[in] identifier: The id of the sprite you want to check.
+	 * @param[in] identifier: The id of the dynamic sprite you want to check.
 	 * @complexity O(1).
 	 * 
 	 * @return True if it exists.
@@ -546,34 +556,34 @@ public:
 	/**
 	 * @brief Allows you to change some attributes of a dynamic text.
 	 * @complexity O(1).
-	 * 
+     * 
 	 * @param[in] identifier: The id of the text you want to access.
 	 * 
 	 * @return A reference to the text you want to access.
 	 * 
 	 * @pre Be sure that you added a text with this id.
 	 * @post The appropriate text is returned.
-	 * @throw std::out_of_range if id not there.
+	 * @throw std::out_of_range Strong exception guarrantee.
 	 */
 	[[nodiscard]] FixedGraphicalInterface::TextWrapper& getDText(std::string const& identifier);
 
 	/**
-	 * @brief Allows you to change some attributes of a dyanmic sprite.
+	 * @brief Allows you to change some attributes of a dynamic sprite.
 	 * @complexity O(1).
 	 *
 	 * @param[in] identifier: The id of the sprite you want to access.
 	 *
-	 * @return A reference to the sprite you want to access.
+	 * @return A reference to the sprite, with its texture, you want to access.
 	 *
 	 * @pre Be sure that you added the sprite/shape with this id.
 	 * @post The appropriate sprite/texture is returned.
-	 * @throw std::out_of_range if id not there.
+	 * @throw std::out_of_range Strong exception guarrantee.
 	 */
-	[[nodiscard]] std::pair<sf::Sprite*, sf::Texture*> getDSprite(std::string const& identifier);
+	[[nodiscard]] GraphicalElement* getDSprite(std::string const& identifier);
 
 	/**
-	 * @brief Removes a dynamic text.
-	 * @complexity O(N), where N is the number of texts (static + dynamic).
+	 * @brief Removes a dynamic text element.
+	 * @complexity O(N) : where N is the number of fixed AND dynamic texts already added.
 	 *
 	 * @param[in] identifier: The id of the text you want to remove.
 	 * 
@@ -584,8 +594,8 @@ public:
 	virtual bool removeDText(std::string const& identifier) noexcept;
 
 	/**
-	 * @brief Removes a sprite
-	 * @complexity O(N), where N is the number of sprites/shapes (static + dynamic).
+	 * @brief Removes a dynamic sprite element.
+	 * @complexity O(N) : where N is the number of fixed AND dynamic sprites/shapes already added.
 	 *
 	 * @param[in] identifier: The id of the sprite you want to remove.
 	 * 
@@ -593,13 +603,14 @@ public:
 	 *
 	 * @note No effect if not there.
 	 * @note You can't remove the background : it has no effect.
+	 * @note Since shapes are converted to sprites, you can remove them with this function.
 	 */
 	bool removeDSprite(std::string const& identifier) noexcept;
 
 protected:
 
 	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All indexes of dynamic texts in the interface.
-	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All indexes of dynamic sprites in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All indexes of dynamic sprites/shapes in the interface.
 };
 
 
@@ -607,8 +618,6 @@ protected:
  * @brief Manages an interface in which the user can interact such as writing, pressing buttons...
  *
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
- * @note The background is dynamic and changeable with the getDSprite() function using the identifier
- *       "background". Note that is not removable.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
  * @see DynamicGraphicalInterface.
@@ -730,8 +739,8 @@ public:
 	 * @details You (might not) want to call this function every time the mouse moved. You should
 	 * 			rather call it when the mouse mouve AND you want to update the hovered element. It may be
 	 *			each time the mouse move. However, if you have a slider and want to let the user update the
-	 *			slider as long as he keeps the mouse pressed, then you should call this function while when
-	 *			the mouse is unpressed.
+	 *			slider as long as he keeps the mouse pressed, then you should call this function while the
+	 *			mouse is unpressed.
 	 * @complexity O(N), where N is the number of interactable elements in your active interface.
 	 * 
 	 * @param[out] activeGUI: The active GUI tu update.
@@ -762,8 +771,8 @@ public:
 	 *			window.close();
 	 *
 	 *		...
-     *		
-     *		// When the mouse is pressed + if there's an event (which is entering the loop).
+	 *		
+	 *		// When the mouse is pressed + if there's an event (which is entering the loop).
 	 *		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 	 *			IGInterface::mousePressed(interface); 
 	 * }
