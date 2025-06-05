@@ -454,9 +454,9 @@ public:
 	 * @param[out] window: The window where the interface elements will be rendered.
 	 */
 	explicit DynamicGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "")
-		: FixedGraphicalInterface{ window, backgroundFileName }, m_dynamicTextsIds{}, m_dynamicSpritesIds{}
+		: FixedGraphicalInterface{ window, backgroundFileName }, m_dynamicTextIds{}, m_dynamicSpriteIds{}
 	{
-		m_dynamicSpritesIds.emplace("_background", 0); // The background is the first element in the vector.
+		m_dynamicSpriteIds.emplace("_background", 0); // The background is the first element in the vector.
 	}
 
 
@@ -483,11 +483,11 @@ public:
 	template<Ostreamable T>
 	bool addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
 	{
-		if (m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end() || identifier.empty())
+		if (m_dynamicTextIds.find(identifier) != m_dynamicTextIds.end() || identifier.empty())
 			return false;
 
 		addText(content, position, characterSize, scale, color, rot);
-		m_dynamicTextsIds[identifier] = m_texts.size() - 1;
+		m_dynamicTextIds[identifier] = m_texts.size() - 1;
 
 		return true;
 	}
@@ -539,7 +539,7 @@ public:
 	 */
 	[[nodiscard]] inline bool doesDTextExist(std::string const& identifier) const noexcept
 	{
-		return m_dynamicTextsIds.find(identifier) != m_dynamicTextsIds.end();
+		return m_dynamicTextIds.find(identifier) != m_dynamicTextIds.end();
 	}
 
 	/**
@@ -550,7 +550,7 @@ public:
 	 */
 	[[nodiscard]] inline bool doesDSpriteExist(std::string const& identifier) const noexcept
 	{
-		return m_dynamicSpritesIds.find(identifier) != m_dynamicSpritesIds.end();
+		return m_dynamicSpriteIds.find(identifier) != m_dynamicSpriteIds.end();
 	}
 
 	/**
@@ -609,8 +609,8 @@ public:
 
 protected:
 
-	std::unordered_map<std::string, size_t> m_dynamicTextsIds; // All indexes of dynamic texts in the interface.
-	std::unordered_map<std::string, size_t> m_dynamicSpritesIds; // All indexes of dynamic sprites/shapes in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicTextIds; // All indexes of dynamic texts in the interface.
+	std::unordered_map<std::string, size_t> m_dynamicSpriteIds; // All indexes of dynamic sprites/shapes in the interface.
 };
 
 
@@ -632,7 +632,6 @@ public:
 		Button,
 		Slider,
 		//MultipleQuestionBox,
-		//DoubleCheckerMode
 	};
 
 	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>; 
@@ -696,6 +695,7 @@ public:
 	}
 
 	/**
+	 * @brief Returns the function associated with the button.
 	 * @complexity O(1).
 	 * 
 	 * @param[in] identifier: the id of the button you want to access.
@@ -709,6 +709,7 @@ public:
 	[[nodiscard]] std::function<void()>& getFunctionOfButton(std::string const& identifier);
 
 	/**
+	 * @brief Returns the current value associated with the slider.
 	 * @complexity O(1).
 	 *
 	 * @param[in] identifier: the id of the slider you want to access.
@@ -722,6 +723,21 @@ public:
 	[[nodiscard]] float getValueOfSlider(std::string const& identifier);
 
 	/**
+	 * @brief Returns the slider object associated with the slider.
+	 * @details It allows you to access the slider's properties: its functions and intervals.
+	 * @complexity O(1).
+	 *
+	 * @param[in] identifier: the id of the slider you want to access.
+	 *
+	 * @return The current value of the slider.
+	 *
+	 * @pre Be sure that you added a slider with this id.
+	 * @post The appropriate value is returned.
+	 * @throw std::out_of_range if id not there.
+	 */
+	[[nodiscard]] UserInteractableGraphicalInterface::Slider& getSlider(std::string const& identifier);
+
+	/**
 	 * @brief Removes a dynamic text, and the button associated (if it exists).
 	 * @complexity O(N), where N is the number of texts (static + dynamic) (if vector resizes).
 	 *
@@ -733,6 +749,7 @@ public:
 	 */
 	virtual bool removeDText(std::string const& identifier) noexcept final;
 
+	bool removeSlider(std::string const& identifier) noexcept;
 
 	/**
 	 * @brief Updates the hovered element.
@@ -807,44 +824,26 @@ private:
 
 	struct Slider
 	{
-		Slider() noexcept = default;
+		Slider() noexcept : m_mathFunction{ [](float x) { return x; } }, m_userFunction{ [](float x) { return x; } }, m_intervals{ -1 }
+		{}
 		Slider(Slider const&) noexcept = delete;
 		Slider(Slider&&) noexcept = default;
 		Slider& operator=(Slider const&) noexcept = delete;
 		Slider& operator=(Slider&&) noexcept = default;
 		~Slider() noexcept = default;
 
-		Slider(std::unordered_map<std::string, size_t>::iterator iterator, std::unordered_map<std::string, size_t>::iterator textIterator, std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange, int interval) noexcept
-			: m_iterator{ iterator }, m_textIterator{ textIterator }, m_mathFunction{ mathFunction }, m_userFunction{ functionOfChange }, m_intervals{ interval }
+		Slider(std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange, int interval) noexcept
+			: m_mathFunction{ mathFunction }, m_userFunction{ functionOfChange }, m_intervals{ interval }
 		{}
 
-		std::unordered_map<std::string, size_t>::iterator m_iterator; // The index of the slider in the interface.
-		std::unordered_map<std::string, size_t>::iterator m_textIterator; // The index of the text that displays the current value of the slider.
 		std::function<float(float)> m_mathFunction; // The function to apply to the value of the slider when it is changed.
 		std::function<void(float)> m_userFunction; // The function to call when the slider value is changed (e.g. to update the text displaying the current value).
 		int m_intervals;
 	};
 
-	struct Button
-	{
-		Button() noexcept = default;
-		Button(Button const&) noexcept = delete;
-		Button(Button&&) noexcept = default;
-		Button& operator=(Button const&) noexcept = delete;
-		Button& operator=(Button&&) noexcept = default;
-		~Button() noexcept = default;
-
-		Button(std::unordered_map<std::string, size_t>::iterator iterator, std::function<void()> mathFunction) noexcept
-			: m_iterator{ iterator }, m_userFunction{ std::move(mathFunction) }
-		{}
-
-		std::unordered_map<std::string, size_t>::iterator m_iterator; // The index of the button in the interface.	
-		std::function<void()> m_userFunction; // The function to execute when the button is pressed.
-	};
-
 	void changeValueSlider(std::string const& id, int mousePosY);
 
-	std::unordered_map<std::string, Button> m_buttons; // Collection of buttons in the interface.
+	std::unordered_map<std::string, std::function<void()>> m_buttons; // Collection of buttons in the interface.
 	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
 
 
