@@ -43,7 +43,7 @@ std::shared_ptr<sf::Texture> createTextureFromShape(sf::Shape& shape, bool smoot
 /// Image loader functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<sf::Texture> loadDefaultSliderTexture(sf::Vector2u size) noexcept;
+std::shared_ptr<sf::Texture> loadSolidRectangeShapeWithOutline(sf::Vector2u size, sf::Color fill = sf::Color{ 20, 20, 20 }, sf::Color outline = sf::Color{ 80, 80, 80 }, unsigned int thickness = 5.f) noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Image loader functions

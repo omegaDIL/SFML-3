@@ -345,13 +345,13 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 		return false; // Already added.
 
 	// Instantiating the slider's background.
-	std::shared_ptr<sf::Texture> textureBackgroundSlider{ loadDefaultSliderTexture(size) }; // Loads the default slider texture.
+	std::shared_ptr<sf::Texture> textureBackgroundSlider{ loadSolidRectangeShapeWithOutline(size) }; // Loads the default slider texture.
 	sf::Sprite sliderBackgroundSprite{ *textureBackgroundSlider };
 	sliderBackgroundSprite.setPosition(pos);
 	sliderBackgroundSprite.setOrigin(sliderBackgroundSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 	
 	// Instantiating the slider's cursor.
-	std::shared_ptr<sf::Texture> textureCursorSlider{ loadDefaultSliderTexture(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
+	std::shared_ptr<sf::Texture> textureCursorSlider{ loadSolidRectangeShapeWithOutline(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
 	sf::Sprite sliderCursorSprite{ *textureCursorSlider };
 	sliderCursorSprite.setPosition(sliderBackgroundSprite.getGlobalBounds().getCenter()); // Set the position of the cursor to the center of its background.
 	sliderCursorSprite.setOrigin(sliderCursorSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
@@ -387,6 +387,11 @@ float UserInteractableGraphicalInterface::getValueOfSlider(std::string const& id
 	float curPos{ cursor->getPosition().y};
 
 	return slider->m_mathFunction(1 - (curPos- minPos) / (maxPos - minPos));
+}
+
+UserInteractableGraphicalInterface::Slider& UserInteractableGraphicalInterface::getSlider(std::string const& identifier)
+{
+	return m_sliders.at(identifier); // Throws an exception if not there.
 }
 
 bool UserInteractableGraphicalInterface::removeDText(std::string const& identifier) noexcept

@@ -208,6 +208,7 @@ protected:
 	std::optional<std::string> loadBackground(std::string const& backgroundFileName) noexcept;
 
 
+	//TODO: mettre en haut de la classe pour persistence
 	/**
 	 * @brief A wrapper for `sf::Text` that initializes the text, keeps the font, manages resizing.
 	 *
@@ -565,7 +566,7 @@ public:
 	 * @post The appropriate text is returned.
 	 * @throw std::out_of_range Strong exception guarrantee.
 	 */
-	[[nodiscard]] FixedGraphicalInterface::TextWrapper& getDText(std::string const& identifier);
+	[[nodiscard]] inline FixedGraphicalInterface::TextWrapper& getDText(std::string const& identifier);
 
 	/**
 	 * @brief Allows you to change some attributes of a dynamic sprite.
@@ -579,7 +580,7 @@ public:
 	 * @post The appropriate sprite/texture is returned.
 	 * @throw std::out_of_range Strong exception guarrantee.
 	 */
-	[[nodiscard]] GraphicalElement* getDSprite(std::string const& identifier);
+	[[nodiscard]] inline GraphicalElement* getDSprite(std::string const& identifier);
 
 	/**
 	 * @brief Removes a dynamic text element.
@@ -624,7 +625,7 @@ protected:
  */
 class UserInteractableGraphicalInterface : public DynamicGraphicalInterface
 {
-public:
+private:
 
 	enum class InteractableItem
 	{
@@ -636,6 +637,28 @@ public:
 
 	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>; 
 
+
+	struct Slider
+	{
+		Slider() noexcept : m_mathFunction{ [](float x) { return x; } }, m_userFunction{ [](float x) { return x; } }, m_intervals{ -1 }
+		{}
+		Slider(Slider const&) noexcept = delete;
+		Slider(Slider&&) noexcept = default;
+		Slider& operator=(Slider const&) noexcept = delete;
+		Slider& operator=(Slider&&) noexcept = default;
+		~Slider() noexcept = default;
+
+		Slider(std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange, int interval) noexcept
+			: m_mathFunction{ mathFunction }, m_userFunction{ functionOfChange }, m_intervals{ interval }
+		{
+		}
+
+		std::function<float(float)> m_mathFunction; // The function to apply to the value of the slider when it is changed.
+		std::function<void(float)> m_userFunction; // The function to call when the slider value is changed (e.g. to update the text displaying the current value).
+		int m_intervals;
+	};
+
+public:
 
 	UserInteractableGraphicalInterface() noexcept = delete;
 	UserInteractableGraphicalInterface(UserInteractableGraphicalInterface const&) noexcept = delete;
@@ -822,24 +845,6 @@ public:
 
 private:
 
-	struct Slider
-	{
-		Slider() noexcept : m_mathFunction{ [](float x) { return x; } }, m_userFunction{ [](float x) { return x; } }, m_intervals{ -1 }
-		{}
-		Slider(Slider const&) noexcept = delete;
-		Slider(Slider&&) noexcept = default;
-		Slider& operator=(Slider const&) noexcept = delete;
-		Slider& operator=(Slider&&) noexcept = default;
-		~Slider() noexcept = default;
-
-		Slider(std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange, int interval) noexcept
-			: m_mathFunction{ mathFunction }, m_userFunction{ functionOfChange }, m_intervals{ interval }
-		{}
-
-		std::function<float(float)> m_mathFunction; // The function to apply to the value of the slider when it is changed.
-		std::function<void(float)> m_userFunction; // The function to call when the slider value is changed (e.g. to update the text displaying the current value).
-		int m_intervals;
-	};
 
 	void changeValueSlider(std::string const& id, int mousePosY);
 

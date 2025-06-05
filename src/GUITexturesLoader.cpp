@@ -40,12 +40,12 @@ std::shared_ptr<sf::Texture> createTextureFromShape(sf::Shape& shape, bool smoot
 }
 
 
-std::shared_ptr<sf::Texture> loadDefaultSliderTexture(sf::Vector2u size) noexcept
+std::shared_ptr<sf::Texture> loadSolidRectangeShapeWithOutline(sf::Vector2u size, sf::Color fill, sf::Color outline, unsigned int thickness) noexcept
 {
 	sf::RectangleShape slider{ static_cast<sf::Vector2f>(size) };
-	slider.setFillColor(sf::Color{ 20, 20, 20 });
-	slider.setOutlineThickness(std::min(size.x, size.y) / 5.f);
-	slider.setOutlineColor(sf::Color{ 80, 80, 80 });
+	slider.setFillColor(fill);
+	slider.setOutlineThickness(std::min(size.x, size.y) / thickness);
+	slider.setOutlineColor(outline);
 
 	return createTextureFromShape(slider, true);
 }
