@@ -27,7 +27,7 @@ std::shared_ptr<sf::Texture> createTextureFromShape(sf::Shape& shape, bool smoot
 	setTransformable(shape, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ outlineThinkness, outlineThinkness }, sf::Vector2f{ 1.f, 1.f }, sf::degrees(0));
 
 	// Creates a render texture to draw the shape.
-	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(sf::Vector2f{ shape.getLocalBounds().size.x + outlineThinkness, shape.getLocalBounds().size.y + outlineThinkness }) };
+	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(sf::Vector2f{ shape.getLocalBounds().size.x, shape.getLocalBounds().size.y }) };
 	renderTexture.clear(sf::Color::Transparent);
 	renderTexture.draw(shape);
 	renderTexture.display();
@@ -42,10 +42,37 @@ std::shared_ptr<sf::Texture> createTextureFromShape(sf::Shape& shape, bool smoot
 
 std::shared_ptr<sf::Texture> loadSolidRectangeShapeWithOutline(sf::Vector2u size, sf::Color fill, sf::Color outline, unsigned int thickness) noexcept
 {
-	sf::RectangleShape slider{ static_cast<sf::Vector2f>(size) };
-	slider.setFillColor(fill);
-	slider.setOutlineThickness(std::min(size.x, size.y) / thickness);
-	slider.setOutlineColor(outline);
+	sf::RectangleShape shape{ static_cast<sf::Vector2f>(size) };
+	shape.setFillColor(fill);
+	shape.setOutlineColor(outline);
+	shape.setOutlineThickness(std::min(size.x, size.y) / thickness);
 
-	return createTextureFromShape(slider, true);
+	return createTextureFromShape(shape, true);
+}
+
+std::shared_ptr<sf::Texture> loadCheckBoxTexture(sf::Vector2u size) noexcept
+{
+	sf::Color fillColor{ 20, 20, 20 };
+	sf::Color outlineColor{ 80, 80, 80 };
+
+	auto texture = loadSolidRectangeShapeWithOutline(size);
+	sf::Image image{ texture->copyToImage() };
+
+	unsigned int checkThickness{ static_cast<unsigned int>(std::min(size.x, size.y) / 5) };
+	for (unsigned int i{ 0 }; i < image.getSize().x; i++)
+	{
+		for (unsigned int j{ 0 }; j < image.getSize().y; j++)
+		{
+			if (image.getPixel(sf::Vector2u{ i, j }) == outlineColor)
+				continue; // It is visualky better if we don't draw the diagonal on the outline.
+
+			if (std::abs(static_cast<int>(i) - static_cast<int>(j)) < checkThickness)
+				image.setPixel(sf::Vector2u{ i, j }, outlineColor);
+			else if (std::abs(static_cast<int>(image.getSize().x) - static_cast<int>(i) - static_cast<int>(j)) < checkThickness)
+				image.setPixel(sf::Vector2u{ i, j }, outlineColor);
+		}
+	}
+	
+	texture->loadFromImage(image);
+	return texture;	
 }

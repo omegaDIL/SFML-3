@@ -19,10 +19,11 @@
 #include "Exceptions.hpp"
 
 sf::Font FixedGraphicalInterface::TextWrapper::m_font{};
-UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) };
 std::string const FixedGraphicalInterface::ressourcePath{ "../res/" };
 std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
-
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) };
+std::shared_ptr<sf::Texture> UserInteractableGraphicalInterface::MQB::m_uncheckedTexture{ loadSolidRectangeShapeWithOutline(sf::Vector2u{ 15, 15 }) };
+std::shared_ptr<sf::Texture> UserInteractableGraphicalInterface::MQB::m_checkedTexture{ loadCheckBoxTexture(sf::Vector2u{ 15, 15 }) };
 
 
 FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
@@ -345,23 +346,23 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 		return false; // Already added.
 
 	// Instantiating the slider's background.
-	std::shared_ptr<sf::Texture> textureBackgroundSlider{ loadSolidRectangeShapeWithOutline(size) }; // Loads the default slider texture.
+	static std::shared_ptr<sf::Texture> textureBackgroundSlider{ loadSolidRectangeShapeWithOutline(size) }; // Loads the default slider texture.
 	sf::Sprite sliderBackgroundSprite{ *textureBackgroundSlider };
 	sliderBackgroundSprite.setPosition(pos);
 	sliderBackgroundSprite.setOrigin(sliderBackgroundSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 	
 	// Instantiating the slider's cursor.
-	std::shared_ptr<sf::Texture> textureCursorSlider{ loadSolidRectangeShapeWithOutline(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
+	static std::shared_ptr<sf::Texture> textureCursorSlider{ loadSolidRectangeShapeWithOutline(sf::Vector2u{static_cast<unsigned int>(size.x * 1.618), size.x}) }; // Loads the default slider texture.
 	sf::Sprite sliderCursorSprite{ *textureCursorSlider };
 	sliderCursorSprite.setPosition(sliderBackgroundSprite.getGlobalBounds().getCenter()); // Set the position of the cursor to the center of its background.
 	sliderCursorSprite.setOrigin(sliderCursorSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 	
 	// Adding the slider's text.
 	if (showValueWithText)
-		addDynamicText("_" + id, "", sf::Vector2f{ sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y }, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
-
+		addDynamicText('_' + id, "", sf::Vector2f{sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y}, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
+	-
 	// Adding the slider's graphical items.
-	addDynamicSprite("_" + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
+	addDynamicSprite('_' + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
 	addDynamicSprite("_c" + id, std::move(sliderCursorSprite), std::move(textureCursorSlider)); // Adds a sprite for the slider cursor.
 
 	// Instantiate the slider.
@@ -370,6 +371,26 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 
 	return true;
 }
+
+bool UserInteractableGraphicalInterface::addMQB(std::string const& id, bool multipleChoices, int numberOfBoxes, sf::Vector2f pos1, sf::Vector2f pos2, unsigned int defaultChecked) noexcept
+{
+	if ((m_mqbs.find(id) != m_mqbs.end() || id.empty()) && numberOfBoxes > 1)
+		return false; // Not already added or identifier is empty or invalid.
+
+	sf::Vector2f diffPos{ pos2 - pos1 }; // Difference between the two positions to place the boxes.
+	for (unsigned int i{ 0 }; i < numberOfBoxes; i++)
+	{
+		sf::Vector2f pos{ pos1.x + diffPos.x * i, pos2.y + diffPos.y * i };
+
+		sf::Sprite boxSprite{ (i + 1 == defaultChecked) ? *MQB::m_checkedTexture: *MQB::m_uncheckedTexture };
+		boxSprite.setPosition(pos);
+		boxSprite.setOrigin(boxSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
+
+		addDynamicSprite('_' + id + std::to_string(i), std::move(boxSprite), MQB::m_uncheckedTexture); // Adds a shape for the checkbox background.
+	}
+
+	m_mqbs[id] = MQB{ multipleChoices, numberOfBoxes, defaultChecked };
+}	// Adapter la taille pourla mettre en relation avec la taille de la fenêtre.
 
 std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(std::string const& identifier)
 {
@@ -380,7 +401,7 @@ float UserInteractableGraphicalInterface::getValueOfSlider(std::string const& id
 {
 	Slider* slider{ &m_sliders.at(identifier) }; // Throws an exception if not there.
 	sf::Sprite* cursor{ &m_sprites[m_dynamicSpriteIds["_c" + identifier]].first };
-	sf::Sprite* background{ &m_sprites[m_dynamicSpriteIds["_" + identifier]].first };
+	sf::Sprite* background{ &m_sprites[m_dynamicSpriteIds['_' + identifier]].first};
 
 	float minPos{ background->getGlobalBounds().position.y };
 	float maxPos{ minPos + background->getGlobalBounds().size.y };
@@ -443,10 +464,25 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 
 	for (auto& slider : isDerived->m_sliders)
 	{
-		if (isDerived->getDSprite("_" + slider.first)->first.getGlobalBounds().contains(mousePos))
+		if (isDerived->getDSprite('_' + slider.first)->first.getGlobalBounds().contains(mousePos))
 		{
 			m_hoveredElement = std::make_pair(InteractableItem::Slider, &slider.first);
 			return m_hoveredElement;
+		}
+	}
+
+	for (auto& mqb : isDerived->m_mqbs)
+	{
+		int index{ isDerived->m_dynamicSpriteIds.find('_' + mqb.first + '0')->second };
+
+		for (int i{ 0 }; i < mqb.second.m_numberOfBoxes; i++)
+		{
+			if (isDerived->m_sprites[index + i].first.getGlobalBounds().contains(mousePos))
+			{
+				mqb.second.m_currentlyHovered = i+1; // Update the currently hovered box index.
+				m_hoveredElement = std::make_pair(InteractableItem::MQB, &mqb.first);
+				return m_hoveredElement;
+			}
 		}
 	}
 
@@ -461,28 +497,33 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 
 	if (m_hoveredElement.first == InteractableItem::Slider)
 		isDerived->changeValueSlider(*m_hoveredElement.second, sf::Mouse::getPosition(*(isDerived->m_window)).y);
-	//Button is executed when the mouse is released to avoid multiple calls for each frame it is kept pressed.
+	// Button is executed when the mouse is released to avoid multiple calls for each frame it is kept pressed.
+	// Same for MQB.
 
-	return getHoveredInteractableItem();
+	return m_hoveredElement;
 }
 
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseUnpressed(FixedGraphicalInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
-	if (m_hoveredElement.first == InteractableItem::None || !isDerived)
-		return getHoveredInteractableItem(); // Check if the gui is an interactable one.
 
 	if (m_hoveredElement.first == InteractableItem::Button)
+	{
 		isDerived->getFunctionOfButton(*m_hoveredElement.second)();
+	}
+	else if (m_hoveredElement.first == InteractableItem::MQB)
+	{
+		
+	}
 
-	return getHoveredInteractableItem();
+	return m_hoveredElement;
 }
 
 void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY)
 {
 	Slider* slider{ &m_sliders.at(id) }; // Throws an exception if not there.
 	sf::Sprite* cursor{ &m_sprites[m_dynamicSpriteIds["_c" + id]].first};
-	sf::Sprite* background{ &m_sprites[m_dynamicSpriteIds["_" + id]].first};
+	sf::Sprite* background{ &m_sprites[m_dynamicSpriteIds['_' + id]].first};
 
 	float minPos{ background->getGlobalBounds().position.y};
 	float maxPos{ minPos + background->getGlobalBounds().size.y };
@@ -515,6 +556,6 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 	slider->m_userFunction(value); // Call the function associated with the slider.
 }
 
-//TODO: faire fonction de suppression des obj
-//TODO: faire double checker et MQB
+//TODO: texte de slider
+//TODO: fonction de suppression MQB
 //TODO: update window resize

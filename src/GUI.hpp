@@ -619,6 +619,8 @@ protected:
  * @brief Manages an interface in which the user can interact such as writing, pressing buttons...
  *
  * @note This class stores UI componenents; it will consume a considerable amount of memory.
+ * @note This class does not add any new possibilities than DynamicGraphicalInterfaces, it only add
+ * 		 prebuilt interactable elements such as buttons, sliders and multiple question boxes.
  * @warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
  * @see DynamicGraphicalInterface.
@@ -627,36 +629,60 @@ class UserInteractableGraphicalInterface : public DynamicGraphicalInterface
 {
 private:
 
-	enum class InteractableItem
-	{
-		None,
-		Button,
-		Slider,
-		//MultipleQuestionBox,
-	};
-
-	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>; 
-
-
 	struct Slider
 	{
-		Slider() noexcept : m_mathFunction{ [](float x) { return x; } }, m_userFunction{ [](float x) { return x; } }, m_intervals{ -1 }
-		{}
+		Slider() noexcept : m_mathFunction{ [](float x) { return x; } }, m_userFunction{ [](float x) { return x; } }, m_intervals{ -1 } {}
 		Slider(Slider const&) noexcept = delete;
 		Slider(Slider&&) noexcept = default;
 		Slider& operator=(Slider const&) noexcept = delete;
 		Slider& operator=(Slider&&) noexcept = default;
 		~Slider() noexcept = default;
 
-		Slider(std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange, int interval) noexcept
+		inline Slider(std::function<float(float)> mathFunction, std::function<void(float)> functionOfChange, int interval) noexcept
 			: m_mathFunction{ mathFunction }, m_userFunction{ functionOfChange }, m_intervals{ interval }
-		{
-		}
+		{}
 
 		std::function<float(float)> m_mathFunction; // The function to apply to the value of the slider when it is changed.
 		std::function<void(float)> m_userFunction; // The function to call when the slider value is changed (e.g. to update the text displaying the current value).
 		int m_intervals;
 	};
+
+	struct MultipleQuestionBox
+	{
+		MultipleQuestionBox() noexcept : m_multipleChoices{ false }, m_numberOfBoxes{ 0 }, m_boxes{}, m_currentlyHovered{ 0 } {}
+		MultipleQuestionBox(MultipleQuestionBox const&) noexcept = delete;
+		MultipleQuestionBox(MultipleQuestionBox&&) noexcept = default;
+		MultipleQuestionBox& operator=(MultipleQuestionBox const&) noexcept = delete;
+		MultipleQuestionBox& operator=(MultipleQuestionBox&&) noexcept = default;
+		~MultipleQuestionBox() noexcept = default;
+
+		inline MultipleQuestionBox(bool multipleChoices, unsigned int numberOfBoxes, unsigned int checkedByDefault = 0) noexcept
+			: m_multipleChoices{ multipleChoices }, m_numberOfBoxes{ numberOfBoxes }, m_boxes(false, numberOfBoxes), m_currentlyHovered{ 0 }
+		{
+			if (checkedByDefault-1 < numberOfBoxes && checkedByDefault-1 > 0)
+				m_boxes[checkedByDefault-1] = true; // Set the default checked box.
+		}
+
+		//TODO: faire du statique plus souvent
+		static std::shared_ptr<sf::Texture> m_uncheckedTexture; // The texture used for the checkboxes.
+		static std::shared_ptr<sf::Texture> m_checkedTexture; // The texture used for the checkboxes.
+		bool m_multipleChoices;
+		unsigned int m_numberOfBoxes;
+
+		std::vector<bool> m_boxes;
+		unsigned int m_currentlyHovered; // 0 if no box is hovered, otherwise the index of the hovered box.
+	};
+
+	enum class InteractableItem
+	{
+		None,
+		Button,
+		Slider,
+		MQB
+	};
+
+	using IdentifierInteractableItem = std::pair<InteractableItem, std::string const*>;
+	using MQB = MultipleQuestionBox;
 
 public:
 
@@ -695,6 +721,8 @@ public:
 
 	bool addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> mathFunction = [](float x){return x;}, std::function<void(float)> changeFunction = [](float x){}, int interval = -1, bool showValueWithText = true) noexcept;
 
+	bool addMQB(std::string const& id, bool multipleChoices, int numberOfBoxes, sf::Vector2f pos1, sf::Vector2f pos2, unsigned int defaultChecked = 1) noexcept; // TODO: Mettre en diff au lieu de pos2
+
 	/**
 	 * @param[in] identifier: The id of the button you want to check.
 	 * @complexity O(1).
@@ -729,7 +757,7 @@ public:
 	 * @post The appropriate lambda is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	[[nodiscard]] std::function<void()>& getFunctionOfButton(std::string const& identifier);
+	[[nodiscard]] inline std::function<void()>& getFunctionOfButton(std::string const& identifier);
 
 	/**
 	 * @brief Returns the current value associated with the slider.
@@ -758,7 +786,7 @@ public:
 	 * @post The appropriate value is returned.
 	 * @throw std::out_of_range if id not there.
 	 */
-	[[nodiscard]] UserInteractableGraphicalInterface::Slider& getSlider(std::string const& identifier);
+	[[nodiscard]] inline UserInteractableGraphicalInterface::Slider& getSlider(std::string const& identifier);
 
 	/**
 	 * @brief Removes a dynamic text, and the button associated (if it exists).
@@ -845,11 +873,12 @@ public:
 
 private:
 
-
 	void changeValueSlider(std::string const& id, int mousePosY);
+
 
 	std::unordered_map<std::string, std::function<void()>> m_buttons; // Collection of buttons in the interface.
 	std::unordered_map<std::string, Slider> m_sliders; // Collection of sliders in the interface.
+	std::unordered_map<std::string, MultipleQuestionBox> m_mqbs; // Collection of sliders in the interface.
 
 
 	static IdentifierInteractableItem m_hoveredElement; // The type of the button that is currently hovered.
