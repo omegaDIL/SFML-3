@@ -657,9 +657,11 @@ private:
 		~MultipleQuestionBox() noexcept = default;
 
 		inline MultipleQuestionBox(bool multipleChoices, unsigned int numberOfBoxes, unsigned int checkedByDefault = 0) noexcept
-			: m_multipleChoices{ multipleChoices }, m_numberOfBoxes{ numberOfBoxes }, m_boxes(false, numberOfBoxes), m_currentlyHovered{ 0 }
+			: m_multipleChoices{ multipleChoices }, m_numberOfBoxes{ numberOfBoxes }, m_boxes{}, m_currentlyHovered{ 0 }
 		{
-			if (checkedByDefault-1 < numberOfBoxes && checkedByDefault-1 > 0)
+			m_boxes.resize(numberOfBoxes, false); // Initialize all boxes to unchecked.
+
+			if (checkedByDefault-1 < numberOfBoxes && checkedByDefault-1 >= 0)
 				m_boxes[checkedByDefault-1] = true; // Set the default checked box.
 		}
 
@@ -721,7 +723,7 @@ public:
 
 	bool addSlider(std::string const& id, sf::Vector2u size, sf::Vector2f pos, std::function<float(float)> mathFunction = [](float x){return x;}, std::function<void(float)> changeFunction = [](float x){}, int interval = -1, bool showValueWithText = true) noexcept;
 
-	bool addMQB(std::string const& id, bool multipleChoices, int numberOfBoxes, sf::Vector2f pos1, sf::Vector2f pos2, unsigned int defaultChecked = 1) noexcept; // TODO: Mettre en diff au lieu de pos2
+	bool addMQB(std::string const& id, bool multipleChoices, unsigned int numberOfBoxes, sf::Vector2f pos1, sf::Vector2f pos2, unsigned int defaultChecked = 1) noexcept; // TODO: Mettre en diff au lieu de pos2
 
 	/**
 	 * @param[in] identifier: The id of the button you want to check.
@@ -758,6 +760,21 @@ public:
 	 * @throw std::out_of_range if id not there.
 	 */
 	[[nodiscard]] inline std::function<void()>& getFunctionOfButton(std::string const& identifier);
+
+	/**
+		 * @brief Returns the state of the boxes (checked: true, unchecked: false).
+		 * @complexity O(1).
+		 *
+		 * @param[in] identifier: the id of the mqb you want to access.
+		 *
+		 * @return A vector of booleans representing the state of the boxes.
+		 *
+		 * @pre Be sure that you added a mqb with this id.
+		 * @post The appropriate lambda is returned.
+		 * @throw std::out_of_range if id not there.
+		 */
+	[[nodiscard]] inline std::vector<bool> const& getStateOfMQB(std::string const& identifier);
+
 
 	/**
 	 * @brief Returns the current value associated with the slider.

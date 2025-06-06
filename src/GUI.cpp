@@ -372,7 +372,7 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 	return true;
 }
 
-bool UserInteractableGraphicalInterface::addMQB(std::string const& id, bool multipleChoices, int numberOfBoxes, sf::Vector2f pos1, sf::Vector2f pos2, unsigned int defaultChecked) noexcept
+bool UserInteractableGraphicalInterface::addMQB(std::string const& id, bool multipleChoices, unsigned int numberOfBoxes, sf::Vector2f pos1, sf::Vector2f pos2, unsigned int defaultChecked) noexcept
 {
 	if ((m_mqbs.find(id) != m_mqbs.end() || id.empty()) && numberOfBoxes > 1)
 		return false; // Not already added or identifier is empty or invalid.
@@ -382,11 +382,12 @@ bool UserInteractableGraphicalInterface::addMQB(std::string const& id, bool mult
 	{
 		sf::Vector2f pos{ pos1.x + diffPos.x * i, pos2.y + diffPos.y * i };
 
-		sf::Sprite boxSprite{ (i + 1 == defaultChecked) ? *MQB::m_checkedTexture: *MQB::m_uncheckedTexture };
+		std::shared_ptr<sf::Texture> texture{ (i + 1 == defaultChecked) ? MQB::m_checkedTexture : MQB::m_uncheckedTexture }; // If the box is checked, use the checked texture, otherwise use the unchecked texture.
+		sf::Sprite boxSprite{ *texture };
 		boxSprite.setPosition(pos);
 		boxSprite.setOrigin(boxSprite.getLocalBounds().getCenter()); // Set the origin to the center of the sprite.
 
-		addDynamicSprite('_' + id + std::to_string(i), std::move(boxSprite), MQB::m_uncheckedTexture); // Adds a shape for the checkbox background.
+		addDynamicSprite('_' + id + std::to_string(i), std::move(boxSprite), texture); // Adds a shape for the checkbox background.
 	}
 
 	m_mqbs[id] = MQB{ multipleChoices, numberOfBoxes, defaultChecked };
@@ -397,6 +398,10 @@ std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(s
 	return m_buttons.at(identifier); // Throw an exception if not there.
 }
 
+[[nodiscard]] inline std::vector<bool> const& UserInteractableGraphicalInterface::getStateOfMQB(std::string const& identifier)
+{
+	return m_mqbs.at(identifier).m_boxes; // Throws an exception if not there.
+}
 float UserInteractableGraphicalInterface::getValueOfSlider(std::string const& identifier)
 {
 	Slider* slider{ &m_sliders.at(identifier) }; // Throws an exception if not there.
@@ -473,7 +478,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 
 	for (auto& mqb : isDerived->m_mqbs)
 	{
-		int index{ isDerived->m_dynamicSpriteIds.find('_' + mqb.first + '0')->second };
+		size_t index{ isDerived->m_dynamicSpriteIds.find('_' + mqb.first + '0')->second };
 
 		for (int i{ 0 }; i < mqb.second.m_numberOfBoxes; i++)
 		{
@@ -506,6 +511,8 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseUnpressed(FixedGraphicalInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
+	if (isDerived == nullptr)
+		return m_hoveredElement;
 
 	if (m_hoveredElement.first == InteractableItem::Button)
 	{
@@ -513,7 +520,26 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 	}
 	else if (m_hoveredElement.first == InteractableItem::MQB)
 	{
+		auto* mqb{ &isDerived->m_mqbs.at(*m_hoveredElement.second) };
+
+		if (mqb->m_multipleChoices == true)
+		{
+			mqb->m_boxes[mqb->m_currentlyHovered - 1] = !mqb->m_boxes[mqb->m_currentlyHovered - 1];
+			isDerived->m_sprites[isDerived->m_dynamicSpriteIds['_'	+ *m_hoveredElement.second + std::to_string(mqb->m_currentlyHovered - 1)]].second = 
+				(mqb->m_boxes[mqb->m_currentlyHovered - 1]) ? MQB::m_checkedTexture : MQB::m_uncheckedTexture;
+			isDerived->m_sprites[isDerived->m_dynamicSpriteIds['_' + *m_hoveredElement.second + std::to_string(mqb->m_currentlyHovered - 1)]].first.setTexture(*isDerived->m_sprites[isDerived->m_dynamicSpriteIds['_' + *m_hoveredElement.second + std::to_string(mqb->m_currentlyHovered - 1)]].second);
+		}
+		else
+		{
+			std::fill(mqb->m_boxes.begin(), mqb->m_boxes.end(), false); // Uncheck all boxes.
+			for (unsigned int i{ 0 }; i < mqb->m_numberOfBoxes; i++)
+				isDerived->m_sprites[isDerived->m_dynamicSpriteIds['_' + *m_hoveredElement.second + std::to_string(i)]].second = MQB::m_uncheckedTexture;
+
+			mqb->m_boxes[mqb->m_currentlyHovered - 1] = true;
+			isDerived->m_sprites[isDerived->m_dynamicSpriteIds['_' + *m_hoveredElement.second + std::to_string(mqb->m_currentlyHovered - 1)]].second = MQB::m_checkedTexture;
 		
+			isDerived->resetTextureForSprites(); // Reset the textures for the sprites after changing the texture of the MQB.
+		}
 	}
 
 	return m_hoveredElement;
@@ -559,3 +585,7 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 //TODO: texte de slider
 //TODO: fonction de suppression MQB
 //TODO: update window resize
+//TODO: writable interface
+//TODO: find().second -> []
+//TODO: MouseMove d'abord verifier que le hovered actuel ne l 'est tjr pas avant de boucler sur le reste
+//TODO: _ + mqb + to_string -> _ + to_string + _ + mqb

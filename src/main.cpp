@@ -17,7 +17,7 @@ int main()
 
 	mainInterface.addDynamicText("a", "ca marche", sf::Vector2f{ 200, 200 }, 20, 1.f);
 	mainInterface.addSlider("slider1", sf::Vector2u{ 20, 400 }, sf::Vector2f{ 500, 500 }, [](float x) { return 200 * x+40; }, [&mainInterface](float x) mutable {mainInterface.getDText("a").updateColor(sf::Color(x/2, x, 255-x/2)); }, -1, false);
-	mainInterface.addMQB("mqb1", true, 3, sf::Vector2f{300, 300}, sf::Vector2f{ 330, 300 });
+	mainInterface.addMQB("mqb1", false, 10, sf::Vector2f{300, 300}, sf::Vector2f{ 330, 300 });
 
 	while (window.isOpen())
 	{
