@@ -20,9 +20,11 @@
 #include <utility>
 #include <optional>
 #include <stdexcept>
+#include <list>
 #include <array>
 #include <algorithm>
 #include <initializer_list>
+#include <unordered_set>
 #include <memory>
 #include <functional>
 #include <sstream>
@@ -74,141 +76,9 @@ concept Ostreamable = requires(std::ostream & os, T t)
  */
 class FixedGraphicalInterface
 {
-public:
+protected: 
+	//TODO: rename update ... by set ...
 
-	FixedGraphicalInterface() noexcept = delete;
-	FixedGraphicalInterface(FixedGraphicalInterface const&) noexcept = delete;
-	FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept;
-	FixedGraphicalInterface& operator=(FixedGraphicalInterface const&) noexcept = delete;
-	FixedGraphicalInterface& operator=(FixedGraphicalInterface&& other) noexcept;
-	virtual ~FixedGraphicalInterface() noexcept;
-
-	/**
-	 * @brief Constructs the interface with a default background.
-	 * @complexity O(1).
-	 * 
-	 * @param[in,out] window: The window where the interface elements will be rendered. 
-	 * @param[in] backgroundFileName: The file name of the background.
-	 * 
-	 * @pre The window must be valid, and have a valid size.
-	 * @post The instance is safe to use and the background is set with the appropriate size.
-	 * @throw std::logic_error Basic exception guarrantee.
-	 * 
-	 * @pre The font should be named font.ttf and located at where ressourcePath points to.
-	 * @post The font is loaded.
-	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but no text can be displayed.
-	 * 
-	 * @pre The path of the background should be valid within the res folder.
-	 * @post Your background is loaded.
-	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but the default background is used.
-	 * 
-	 * @note If you don't want a background, just pass an empty string and no exceptions will be thrown.
-	 * @note The font is loaded is common to all texts, and therefore, it is loaded once (when the
-	 *		 first gui instance is created).
-	 */
-	explicit FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "");
-
-
-	/**
-	 * @brief Adds a text element to the interface.
-	 * @complexity O(1) : best case.
-	 * @complexity O(N) : worst case, where N is the number of texts already added (if vector resizes).
-	 * 
-	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
-	 * @param[in] content: The text label.
-	 * @param[in] position: The position of the text.
-	 * @param[in] characterSize: The size of the text characters.
-	 * @param[in] scale: The scale of the text.
-	 * @param[in] color: The color of the text.
-	 * @param[in] rot: The rotation of the text.
-	 * 
-	 * @note The scale is the same for both x and y axis.
-	 * 
-	 * @see FixedGraphicalInterface::TextWrapper, addSprite(), addShape().
-	 */
-	template<Ostreamable T>
-	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
-	{
-		TextWrapper newText{ content, position, characterSize, scale, color, rot };
-		m_texts.push_back(std::move(newText));
-	}
-
-	/**
-	 * @brief Adds a sprite element to the interface.
-	 * @complexity O(1) : best case.
-	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
-	 * 
-	 * @param[in] sprite: The sprite to add.
-	 * @param[in] texture: The texture of the sprite.
-	 * 
-	 * @note The texture is not copied and therefore has to point somewhere that remains valid as long
-	 *		 as the sprite is used. You could (and should) either point to a newly dynamically allocated
-	 *		 texture, or to a texture that is already stored in the interface.
-	 * 
-	 * @see addText(), addShape().
-	 */
-	void addSprite(sf::Sprite sprite, std::shared_ptr<sf::Texture> texture) noexcept;
-
-	/**
-	 * @brief Adds a sprite element to the interface.
-	 * @complexity O(1) : best case.
-	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
-	 *
-	 * @param[in] shape: The shape to add.
-	 * @param[in] smooth: True if the shape needs to be smoothed.
-	 * 
-	 * @note sf::Shape is converted to a sf::Sprite/sf::Texture pair.
-	 * @note sf::Shape is left unchanged even though it is not qualified with const.
-	 * 
-	 * @see addText(), addSprite(), convertShapeToSprite().
-	 */
-	void addShape(sf::Shape& shape, bool smooth = true) noexcept;
-
-	/** 
-	 * @brief Renders the interface.
-	 * @complexity O(N), where N is the number of graphical elements.
-	 *
-	 * @pre The window must be valid.
-	 * @post Safe to draw.
-	 * @throw std::logic_error Basic exception guarrantee.
-	 */
-	virtual void draw() const;
-
-
-	/**
-	 * @brief Refreshes the transformables after the window is resized.
-	 * @complexity O(N), where N is the number of graphical elements within all interfaces associated with the resized window.
-	 *
-	 * @param[in] window: The window which was resized, and for which the interfaces will be resized.
-	 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
-	 * 
-	 * @note Resizes only interfaces associated with the resized window.
-	 */
-	static void windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept;
-
-protected:
-
-	/**
-	 * @details The pointers to the textures can become invalid when adding or removing an element
-	 *          to the sprite vector.
-	 * @complexity O(N), where N is the number of sprites/shapes.
-	 */
-	void resetTextureForSprites() noexcept;
-
-	/**
-	 * @brief Loads/Resizes the background image and resizes it to fit the window.
-	 * @details Loads the default background first, and then loads the custom background (if needed, that
-	 * 			is to say if the file name is not empty). If it fails, it uses the default background.
-	 * @complexity O(1).
-	 * 
-	 * @param[in] fileName: The file name of the background.
-	 * 
-	 * @return A string containing an error message if the loading failed.
-	 */
-	std::optional<std::string> loadBackground(std::string const& backgroundFileName) noexcept;
-
-
-	//TODO: mettre en haut de la classe pour persistence
 	/**
 	 * @brief A wrapper for `sf::Text` that initializes the text, keeps the font, manages resizing.
 	 *
@@ -218,10 +88,11 @@ protected:
 	 *
 	 * @see FixedGraphicalInterface, sf::Text, create().
 	 */
-	struct TextWrapper : private sf::Text
+	class TextWrapper : private sf::Text
 	{
 	public:
-
+		
+		TextWrapper() noexcept = delete; 
 		TextWrapper(TextWrapper const&) noexcept = default;
 		TextWrapper(TextWrapper&&) noexcept = default;
 		TextWrapper& operator=(TextWrapper const&) noexcept = default;
@@ -242,7 +113,7 @@ protected:
 		 */
 		template<Ostreamable T>
 		inline TextWrapper(T const& content, sf::Vector2f pos, unsigned int characterSize, float scale, sf::Color color, sf::Angle rot) noexcept
-			: sf::Text{ m_font, "", characterSize}
+			: sf::Text{ m_font, "", characterSize }
 		{
 			setFillColor(color);
 			setRotation(rot);
@@ -302,7 +173,7 @@ protected:
 		 * @complexity O(1).
 		 *
 		 * @param[in] scale: Adds the scale to the current one.
-		 * 
+		 *
 		 * @note Doesn't override the previous scale : uses scale() instead of setScale().
 		 *
 		 * @see sf::Text::scale.
@@ -377,13 +248,270 @@ protected:
 		static sf::Font m_font; // The font used for the texts.
 	};
 
+	class SpriteWrapper : private sf::Sprite
+	{
+	public:
+
+		SpriteWrapper() noexcept = delete;
+		SpriteWrapper(SpriteWrapper const&) noexcept = default;
+		SpriteWrapper(SpriteWrapper&&) noexcept = default;
+		SpriteWrapper& operator=(SpriteWrapper const&) noexcept = default;
+		SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
+		virtual ~SpriteWrapper() noexcept = default;
+
+		SpriteWrapper(sf::Texture* texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::Color color, const sf::IntRect& rectangle) noexcept;
+
+
+		[[nodiscard]] inline bool checkIfSpriteHoldsTexture(sf::Texture* texture) const noexcept
+		{
+			return std::find(m_textures.begin(), m_textures.end(), texture) != m_textures.end();
+		}
+
+		[[nodiscard]] inline std::vector<sf::Texture*> const& getTextures() const noexcept
+		{
+			return m_textures;
+		}
+
+		void addTexture(sf::Texture* texture) noexcept;
+
+		bool removeTexture(sf::Texture* texture) noexcept;
+
+		void switchToNextTexture() noexcept;
+
+		void switchToNextTexture(size_t i);
+
+
+
+		/**
+		 * @brief Updates the position of the sprite.
+		 * @complexity O(1).
+		 *
+		 * @param[in] pos: The new position for the sprite.
+		 *
+		 * @see sf::Sprite::setPosition().
+		 */
+		inline void setPosition(sf::Vector2f pos) noexcept
+		{
+			sf::Sprite::setPosition(pos);
+		}
+
+		/**
+		 * @brief Updates the rotation of the sprite.
+		 * @complexity O(1).
+		 *
+		 * @param[in] rot: The new rotation for the sprite.
+		 *
+		 * @see sf::Sprite::setRotation.
+		 */
+		inline void setRotation(sf::Angle rot) noexcept
+		{
+			sf::Sprite::setRotation(rot);
+		}
+
+		/**
+		 * @brief Scale of the sprite.
+		 * @complexity O(1).
+		 *
+		 * @param[in] scale: The value to scale by.
+		 *
+		 * @see sf::Sprite::scale.
+		 */
+		inline void scale(sf::Vector2f scale) noexcept
+		{
+			sf::Sprite::scale(scale);
+		}
+
+		/**
+		 * @brief Updates the color of the text.
+		 * @complexity O(1).
+		 *
+		 * @param[in] color: The new color for the text.
+		 *
+		 * @see sf::Sprite::setColor().
+		 */
+		inline void setColor(sf::Color color) noexcept
+		{
+			sf::Sprite::setColor(color);
+		}
+
+		inline void setTextureRect(const sf::IntRect& rectangle) noexcept
+		{
+			sf::Sprite::setTextureRect(rectangle);
+		}
+
+		/**
+		 * @brief Resizes the text when the window is resized.
+		 * @complexity O(1).
+		 *
+		 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
+		 * @param[in] scalingFactorMin: The scaling factor between the previous smallest window's size in x or y axis, and the new smallest one.
+		 */
+		inline void windowResized(sf::Vector2f scalingFactor, sf::Vector2f scalingFactorMin) noexcept
+		{
+			scale(scalingFactorMin);
+			setPosition(sf::Vector2f{ getPosition().x * scalingFactor.x, getPosition().y * scalingFactor.y });
+		}
+
+		/**
+		 * @brief Accesses the base `sf::Sprite` object.
+		 * @complexity O(1).
+		 *
+		 * @return A reference to the base `sf::Sprite` object.
+		 */
+		[[nodiscard]] inline sf::Sprite const& getSprite() const noexcept
+		{
+			return *this;
+		}
+
+	private:
+
+		size_t m_curTextureIndex{};
+		std::vector<sf::Texture*> m_textures; // The textures used for the sprites. They are not copied, but shared.
+	};
+
+public:
+
+	FixedGraphicalInterface() noexcept = delete;
+	FixedGraphicalInterface(FixedGraphicalInterface const&) noexcept = delete;
+	FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept;
+	FixedGraphicalInterface& operator=(FixedGraphicalInterface const&) noexcept = delete;
+	FixedGraphicalInterface& operator=(FixedGraphicalInterface&& other) noexcept;
+	virtual ~FixedGraphicalInterface() noexcept;
+
+	/**
+	 * @brief Constructs the interface with a default background.
+	 * @complexity O(1).
+	 * 
+	 * @param[in,out] window: The window where the interface elements will be rendered. 
+	 * @param[in] backgroundFileName: The file name of the background.
+	 * 
+	 * @pre The window must be valid, and have a valid size.
+	 * @post The instance is safe to use and the background is set with the appropriate size.
+	 * @throw std::logic_error Basic exception guarrantee.
+	 * 
+	 * @pre The font should be named font.ttf and located at where ressourcePath points to.
+	 * @post The font is loaded.
+	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but no text can be displayed.
+	 * 
+	 * @pre The path of the background should be valid within the res folder.
+	 * @post Your background is loaded.
+	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but the default background is used.
+	 * 
+	 * @note If you don't want a background, just pass an empty string and no exceptions will be thrown.
+	 * @note The font is loaded is common to all texts, and therefore, it is loaded once (when the
+	 *		 first gui instance is created).
+	 */
+	explicit FixedGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "");
+
+
+	/**
+	 * @brief Adds a text element to the interface.
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of texts already added (if vector resizes).
+	 * 
+	 * @tparam T: Type that can be streamed to `std::basic_ostream`.
+	 * @param[in] content: The text label.
+	 * @param[in] position: The position of the text.
+	 * @param[in] characterSize: The size of the text characters.
+	 * @param[in] scale: The scale of the text.
+	 * @param[in] color: The color of the text.
+	 * @param[in] rot: The rotation of the text.
+	 * 
+	 * @note The scale is the same for both x and y axis.
+	 * 
+	 * @see FixedGraphicalInterface::TextWrapper, addSprite(), addShape().
+	 */
+	template<Ostreamable T>
+	void addText(T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
+	{
+		TextWrapper newText{ content, position, characterSize, scale, color, rot };
+		m_texts.push_back(std::move(newText));
+	}
+
+	/**
+	 * @brief Adds a sprite element to the interface.
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+	 * 
+	 * @param[in] sprite: The sprite to add.
+	 * @param[in] texture: The texture of the sprite.
+	 * 
+	 * @note The texture is not copied and therefore has to point somewhere that remains valid as long
+	 *		 as the sprite is used. You could (and should) either point to a newly dynamically allocated
+	 *		 texture, or to a texture that is already stored in the interface.
+	 * 
+	 * @see addText(), addShape().
+	 */
+	void addSprite(sf::Sprite sprite, sf::Texture texture) noexcept;
+
+	/**
+	 * @brief Adds a sprite element to the interface.
+	 * @complexity O(1) : best case.
+	 * @complexity O(N) : worst case, where N is the number of sprites/shapes already added (if vector resizes).
+	 *
+	 * @param[in] shape: The shape to add.
+	 * @param[in] smooth: True if the shape needs to be smoothed.
+	 * 
+	 * @note sf::Shape is converted to a sf::Sprite/sf::Texture pair.
+	 * @note sf::Shape is left unchanged even though it is not qualified with const.
+	 * 
+	 * @see addText(), addSprite(), convertShapeToSprite().
+	 */
+	void addShape(sf::Shape& shape, bool smooth = true) noexcept;
+
+	/** 
+	 * @brief Renders the interface.
+	 * @complexity O(N), where N is the number of graphical elements.
+	 *
+	 * @pre The window must be valid.
+	 * @post Safe to draw.
+	 * @throw std::logic_error Basic exception guarrantee.
+	 */
+	virtual void draw() const;
+
+
+	/**
+	 * @brief Refreshes the transformables after the window is resized.
+	 * @complexity O(N), where N is the number of graphical elements within all interfaces associated with the resized window.
+	 *
+	 * @param[in] window: The window which was resized, and for which the interfaces will be resized.
+	 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
+	 * 
+	 * @note Resizes only interfaces associated with the resized window.
+	 */
+	static void windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept;
+
+protected:
+
+	/**
+	 * @details The pointers to the textures can become invalid when adding or removing an element
+	 *          to the sprite vector.
+	 * @complexity O(N), where N is the number of sprites/shapes.
+	 */
+	void resetTextureForSprites() noexcept;
+
+	/**
+	 * @brief Loads/Resizes the background image and resizes it to fit the window.
+	 * @details Loads the default background first, and then loads the custom background (if needed, that
+	 * 			is to say if the file name is not empty). If it fails, it uses the default background.
+	 * @complexity O(1).
+	 * 
+	 * @param[in] fileName: The file name of the background.
+	 * 
+	 * @return A string containing an error message if the loading failed.
+	 */
+	std::optional<std::string> loadBackground(std::string const& backgroundFileName) noexcept;
+
+
 
 	// Pointer to the window.
 	mutable sf::RenderWindow* m_window; 
 	
 	using GraphicalElement = std::pair<sf::Sprite, std::shared_ptr<sf::Texture>>;
+	
+	static std::list<sf::Texture> s_textures; // All textures used in the interface. They are not copied, but shared.
 	// Collection of sprites in the interface.
-	std::vector<GraphicalElement> m_sprites;
+	std::vector<SpriteWrapper> m_sprites;
 
 	// Collection of texts in the interface.
 	std::vector<FixedGraphicalInterface::TextWrapper> m_texts; 
@@ -399,7 +527,7 @@ private:
 
 	bool m_defaultBackground; // True if the default background is used.
 };
-
+//TODO: add s_ prefixe
 
 /**
  * @brief  Manages an interface with changeable contents of elements (texts and shapes).
@@ -703,10 +831,9 @@ public:
 	 *
 	 * @see createBackground().
 	 */
-	inline explicit UserInteractableGraphicalInterface(sf::RenderWindow* window) noexcept
-		: DynamicGraphicalInterface{ window }, m_buttons{}, m_sliders{}
+	inline explicit UserInteractableGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "") noexcept
+		: DynamicGraphicalInterface{ window, backgroundFileName }, m_buttons{}, m_sliders{}
 	{}
-
 
 	/**
 	 * @brief Adds a button to the interface by turning a text into a button.
@@ -745,6 +872,17 @@ public:
 	[[nodiscard]] inline bool doesSliderExist(std::string const& identifier) const noexcept
 	{
 		return m_sliders.find(identifier) != m_sliders.end();
+	}
+
+	/**
+	 * @param[in] identifier: The id of the slider you want to check.
+	 * @complexity O(1).
+	 *
+	 * @return True if it exists.
+	 */
+	[[nodiscard]] inline bool doesMQBExist(std::string const& identifier) const noexcept
+	{
+		return m_mqbs.find(identifier) != m_mqbs.end();
 	}
 
 	/**
@@ -819,6 +957,8 @@ public:
 
 	bool removeSlider(std::string const& identifier) noexcept;
 
+	bool removeMQB(std::string const& identifier) noexcept;
+
 	/**
 	 * @brief Updates the hovered element.
 	 * @details You (might not) want to call this function every time the mouse moved. You should
@@ -827,11 +967,11 @@ public:
 	 *			slider as long as he keeps the mouse pressed, then you should call this function while the
 	 *			mouse is unpressed.
 	 * @complexity O(N), where N is the number of interactable elements in your active interface.
-	 * 
+	 *
 	 * @param[out] activeGUI: The active GUI tu update.
-	 * 
+	 *
 	 * @return The type + the id of the element that is currently hovered.
-	 * 
+	 *
 	 * @note No effect if the active GUI is not an interactable GUI.
 	 */
 	static IdentifierInteractableItem mouseMoved(FixedGraphicalInterface* activeGUI) noexcept;
@@ -839,16 +979,16 @@ public:
 	/**
 	 * @brief Tells the active GUI that the mouse is pressed.
 	 * @complexity O(1).
-	 * 
+	 *
 	 * @param[out] activeGUI: The active GUI to update.
-	 * 
+	 *
 	 * @return The type + the id of the element that is currently hovered.
-	 * 
+	 *
 	 * @note No effect if the active GUI is not an interactable GUI or nothing is hovered.
 	 * @note You should not call this function when the mouse pressed EVENT is triggered. Instead, you
 	 * 		 should call it as long as the mouse is pressed and if there's an event (the first frame it/
 	 *		 is pressed/the mouse moved).
-	 * 
+	 *
 	 * @code
 	 * while (const std::optional event = window.pollEvent())
 	 * {
@@ -856,10 +996,10 @@ public:
 	 *			window.close();
 	 *
 	 *		...
-	 *		
+	 *
 	 *		// When the mouse is pressed + if there's an event (which is entering the loop).
 	 *		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-	 *			IGInterface::mousePressed(interface); 
+	 *			IGInterface::mousePressed(interface);
 	 * }
 	 * @endcode
 	 */
@@ -902,71 +1042,64 @@ private:
 };
 
 
-//class WritableGraphicalInterface : public UserInteractableGraphicalInterface
-//{};
+class WritableGraphicalInterface : public UserInteractableGraphicalInterface
+{
+public:
+
+	WritableGraphicalInterface() noexcept = delete;
+	WritableGraphicalInterface(WritableGraphicalInterface const&) noexcept = delete;
+	WritableGraphicalInterface(WritableGraphicalInterface&&) noexcept = default;
+	WritableGraphicalInterface& operator=(WritableGraphicalInterface const&) noexcept = delete;
+	WritableGraphicalInterface& operator=(WritableGraphicalInterface&&) noexcept = default;
+	virtual ~WritableGraphicalInterface() noexcept = default;
+
+	inline WritableGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "", std::function<void(char32_t&, std::string&)> function = [](char32_t&, std::string&){}) // TODO: retirer non parametre des autres lambda
+		: UserInteractableGraphicalInterface{ window, backgroundFileName }, m_textEnteredFunction{ function }
+	{
+		sf::RectangleShape cursorEditing{ sf::Vector2f{ 1.f, 1.f } };
+
+		cursorEditing.setSize(sf::Vector2f{ 2.f, 20.f });
+		cursorEditing.setOrigin(cursorEditing.getLocalBounds().getCenter());
+		cursorEditing.setPosition(sf::Vector2f{ window->getView().getSize().x * 2, 0.f}); // Hide it
+		cursorEditing.setFillColor(sf::Color{ 80, 80, 80 });
+		addDynamicShape("__cursorEditing", cursorEditing, false); // Add the cursor to the interface.
+	}
+
+
+	bool setCurrentlyEditedText(std::string const& identifier) noexcept;
+
+	static std::string textEntered(FixedGraphicalInterface* curInterface, char32_t unicodeValue) noexcept;
+
+	[[nodiscard]] inline bool isCurrentlyEditing() const noexcept
+	{
+		return !m_currentlyEditedText.empty();
+	}
+
+	[[nodiscard]] inline sf::String const& getCurrentlyEditingText() const
+	{
+		return m_texts[m_dynamicTextIds.at(m_currentlyEditedText)].getText().getString(); // Throw std::out_of_range if not there.
+	}
+
+	[[nodiscard]] inline std::function<void(char32_t&, std::string&)>& getFunctionOfEditing() 
+	{
+		return m_textEnteredFunction;
+	}
+
+private:
+
+	void applyNewText(TextWrapper* text, std::string& newText) noexcept;
+
+
+	static std::string m_currentlyEditedText; // Collection of texts in the interface. (overrides the one from FixedGraphicalInterface)
+	std::function<void(char32_t&, std::string&)> m_textEnteredFunction;
+};
 
 
 using FGInterface = FixedGraphicalInterface;
 using DGInterface = DynamicGraphicalInterface;
 using IGInterface = UserInteractableGraphicalInterface;
-//using WGInterface = WritableGraphicalInterface;
-using GUI = IGInterface;
+using WGInterface = WritableGraphicalInterface;
+using GUI = WGInterface;
+//TODO: mettre les using en haut
 
 #endif // GUI_HPP
-
-
-
-
-
-
-//bool addSlider(std::string const& id, sf::Vector2f pos, unsigned int length, float scale, float minValue = 0, float maxValue = 1, int intervalle = 0, bool displayCurrentValue = true) noexcept;
-//
-//double getValueSlider(std::string const& id) const;
-//
-//bool removeSlider(std::string const& identifier) noexcept;
-
-
-
-
-//using MQB = MultipleQuestionBox;
-//using DCM = DoubleCheckerMode;
-//std::unordered_map<std::string, MQB> m_mqbs; // Collection of MQBs in the interface.
-//std::unordered_map<std::string, DCM> m_dcms; // Collection of MQBs in the interface.
-//class MultipleQuestionBox
-//{
-	//public:
-
-	//	MultipleQuestionBox() noexcept = delete;
-	//	MultipleQuestionBox(MultipleQuestionBox const&) noexcept = default;
-	//	MultipleQuestionBox(MultipleQuestionBox&&) noexcept = default;
-	//	~MultipleQuestionBox() noexcept = default;
-	//	MultipleQuestionBox& operator=(MultipleQuestionBox const&) noexcept = default;
-	//	MultipleQuestionBox& operator=(MultipleQuestionBox&&) noexcept = default;
-
-	//	/**
-	//	 * 
-	//	 * \param box
-	//	 * \param onlyOne: True if only one box can be selected.
-	//	 */
-	//	MultipleQuestionBox(std::vector<sf::Vector2f> pos, bool onlyOne) noexcept;
-
-
-	//	void addBox(sf::Vector2f pos) noexcept;
-
-	//	void removeBox(size_t index) noexcept;
-	//	
-	//	void mousePressed() noexcept;
-
-	//	std::vector<bool> getValues() const noexcept;
-
-	//	void reset(bool value = false) noexcept;
-
-
-	//	bool onlyeOne; // True if only one box can be selected.
-
-	//private:
-
-	//	std::vector<std::pair<sf::Sprite, bool>> m_boxes; // The boxes of the MQB.
-	//	sf::Texture m_textureBoxUnchecked; // The texture of the boxes.
-	//	sf::Texture m_textureBoxChecked; // The texture of the boxes.
-//};

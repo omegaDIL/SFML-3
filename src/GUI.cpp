@@ -18,13 +18,51 @@
 #include "GUITexturesLoader.hpp"
 #include "Exceptions.hpp"
 
-sf::Font FixedGraphicalInterface::TextWrapper::m_font{};
-std::string const FixedGraphicalInterface::ressourcePath{ "../res/" };
-std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
-UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) };
-std::shared_ptr<sf::Texture> UserInteractableGraphicalInterface::MQB::m_uncheckedTexture{ loadSolidRectangeShapeWithOutline(sf::Vector2u{ 15, 15 }) };
-std::shared_ptr<sf::Texture> UserInteractableGraphicalInterface::MQB::m_checkedTexture{ loadCheckBoxTexture(sf::Vector2u{ 15, 15 }) };
+sf::Font FGInterface::TextWrapper::m_font{};
+std::string const FGInterface::ressourcePath{ "../res/" };
+std::unordered_multimap<sf::RenderWindow*, FGInterface*> FGInterface::allInterfaces{};
+IGInterface::IdentifierInteractableItem IGInterface::m_hoveredElement{ std::make_pair(InteractableItem::None, nullptr) };
+std::shared_ptr<sf::Texture> IGInterface::MQB::m_uncheckedTexture{ loadSolidRectangeShapeWithOutline(sf::Vector2u{ 15, 15 }) };
+std::shared_ptr<sf::Texture> IGInterface::MQB::m_checkedTexture{ loadCheckBoxTexture(sf::Vector2u{ 15, 15 }) };
+std::string WGInterface::m_currentlyEditedText{}; // Collection of texts in the interface. (overrides the one from FixedGraphicalInterface)
+std::list<sf::Texture> FGInterface::s_textures{}; // Static collection of textures for the SpriteWrapper class.
 
+FGInterface::SpriteWrapper::SpriteWrapper(sf::Texture* texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::Color color, const sf::IntRect& rectangle) noexcept
+	: sf::Sprite{ *texture }, m_textures{ texture }, m_curTextureIndex{ 0 }
+{
+	if (rectangle.size == sf::Vector2i{ 0, 0 })
+		setTextureRect(sf::IntRect{ { 0, 0 }, { texture->getSize().x, texture->getSize().y } });
+
+	setPosition(pos);
+	setScale(scale);
+	setRotation(rot);
+	setColor(color);
+}
+
+void FGInterface::SpriteWrapper::addTexture(sf::Texture* texture) noexcept
+{
+	m_textures.push_back(texture);
+}
+
+bool FGInterface::SpriteWrapper::removeTexture(sf::Texture* texture) noexcept
+{
+	m_textures.erase(std::remove(m_textures.begin(), m_textures.end(), texture), m_textures.end());
+}
+
+void FGInterface::SpriteWrapper::switchToNextTexture() noexcept
+{ //TODO: inline
+	m_curTextureIndex = (m_curTextureIndex + 1) % m_textures.size(); // Switch to the next texture in the vector.
+	setTexture(*m_textures[m_curTextureIndex]); // Set the texture of the sprite to the next texture.
+}
+
+void FGInterface::SpriteWrapper::switchToNextTexture(size_t i)
+{
+	if (i >= m_textures.size())
+		throw std::out_of_range{ "Index out of range for the sprites vector." };
+
+	m_curTextureIndex = i; // Switch to the texture at index i.
+	setTexture(*m_textures[m_curTextureIndex]); // Set the texture of the sprite to the texture at index i.
+}
 
 FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
 	: m_window{ other.m_window }, m_sprites{ std::move(other.m_sprites) }, m_texts{ std::move(other.m_texts) }, m_defaultBackground{ other.m_defaultBackground }
@@ -102,7 +140,6 @@ FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::
 
 	// Add this interface to the collection.
 	allInterfaces.emplace(std::make_pair(window, this));
-
 	// Loads the font.
 	auto errorFont{ TextWrapper::loadFont() };
 	if (errorFont.has_value())
@@ -114,11 +151,14 @@ FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::
 		throw LoadingGUIRessourceFailure{ errorBackground.value() };
 }
 
-void FixedGraphicalInterface::addSprite(sf::Sprite sprite, std::shared_ptr<sf::Texture> texture) noexcept
-{
+void FixedGraphicalInterface::addSprite(sf::Sprite sprite, sf::Texture texture) noexcept
+{	//TODO: peut etre passer de std::list à std::map
 	// Tracking capacity.
 	size_t capacity{ m_sprites.capacity() };
 
+	s_textures.push_back(std::move(texture)); // Store the texture in the static collection of textures.
+	m_sprites.push_back(SpriteWrapper{&s_textures.back(), })
+	
 	m_sprites.push_back(std::make_pair(std::move(sprite), texture));
 	m_sprites.back().first.setTexture(*m_sprites.back().second); // Reset the texture of the sprite.
 
@@ -359,11 +399,11 @@ bool UserInteractableGraphicalInterface::addSlider(std::string const& id, sf::Ve
 	
 	// Adding the slider's text.
 	if (showValueWithText)
-		addDynamicText('_' + id, "", sf::Vector2f{sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y}, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
-	-
+		addDynamicText('_' + id, "", sf::Vector2f{ sliderCursorSprite.getPosition().x - m_window->getSize().x * 60 / 1080, sliderCursorSprite.getPosition().y}, 16, 1.f); //TODO: modify scale so it adapts the definition of the screen.
+	
 	// Adding the slider's graphical items.
 	addDynamicSprite('_' + id, std::move(sliderBackgroundSprite), std::move(textureBackgroundSlider)); // Adds a sprite for the slider cursor.
-	addDynamicSprite("_c" + id, std::move(sliderCursorSprite), std::move(textureCursorSlider)); // Adds a sprite for the slider cursor.
+	addDynamicSprite("_c_" + id, std::move(sliderCursorSprite), std::move(textureCursorSlider)); // Adds a sprite for the slider cursor.
 
 	// Instantiate the slider.
 	m_sliders[id] = Slider{ mathFunction, changeFunction, interval };
@@ -391,7 +431,7 @@ bool UserInteractableGraphicalInterface::addMQB(std::string const& id, bool mult
 	}
 
 	m_mqbs[id] = MQB{ multipleChoices, numberOfBoxes, defaultChecked };
-}	// Adapter la taille pourla mettre en relation avec la taille de la fenêtre.
+}	//TODO: Adapter la taille pourla mettre en relation avec la taille de la fenêtre.
 
 std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(std::string const& identifier)
 {
@@ -405,7 +445,7 @@ std::function<void()>& UserInteractableGraphicalInterface::getFunctionOfButton(s
 float UserInteractableGraphicalInterface::getValueOfSlider(std::string const& identifier)
 {
 	Slider* slider{ &m_sliders.at(identifier) }; // Throws an exception if not there.
-	sf::Sprite* cursor{ &m_sprites[m_dynamicSpriteIds["_c" + identifier]].first };
+	sf::Sprite* cursor{ &m_sprites[m_dynamicSpriteIds["_c_" + identifier]].first };
 	sf::Sprite* background{ &m_sprites[m_dynamicSpriteIds['_' + identifier]].first};
 
 	float minPos{ background->getGlobalBounds().position.y };
@@ -434,7 +474,7 @@ bool UserInteractableGraphicalInterface::removeSlider(std::string const& identif
 {
 	// No effect if not there
 	removeDSprite('_' + identifier); // Remove the slider's background sprite.
-	removeDSprite("_c" + identifier); // Remove the slider's cursor sprite.
+	removeDSprite("_c_" + identifier); // Remove the slider's cursor sprite.
 	removeDText('_' + identifier); 
 
 	auto removeSlider{ m_sliders.find(identifier) }; // Check if the identifier is in the sliders map.
@@ -442,6 +482,25 @@ bool UserInteractableGraphicalInterface::removeSlider(std::string const& identif
 		return false; // No effect if it does not exist.
 
 	m_sliders.erase(removeSlider); // Erase from the sliders map
+	return true;
+}
+
+bool UserInteractableGraphicalInterface::removeMQB(std::string const& identifier) noexcept
+{
+	if (!doesMQBExist(identifier))
+		return false; // No effect if it does not exist.
+
+	unsigned int nbBox{ m_mqbs[identifier].m_numberOfBoxes }; 
+
+	for (int i{ 0 }; i < nbBox; i++)
+	{
+		bool a =removeDSprite('_' + identifier + std::to_string(i)); // Remove the sprite for each box.
+	
+		
+	}
+
+	m_mqbs.erase(identifier); // Erase from the MQB map.
+
 	return true;
 }
 
@@ -548,7 +607,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id, int mousePosY)
 {
 	Slider* slider{ &m_sliders.at(id) }; // Throws an exception if not there.
-	sf::Sprite* cursor{ &m_sprites[m_dynamicSpriteIds["_c" + id]].first};
+	sf::Sprite* cursor{ &m_sprites[m_dynamicSpriteIds["_c_" + id]].first};
 	sf::Sprite* background{ &m_sprites[m_dynamicSpriteIds['_' + id]].first};
 
 	float minPos{ background->getGlobalBounds().position.y};
@@ -571,21 +630,87 @@ void UserInteractableGraphicalInterface::changeValueSlider(std::string const& id
 	cursor->setPosition(sf::Vector2f{ cursor->getPosition().x, yPos });
 	float value{ slider->m_mathFunction(1 - (yPos - minPos) / (maxPos - minPos)) }; // Get the value of the slider.
 
-	//if (slider->m_textIterator != m_dynamicTextsIds.end()) // If the slider has a text associated with it.
-	//{
-	//	TextWrapper* text{ &m_texts[slider->m_textIterator->second] };
+	if (m_dynamicTextIds.find('_' + id) != m_dynamicTextIds.end()) // If the slider has a text associated with it.
+	{
+		TextWrapper* text{ &m_texts[m_dynamicTextIds['_' + id]]};
 
-	//	text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
-	//	text->updateContent(value);
-	//}
+		text->updatePosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
+		text->updateContent(value);
+	}
 
 	slider->m_userFunction(value); // Call the function associated with the slider.
 }
 
-//TODO: texte de slider
-//TODO: fonction de suppression MQB
-//TODO: update window resize
-//TODO: writable interface
-//TODO: find().second -> []
+//TODO: ajouter alignement gauche et droite pour les textes.
+//TODO: ajouter functions pour mqb
+//TODO: ajouter arg WrapperText* dans lambda (si necessaire)
+//TODO: multiple choice box -> multiple check boxes
+//TODO: empecher le texte de slider de se superposer avec le slider
+//TODO: userinteractablegraphicalinterface -> interactablegraphicalinterface
+//TODO: find().second -> at() + faire des reserves pour les maps et les vectors afin d'eviter les reallocations de memoire.
 //TODO: MouseMove d'abord verifier que le hovered actuel ne l 'est tjr pas avant de boucler sur le reste
 //TODO: _ + mqb + to_string -> _ + to_string + _ + mqb
+//TODO: mettre __ au lieu de _ lorsque l'utilisateur ne doit pas interagir avec l'élément (ex: __cursorEditing pour le curseur d'édition de texte)
+//TODO: ajouter aux lambdas un argument pour l'interface courante.
+// TODO: deconseiller la suppression des dynamics, plutot les cacher
+//TODO: mettre des int a la place des unsigned int pour les MQB, car c le bordel de faire -1 et on aura jamais plus de 2 millards de boxes dans mqb
+
+bool WritableGraphicalInterface::setCurrentlyEditedText(std::string const& identifier) noexcept
+{
+	if (!WGInterface::m_currentlyEditedText.empty())
+		return false; // Not already editing a text
+
+	WGInterface::m_currentlyEditedText = identifier;
+	TextWrapper* text{ &m_texts[m_dynamicTextIds[WGInterface::m_currentlyEditedText]] }; // Get the text wrapper for the currently edited text.
+
+	getDSprite("__cursorEditing")->first.setPosition(sf::Vector2f{ text->getText().getGlobalBounds().position.x + text->getText().getGlobalBounds().size.x, text->getText().getGlobalBounds().getCenter().y });
+
+	return true;
+}
+
+
+std::string WritableGraphicalInterface::textEntered(FGInterface* curInterface, char32_t unicodeValue) noexcept
+{
+	//TODO: verifier les printable characters.
+	WGInterface* isDerived{ dynamic_cast<WGInterface*>(curInterface) };
+
+	// check if the gui is writable and not currently editing a text and the validity of the unicode value.
+	if (isDerived == nullptr || m_currentlyEditedText == "" || unicodeValue > 0x007E)
+		return ""; 
+
+	TextWrapper* text{ &isDerived->m_texts[isDerived->m_dynamicTextIds[WGInterface::m_currentlyEditedText]] }; // Get the text wrapper for the currently edited text.
+	std::string newText{ text->getText().getString() };
+	
+	// Calling it before adding the new character to the text, so that the function can modify the text before it is updated.
+	isDerived->m_textEnteredFunction(unicodeValue, newText); // Call the function associated with the text entered event.
+
+	if (unicodeValue == 0x0008 && !newText.empty()) // Backspace
+			newText.pop_back(); // Remove the last character.
+	else if (unicodeValue == 0x000D || unicodeValue == 0x001B) // Enter or Escape 
+		m_currentlyEditedText = ""; // Stop editing the text.
+	else // If it is a printable character, add it to the text.
+		newText += static_cast<char>(unicodeValue);
+	
+	isDerived->applyNewText(text, newText); // Apply the new text to the text wrapper.
+	return newText; // Text was updated.
+}
+
+void WritableGraphicalInterface::applyNewText(TextWrapper* text, std::string& newText) noexcept
+{
+	sf::Sprite* cursorSprite{ &getDSprite("__cursorEditing")->first };
+	text->updateContent(newText); // Update the text with the new content.
+
+	if (WGInterface::m_currentlyEditedText == "" 
+	&& (text->getText().getLocalBounds().size.x <= 0 || text->getText().getLocalBounds().size.y <= 0))
+	{ // If the user finished updating the text, but it has no size, we set it to "N/A" to indicate that it is not valid.
+		newText = "N/A"; // Not valid
+		text->updateContent(newText); // Update the text with the new content.
+	}
+
+	if (m_currentlyEditedText == "") // Hide the cursor
+		cursorSprite->move(sf::Vector2f{ m_window->getView().getSize().x * 2, 0 });
+	else // Change the position of the cursor to the end of the text.
+		cursorSprite->setPosition(sf::Vector2f{ text->getText().getGlobalBounds().position.x + text->getText().getGlobalBounds().size.x, text->getText().getGlobalBounds().getCenter().y });
+}
+
+//TODO: changer textures et sprites dans FGInterace pour permettre les animations. textures -> m_textureHolder, sprites -> m_sprites

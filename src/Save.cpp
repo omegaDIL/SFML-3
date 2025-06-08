@@ -304,4 +304,4 @@ std::string Save::encryptDecrypt(std::string const& data, std::string const& key
 	return output;
 }
 
-// TODO: empecher cryptage \n
+// TODO: empecher cryptage vers \n
