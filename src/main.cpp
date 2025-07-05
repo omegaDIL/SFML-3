@@ -7,29 +7,27 @@
 
 using SafeSaves::Save;
 
-
 int main()
 {
 	sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 1000, 1000 } }, "Template sfml 3" };
-
 	WGInterface mainInterface{ &window };
 	FixedGraphicalInterface* curInterface{ &mainInterface };
-
-	mainInterface.addDynamicText("a", "ca marche", sf::Vector2f{ 100, 200 }, 20, 1.f);
-	mainInterface.addSlider("slider1", sf::Vector2u{ 20, 400 }, sf::Vector2f{ 500, 500 }, [](float x) { return 200 * x+40; }, [&mainInterface](float x) mutable { mainInterface.getDText("a").updateColor(sf::Color(x/2, x, 255-x/2)); }, 10, true);
-	mainInterface.addMQB("mqb1", true, 10, sf::Vector2f{ 300, 900 }, sf::Vector2f{ 330, 900 });
+	mainInterface.addMQB("mqb1", sf::Vector2f{ 100, 500 }, sf::Vector2f{ 0, 50 }, sf::Vector2f{ 1.f, 1.f }, 5, true, 3);
 	
-	mainInterface.addDynamicText("ab", "ca marche", sf::Vector2f{ 700, 200 }, 20, 1.f);
-	mainInterface.addButton("ab", [&mainInterface]() { mainInterface.setCurrentlyEditedText("ab"); });
+	sf::RectangleShape shape{ sf::Vector2f{ 100, 100 } };
+	shape.setFillColor(sf::Color{ 255, 0, 0 });
+	mainInterface.addSprite(createTextureFromDrawables(std::move(shape)), sf::Vector2f{ 100, 100 }, sf::Vector2f{ 1, 1 });
+	mainInterface.addText("Hello, World", sf::Vector2f{ 100, 100 }, 18, window.getSize().x / 1080.f);
+	
+	sf::Texture defaultTexture{ loadDefaultTexture(sf::Vector2f{ 20, 60 }) };
+	mainInterface.addSprite(defaultTexture, sf::Vector2f{ 500, 500 }, sf::Vector2f{ 1.f, 1.f });
 
-	mainInterface.addDynamicText("abb", "test", sf::Vector2f{ 700, 700 }, 20, 1.f);
-	mainInterface.addButton("abb", [&mainInterface]() { mainInterface.setCurrentlyEditedText("abb"); });
 
 
 	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())
-		{
+		{ 
 			if (event->is<sf::Event::TextEntered>())
 				WGInterface::textEntered(curInterface, event->getIf<sf::Event::TextEntered>()->unicode);
 
@@ -56,6 +54,21 @@ int main()
 
 	return 0;
 }
+
+
+
+//mainInterface.addDynamicText("a", "ca marche", sf::Vector2f{ 100, 200 }, 20, 1.f);
+//mainInterface.addSlider("slider1", sf::Vector2u{ 20, 400 }, sf::Vector2f{ 500, 500 }, sf::Vector2f{ 1.f, 1.f }, [](float x) { return 200 * x + 40; }, [&mainInterface](float x) mutable { mainInterface.getDText("a").setColor(sf::Color(x / 2, x, 255 - x / 2)); }, -1, true);
+//mainInterface.addMQB("mqb1", sf::Vector2f{ 100, 500 }, sf::Vector2f{ 0, 50 }, sf::Vector2f{ 1.f, 1.f }, 5, true, 3);
+//mainInterface.addDynamicText("ab", "deleted", sf::Vector2f{ 700, 200 }, 20, 1.f);
+//mainInterface.addButton("ab", [&mainInterface]() { mainInterface.setCurrentlyEditedText("ab"); });
+//mainInterface.removeDText("ab"); // Remove the text with the identifier "ab".
+//mainInterface.addDynamicText("abb", "test", sf::Vector2f{ 700, 700 }, 20, 1.f);
+//mainInterface.addButton("abb", [&mainInterface]() { mainInterface.setCurrentlyEditedText("abb"); });
+
+
+
+
 
 //TODO: tester avec view
 //TODO: Faire les testes

@@ -12,7 +12,7 @@
 using namespace SafeSaves;
 
 std::string const Save::savesPath{ "../saves/" };
-std::string const Save::tokensOfConfirmation{ "/%)'{]\"This file has been succesfully saved}\"#'[]?(" };
+std::string const Save::tokensOfConfirmation{ "/%)'{]\\This file has been succesfully saved}\"#'[]?(" };
 
 
 ReadingStreamRAIIWrapper::ReadingStreamRAIIWrapper(std::string const& path, std::ios::openmode mode)
@@ -54,11 +54,11 @@ WritingStreamRAIIWrapper::WritingStreamRAIIWrapper(std::string const& path, std:
 
 		m_fileStream = std::make_unique<std::ofstream>(path, mode);
 
-		if (!m_fileStream->is_open()) [[unlikely]]
-		{
-			m_fileStream.reset(); // Resetting the pointer to nullptr.
-			throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);
-		}
+	if (!m_fileStream->is_open()) [[unlikely]]
+	{
+		m_fileStream.reset(); // Resetting the pointer to nullptr.
+		throw FileFailureWhileOpening("Unable to open the file, unknow reasons: " + path);
+	}
 }
 
 void WritingStreamRAIIWrapper::create(std::string const& path, std::ios::openmode mode, bool create)
@@ -285,7 +285,7 @@ std::string Save::encryptDecrypt(std::string const& data, std::string const& key
 		return datum;
 	};
 	
-	for (int i = 0; i < data.size(); i++)
+	for (int i = 0; i < data.size(); ++i)
 	{	// Each letter of data will be encrypted with one letter of the key.
 		char letter{ data[i] };
 		uint8_t const current_key = key[i % key.size()]; // Ensure the key index is within bounds

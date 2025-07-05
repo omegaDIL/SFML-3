@@ -63,12 +63,6 @@ class ReadingStreamRAIIWrapper
 {
 public:
 
-	ReadingStreamRAIIWrapper() noexcept = default;
-	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper const&) = delete;
-	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper&&) noexcept = default;
-	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper const&) = delete;
-	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper&&) noexcept = default;
-
 	/**
 	 * @brief Ensures the file is closed.
 	 * @complexity O(1).
@@ -107,6 +101,12 @@ public:
 	 */
 	void create(std::string const& path, std::ios::openmode mode = std::ios::in);
 
+	ReadingStreamRAIIWrapper() noexcept = default;
+	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper const&) = delete;
+	ReadingStreamRAIIWrapper(ReadingStreamRAIIWrapper&&) noexcept = default;
+	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper const&) = delete;
+	ReadingStreamRAIIWrapper& operator=(ReadingStreamRAIIWrapper&&) noexcept = default;
+
 
 	/**
 	 * @complexity O(1).
@@ -134,12 +134,6 @@ private:
 class WritingStreamRAIIWrapper
 {
 public:
-
-	WritingStreamRAIIWrapper() noexcept = default;
-	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper const&) = delete;
-	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper&&) noexcept = default;
-	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper const&) = delete;
-	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper&&) noexcept = default;
 
 	/**
 	 * @brief Ensures that the file is closed.
@@ -180,6 +174,12 @@ public:
 	 *        Strong exceptions guarrantee: you can call this function again to try opening a file.
 	 */
 	void create(std::string const& path, std::ios::openmode mode = std::ios::out | std::ios::trunc, bool create = false);
+
+	WritingStreamRAIIWrapper() noexcept = default;
+	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper const&) = delete;
+	WritingStreamRAIIWrapper(WritingStreamRAIIWrapper&&) noexcept = default;
+	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper const&) = delete;
+	WritingStreamRAIIWrapper& operator=(WritingStreamRAIIWrapper&&) noexcept = default;
 
 
 	/**

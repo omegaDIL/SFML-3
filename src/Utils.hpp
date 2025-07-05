@@ -99,7 +99,7 @@ inline std::vector<T> convertBackFromString(std::vector<std::string> const& toCo
  *
  * @see sf::RenderWindow.
  */
-void showErrorsUsingWindow(std::string const& errorMessage, std::string const& errorTitle) noexcept;
+void showErrorsUsingWindow(std::string const& errorTitle, std::string const& errorMessage) noexcept;
 
 
 /**

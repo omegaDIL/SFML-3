@@ -1,67 +1,122 @@
 #include <SFML/Graphics.hpp>
-#include <optional>
-#include <string>
-#include <memory>
+#include <variant>
+#include <sstream>
+#include <iostream>
 #include "Exceptions.hpp"
 #include "GUITexturesLoader.hpp"
 
 
-std::shared_ptr<sf::Texture> createTextureFromShape(sf::Shape& shape, bool smooth) noexcept
+std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
 {
-	auto setTransformable = [](sf::Transformable& transformable, sf::Vector2f const& origin, sf::Vector2f position, sf::Vector2f scale, sf::Angle rotation) noexcept
+	sf::Font font{};
+
+	try
 	{
-		transformable.setOrigin(origin);
-		transformable.setPosition(position);
-		transformable.setScale(scale);
-		transformable.setRotation(rotation);
-	};
+		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
 
-	// We need to reset the transformables of the shape to display the shape at the top left corner
-	// of the render texture. And we avoid putting the transformables as the default values of the 
-	// new sprite.
-	sf::Vector2f origin{ shape.getOrigin() };
-	sf::Vector2f position{ shape.getPosition() };
-	sf::Vector2f scale{ shape.getScale() };
-	sf::Angle rotation{ shape.getRotation() };
-	float outlineThinkness{ shape.getOutlineThickness() };
-	setTransformable(shape, sf::Vector2f{ 0.f, 0.f }, sf::Vector2f{ outlineThinkness, outlineThinkness }, sf::Vector2f{ 1.f, 1.f }, sf::degrees(0));
+		if (!std::filesystem::exists(completePath)) [[unlikely]]
+			throw LoadingGUIRessourceFailure{ "Font file does not exist: " + completePath.string() + '\n' };
 
-	// Creates a render texture to draw the shape.
-	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(sf::Vector2f{ shape.getLocalBounds().size.x, shape.getLocalBounds().size.y }) };
-	renderTexture.clear(sf::Color::Transparent);
-	renderTexture.draw(shape);
-	renderTexture.display();
-	
-	setTransformable(shape, origin, position, scale, rotation); // Reset the transformables of the shape to their original values.
-	std::shared_ptr<sf::Texture> texture{ std::make_shared<sf::Texture>(renderTexture.getTexture()) }; // Gets the texture from the render texture.
-	texture->setSmooth(smooth); // Sets the smoothness of the texture.
+		if (!font.openFromFile(completePath)) [[unlikely]]
+			throw LoadingGUIRessourceFailure{ "Failed to load font from file " + completePath.string() + '\n'};
+		
+		font.setSmooth(true); // Enable smooth rendering for the font.
+	}
+	catch (LoadingGUIRessourceFailure const& error)
+	{
+		errorMessage << error.what();
+		errorMessage << "This font cannot be displayed\n";
+		return std::nullopt; 
+	}
+
+	return font;
+}
+
+std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
+{
+	sf::Texture texture{};
+
+	try
+	{
+		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
+
+		if (!std::filesystem::exists(completePath)) [[unlikely]]
+			throw LoadingGUIRessourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
+
+		if (!texture.loadFromFile(completePath)) [[unlikely]]
+			throw LoadingGUIRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n'};
+
+		texture.setSmooth(true); // Enable smooth rendering for the font.
+	}
+	catch (LoadingGUIRessourceFailure const& error)
+	{
+		errorMessage << error.what();
+		errorMessage << "This texture cannot be displayed\n";
+		return std::nullopt;
+	}
 
 	return texture;
 }
 
+sf::Font loadDefaultFont()
+{
+	std::ostringstream errorMessage{};
+	auto fontOpt = loadFontFromFile(errorMessage, "defaultFont.ttf");
 
-std::shared_ptr<sf::Texture> loadSolidRectangeShapeWithOutline(sf::Vector2u size, sf::Color fill, sf::Color outline, unsigned int thickness) noexcept
+	if (!fontOpt.has_value()) [[unlikely]]
+	{
+		errorMessage << "\nMajor error: No text can use the default texture\n";
+		errorMessage << "Reinstalling the software could solve the issue\n";
+		errorMessage << "Sorry for the inconveniance";
+		std::cout << errorMessage.str();
+		throw LoadingGUIRessourceFailure{ errorMessage.str() };
+	}
+
+	return fontOpt.value();
+}
+
+sf::Texture loadDefaultTexture(sf::Vector2f size) noexcept
+{
+	sf::RectangleShape topLeft{ size / 2.f };
+	topLeft.setFillColor(sf::Color::Red);
+
+	sf::RectangleShape topRight{ size / 2.f };
+	topRight.setFillColor(sf::Color::Blue);
+	topRight.setPosition(sf::Vector2f{ size.x / 2.f, 0.f });
+
+	sf::RectangleShape bottomLeft{ size / 2.f };
+	bottomLeft.setFillColor(sf::Color::Green);
+	bottomLeft.setPosition(sf::Vector2f{ 0.f , size.y / 2.f });
+
+	sf::RectangleShape bottomRight{ size / 2.f };
+	bottomRight.setFillColor(sf::Color::Yellow);
+	bottomRight.setPosition(sf::Vector2f{ size.x / 2.f, size.y / 2.f });
+
+	return createTextureFromDrawables(topLeft, topRight, bottomLeft, bottomRight);
+}
+
+sf::Texture loadSolidRectangeShapeWithOutline(sf::Vector2u size, sf::Color fill, sf::Color outline, unsigned int thickness) noexcept
 {
 	sf::RectangleShape shape{ static_cast<sf::Vector2f>(size) };
 	shape.setFillColor(fill);
 	shape.setOutlineColor(outline);
-	shape.setOutlineThickness(std::min(size.x, size.y) / thickness);
+	shape.setOutlineThickness(static_cast<float>(std::min(size.x, size.y) / thickness));
 
-	return createTextureFromShape(shape, true);
+	return createTextureFromDrawables(shape);
 }
 
-std::shared_ptr<sf::Texture> loadCheckBoxTexture(sf::Vector2u size) noexcept
+sf::Texture loadCheckBoxTexture(sf::Vector2u size)
 {
 	sf::Color fillColor{ 20, 20, 20 };
 	sf::Color outlineColor{ 80, 80, 80 };
 
 	auto texture = loadSolidRectangeShapeWithOutline(size);
-	sf::Image image{ texture->copyToImage() };
+	sf::Image image{ texture.copyToImage() };
 
 	unsigned int checkThickness{ static_cast<unsigned int>(std::min(size.x, size.y) / 5) };
-	for (unsigned int i{ 0 }; i < image.getSize().x; i++)
+	for (unsigned int i{ 0 }; i < image.getSize().x; ++i)
 	{
-		for (unsigned int j{ 0 }; j < image.getSize().y; j++)
+		for (unsigned int j{ 0 }; j < image.getSize().y; ++j)
 		{
 			if (image.getPixel(sf::Vector2u{ i, j }) == outlineColor)
 				continue; // It is visualky better if we don't draw the diagonal on the outline.
@@ -73,6 +128,7 @@ std::shared_ptr<sf::Texture> loadCheckBoxTexture(sf::Vector2u size) noexcept
 		}
 	}
 	
-	texture->loadFromImage(image);
+	if (!texture.loadFromImage(image))
+		throw LoadingGUIRessourceFailure{ "Failed to load checkbox texture from image." };
 	return texture;	
 }
