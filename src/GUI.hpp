@@ -23,6 +23,7 @@
 #include <list>
 #include <array>
 #include <algorithm>
+#include <cstdint>
 #include <initializer_list>
 #include <unordered_set>
 #include <memory>
@@ -38,6 +39,7 @@ concept Ostreamable = requires(std::ostream & os, T t)
 {
 	{ os << t } -> std::same_as<std::ostream&>;
 };
+
 
 /**
  * @brief Manages items to create a basic GUI. You can display texts, sprites, a background...
@@ -70,29 +72,17 @@ class FixedGraphicalInterface
 public:
 
 	/// The alignment of the item.
-	enum class Alignement
+	enum class Alignment : uint8_t
 	{
-		TopLeft,
-		middleLeft,
-		BottomLeft,
-		TopCenter,
-		Center,
-		BottomCenter,
-		TopRight,
-		middleRight,
-		BottomRight
+		Center = 0, // Center is the default value for both x and y axis.
+
+		Bottom = 1 << 0,
+		Top = 1 << 1,
+
+		Right = 1 << 2,
+		Left = 1 << 3
 	};
 
-	enum class Teste
-	{
-		Top = 1,
-		Middle = 2,
-		Bottom = 3,
-
-		Left = 4,
-		Center = 5,
-		Right = 6
-	};
 
 	/**
 	 * @brief A wrapper for `sf::Text` that initializes the text, keeps the font, manages resizing.
@@ -102,9 +92,6 @@ public:
 	class TextWrapper : private sf::Text
 	{
 	public:
-
-
-
 
 		/**
 		 * @brief Initializes the text with the specified parameters.
@@ -119,15 +106,15 @@ public:
 		 * @param[in] rot: The rotation of the text.
 		 */
 		template<Ostreamable T>
-		inline TextWrapper(T const& content, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignement alignement = Alignement::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0)) noexcept
-			: sf::Text{ s_font, "", characterSize }, hide{ false }, m_alignement{ alignement }
+		inline TextWrapper(T const& content, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0)) noexcept
+			: sf::Text{ s_font, "", characterSize }, hide{ false }, m_alignment{ alignment }
 		{
 			sf::Text::setFillColor(color);
 			sf::Text::setRotation(rot);
 			sf::Text::setPosition(pos);
 			sf::Text::setScale(scale);
 			sf::Text::setStyle(style);
-			setContent(content); // Also compute the origin of the text with the correct alignement.
+			setContent(content); // Also compute the origin of the text with the correct alignment.
 		}
 
 		TextWrapper() noexcept = delete;
@@ -230,12 +217,12 @@ public:
 			sf::Text::setStyle(style);
 		}
 
-		inline void setAlignement(Alignement alignement) noexcept
+		inline void setAlignment(Alignment alignment) noexcept
 		{
-			if (m_alignement == alignement)
+			if (m_alignment == alignment)
 				return; // No need to update the alignment if it is already the same.
 
-			m_alignement = alignement; // Update the alignment of the text.
+			m_alignment = alignment; // Update the alignment of the text.
 			computeNewOrigin();
 		}
 
@@ -278,7 +265,7 @@ public:
 
 		void computeNewOrigin() noexcept;
 
-		Alignement m_alignement; // Alignment of the text.
+		Alignment m_alignment; // Alignment of the text.
 
 		static sf::Font s_font; // The font used for the texts.
 	};
@@ -585,7 +572,12 @@ private:
 	static std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> allInterfaces;
 };
 
-
+// Enable bitwise operations for Alignment
+inline FixedGraphicalInterface::Alignment operator|(FixedGraphicalInterface::Alignment lhs, FixedGraphicalInterface::Alignment rhs)
+{
+	auto newAlignment{ static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs) };
+	return static_cast<FixedGraphicalInterface::Alignment>(newAlignment);
+}
 
 /**
  * @brief  Manages an interface with changeable contents of elements (texts and shapes).
@@ -1178,7 +1170,7 @@ private:
 };
 
 using FGInterface = FixedGraphicalInterface;
-using GUIAlign = FGInterface::Alignement;
+using GUIAlign = FGInterface::Alignment;
 using DGInterface = DynamicGraphicalInterface;
 using IGInterface = UserInteractableGraphicalInterface;
 using WGInterface = WritableGraphicalInterface;

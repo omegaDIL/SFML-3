@@ -49,61 +49,22 @@ std::optional<std::string> FGInterface::TextWrapper::loadFont() noexcept
 
 void FGInterface::TextWrapper::computeNewOrigin() noexcept
 {
-	//sf::Vector2f originMiddle{ getLocalBounds().getCenter() };
-	//sf::Vector2f originBottomRight{ getLocalBounds().size };
+	sf::Vector2f originTopLeft{ 0, 0 };
+	sf::Vector2f originBottomRight{ getLocalBounds().size };
+	sf::Vector2f origin{ getLocalBounds().getCenter() }; // Center origin by default.
 
-	sf::Vector2f origin{ 0, 0 }; // Default origin is (0, 0), which is the top-left corner of the text.
-	//switch (m_alignement)
-	//{
-	//case FixedGraphicalInterface::Alignement::TopLeft:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::middleLeft:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::BottomLeft:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::TopCenter:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::Center:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::BottomCenter:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::TopRight:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::middleRight:
-	//	break;
-	//case FixedGraphicalInterface::Alignement::BottomRight:
-	//	break;
-	//default: // No need to check topLeft, as it is the default value of origin.
-	//	break;
-	//}
+	uint8_t value = static_cast<uint8_t>(m_alignment);
+	if ((value >> 3) & 1)
+		origin.x = originTopLeft.x; // Left side.
+	else if ((value >> 2) & 1) 
+		origin.x = originBottomRight.x; // Right side.
 
+	if ((value >> 1) & 1)
+		origin.y = originTopLeft.y; // Top side.
+	else if ((value >> 0) & 1)
+		origin.y = originBottomRight.y; // Bottom side.
 
-
-	//switch (m_)
-	//{
-	//[[likely]] case HorAlign::Center:
-	//	origin.x = originMiddle.x;
-	//	break;
-	//[[unlikely]] case HorAlign::Right:
-	//	origin.x = originBottomRight.x;
-	//	break;
-	//default: 
-	//	break;
-	//}
-
-	//switch (m_verAlign)
-	//{
-	//[[likely]] case VerAlign::Center:
-	//	origin.y = originMiddle.y; // Center the text vertically.
-	//	break;
-	//[[unlikely]] case VerAlign::Bottom:
-	//	origin.y = originBottomRight.y; // Align the text to the bottom.
-	//	break;
-	//default: // No need to check top, as it is the default value of origin.
-	//	break;
-	//}
-
-	setOrigin(origin); // Reset the origin to (0, 0).
+	setOrigin(origin);
 }
 
 FGInterface::SpriteWrapper::SpriteWrapper(std::string const& sharedTexture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color)
@@ -751,4 +712,6 @@ void WritableGraphicalInterface::applyNewText(TextWrapper* text, std::string& ne
 // Ajouter un parametre d'interface courante dans les std::functions
 // Ajouter une std::function pour les mqb
 // Ajouter un intRect/scale pour chaque texture dans SpriteWrapper
-// ajouter alignement gauche et droite pour les textes. -> empecher texte de se superposer avec	le slider
+// ajouter alignment
+// 
+// gauche et droite pour les textes. -> empecher texte de se superposer avec	le slider
