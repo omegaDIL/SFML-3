@@ -112,35 +112,4 @@ namespace SafeSaves
 	};
 } // namespace SafeSaves
 
-
-/** 
- * @brief Exception thrown for graphical errors when loading ressources.
- *
- * @see std::runtime_error.
- */
-struct LoadingGUIRessourceFailure : public std::runtime_error
-{
-public:
-
-	/**
-	 * @brief Initializes the exception with a message.
-	 * @complexity O(1)
-	 *
-	 * @param[in] message: The error message.
-	 */
-	inline explicit LoadingGUIRessourceFailure(const std::string& message) : std::runtime_error{ message }
-	{}
-
-
-	/**
-	 * @complexity O(1).
-	 *
-	 * @return the error message.
-	 */
-	inline virtual const char* what() const noexcept override
-	{
-		return std::runtime_error::what();
-	}
-};
-
 #endif //EXCEPTIONS_HPP

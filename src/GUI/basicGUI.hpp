@@ -1,4 +1,5 @@
-//TODO ifned
+#ifndef BASICGUI_HPP
+#define BASICGUI_HPP
 
 #include <SFML/Graphics.hpp>
 #include <string>
@@ -10,48 +11,10 @@
 #include <concepts>
 #include <sstream>
 #include <cstdint>
-
+#include "GUIWrappers.hpp"
 
 //namespace gui
 
-/// The alignment of the item.
-enum class Alignment : uint8_t
-{
-	Center = 0, // Center is the default value for both x and y axis.
-
-	Bottom = 1 << 0,
-	Top = 1 << 1,
-
-	Right = 1 << 2,
-	Left = 1 << 3
-};
-
-struct Wrapper
-{
-public:
-
-	Wrapper(Alignment alignment) noexcept;
-
-	Wrapper() noexcept = delete;
-	Wrapper(Wrapper const&) noexcept = default;
-	Wrapper(Wrapper&&) noexcept = default;
-	Wrapper& operator=(Wrapper const&) noexcept = default;
-	Wrapper& operator=(Wrapper&&) noexcept = default;
-	virtual ~Wrapper() noexcept = default;
-
-
-	inline virtual void scale(sf::Vector2f scale) noexcept = 0;
-
-	inline virtual void setPosition(sf::Vector2f pos) noexcept = 0;
-
-	inline virtual void setRotation(sf::Angle angle) noexcept = 0;
-
-	inline virtual void windowResized(sf::Vector2f scaleFactor, sf::Vector2f minscaleFactor) noexcept = 0;
-
-
-	bool hide;
-	Alignment alignment;
-};
 
 
 
@@ -92,9 +55,6 @@ concept Ostreamable = requires(std::ostream & os, T t)
 class FixedGraphicalInterface
 {
 public:
-
-
-
 
 	/**
 	 * @brief A wrapper for `sf::Text` that initializes the text, keeps the font, manages resizing.
@@ -284,171 +244,7 @@ public:
 		static sf::Font s_font; // The font used for the texts.
 	};
 
-	class SpriteWrapper : private sf::Sprite
-	{
-	public:
-
-		SpriteWrapper() noexcept = delete;
-		SpriteWrapper(SpriteWrapper const&) noexcept = default;
-		SpriteWrapper(SpriteWrapper&&) noexcept = default;
-		SpriteWrapper& operator=(SpriteWrapper const&) noexcept = default;
-		SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
-		virtual ~SpriteWrapper() noexcept = default;
-
-		SpriteWrapper(std::string const& sharedTexture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color);
-
-		SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color) noexcept;
-
-
-		inline void addTexture(sf::Texture texture, long long reserve = -1) noexcept
-		{
-			if (reserve != -1 && m_textures.capacity() < reserve)
-				m_textures.reserve(reserve); // Reserve space in the vector of textures if needed.
-
-			m_uniqueTextures.push_back(std::move(texture)); // Add the texture to the vector of unique textures.
-			m_textures.push_back(&m_uniqueTextures.back()); // Add the texture to the vector of textures.
-		}
-
-		inline void addTexture(std::string const& sharedTexture, long long reserve = -1)
-		{
-			if (reserve != -1 && m_textures.capacity() < reserve)
-				m_textures.reserve(reserve); // Reserve space in the vector of textures if needed.
-
-			m_textures.push_back(&(*s_accessingSharedTexture.at(sharedTexture))); // Add the texture to the vector of textures.
-		}
-
-		/**
-		 * @brief Updates the position of the sprite.
-		 * @complexity O(1).
-		 *
-		 * @param[in] pos: The new position for the sprite.
-		 *
-		 * @see sf::Sprite::setPosition().
-		 */
-		inline void setPosition(sf::Vector2f pos) noexcept
-		{
-			sf::Sprite::setPosition(pos);
-		}
-
-		/**
-		 * @brief Updates the rotation of the sprite.
-		 * @complexity O(1).
-		 *
-		 * @param[in] rot: The new rotation for the sprite.
-		 *
-		 * @see sf::Sprite::setRotation.
-		 */
-		inline void setRotation(sf::Angle rot) noexcept
-		{
-			sf::Sprite::setRotation(rot);
-		}
-
-		/**
-		 * @brief Scale of the sprite.
-		 * @complexity O(1).
-		 *
-		 * @param[in] scale: The value to scale by.
-		 *
-		 * @see sf::Sprite::scale.
-		 */
-		inline void scale(sf::Vector2f scale) noexcept
-		{
-			sf::Sprite::scale(scale);
-		}
-
-		/**
-		 * @brief Updates the color of the text.
-		 * @complexity O(1).
-		 *
-		 * @param[in] color: The new color for the text.
-		 *
-		 * @see sf::Sprite::setColor().
-		 */
-		inline void setColor(sf::Color color) noexcept
-		{
-			sf::Sprite::setColor(color);
-		}
-
-		inline void setTextureRect(const sf::IntRect& rectangle) noexcept
-		{
-			sf::Sprite::setTextureRect(rectangle);
-		}
-
-		inline void switchToNextTexture() noexcept
-		{
-			m_curTextureIndex = (m_curTextureIndex + 1) % m_textures.size(); // Switch to the next texture in the vector.
-			setTexture(*m_textures[m_curTextureIndex]); // Set the texture of the sprite to the next texture.
-		}
-
-		inline void switchToNextTexture(size_t i)
-		{
-			if (i >= m_textures.size())
-				throw std::out_of_range{ "Index out of range for the sprites vector." };
-
-			m_curTextureIndex = i; // Switch to the texture at index i.
-			setTexture(*m_textures[m_curTextureIndex]); // Set the texture of the sprite to the texture at index i.
-		}
-
-		[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept
-		{
-			return m_curTextureIndex; // Returns the current texture index.
-		}
-
-		[[nodiscard]] inline sf::Texture* getCurrentTexture() /*const*/ noexcept
-		{	// TODO: return const pointer instead of pointer.
-			return m_textures[m_curTextureIndex]; // Returns the current texture of the sprite.
-		}
-
-		/**
-		 * @brief Accesses the base `sf::Sprite` object.
-		 * @complexity O(1).
-		 *
-		 * @return A reference to the base `sf::Sprite` object.
-		 */
-		[[nodiscard]] inline sf::Sprite const& getSprite() const noexcept
-		{
-			return *this;
-		}
-
-		/**
-		 * @brief Resizes the text when the window is resized.
-		 * @complexity O(1).
-		 *
-		 * @param[in] scalingFactor: The scaling factor between the previous window's size and the new one.
-		 * @param[in] scalingFactorMin: The scaling factor between the previous smallest window's size in x or y axis, and the new smallest one.
-		 */
-		inline void windowResized(sf::Vector2f scalingFactor, sf::Vector2f scalingFactorMin) noexcept
-		{
-			scale(scalingFactorMin); //TODO: (aussi pour texte) Voir si necessaire de passer scalingFactorMin.
-			setPosition(sf::Vector2f{ getPosition().x * scalingFactor.x, getPosition().y * scalingFactor.y });
-		}
-
-
-		static void addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept;
-
-		static void removeSharedTexture(std::string const& identifier) noexcept;
-
-		[[nodiscard]] static inline sf::Texture& getSharedTexture(std::string const& identifier)
-		{
-			return *s_accessingSharedTexture.at(identifier);
-		}
-
-		[[nodiscard]] static inline bool checkIfTextureExists(std::string const& identifier) noexcept
-		{
-			return s_accessingSharedTexture.find(identifier) != s_accessingSharedTexture.end();
-		}
-
-		bool hide;
-
-	private:
-
-		static std::list<sf::Texture> s_sharedTextures;
-		static std::unordered_map<std::string, std::list<sf::Texture>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
-
-		std::list<sf::Texture> m_uniqueTextures; // Textures that are only used by this sprite.
-		std::vector<sf::Texture*> m_textures; // Textures that are used by this sprite, including unique and shared textures.
-		size_t m_curTextureIndex{};
-	};
+	
 
 
 	/**
@@ -464,11 +260,11 @@ public:
 	 *
 	 * @pre The font should be named font.ttf and located at where ressourcePath points to.
 	 * @post The font is loaded.
-	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but no text can be displayed.
+	 * @throw LoadingGraphicalRessourceFailure Strong exception guarrantee, but no text can be displayed.
 	 *
 	 * @pre The path of the background should be valid within the res folder.
 	 * @post Your background is loaded.
-	 * @throw LoadingGUIRessourceFailure Strong exception guarrantee, but the default background is used.
+	 * @throw LoadingGraphicalRessourceFailure Strong exception guarrantee, but the default background is used.
 	 *
 	 * @note If you don't want a background, just pass an empty string and no exceptions will be thrown.
 	 * @note The font is loaded is common to all texts, and therefore, it is loaded once (when the
@@ -586,9 +382,4 @@ private:
 	static std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> allInterfaces;
 };
 
-// Enable bitwise operations for Alignment
-inline Alignment operator|(Alignment lhs, Alignment rhs)
-{
-	auto newAlignment{ static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs) };
-	return static_cast<Alignment>(newAlignment);
-}
+#endif // BASICGUI_HPP

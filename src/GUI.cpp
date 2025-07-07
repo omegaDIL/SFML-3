@@ -58,7 +58,7 @@ FixedGraphicalInterface::TextWrapper& DynamicGraphicalInterface::getDText(std::s
 	return m_texts[m_dynamicTexts.at(identifier)]; // Throws an exception if not there.
 }
 
-FixedGraphicalInterface::SpriteWrapper& DynamicGraphicalInterface::getDSprite(std::string const& identifier)
+SpriteWrapper& DynamicGraphicalInterface::getDSprite(std::string const& identifier)
 {
 	return m_sprites[m_dynamicSprites.at(identifier)]; // Throws an exception if not there.
 }

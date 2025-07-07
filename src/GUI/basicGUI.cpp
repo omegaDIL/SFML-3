@@ -5,9 +5,7 @@
 
 sf::Font FixedGraphicalInterface::TextWrapper::s_font{};
 std::string const FixedGraphicalInterface::ressourcePath{ "../res/" };
-std::list<sf::Texture> FixedGraphicalInterface::SpriteWrapper::s_sharedTextures{};
 std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
-std::unordered_map<std::string, std::list<sf::Texture>::iterator> FixedGraphicalInterface::SpriteWrapper::s_accessingSharedTexture{};
 
 
 
@@ -21,7 +19,7 @@ std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noex
 	{
 		s_font = loadDefaultFont(); // Load the default font.
 	}
-	catch (LoadingGUIRessourceFailure const& error)
+	catch (LoadingGraphicalRessourceFailure const& error)
 	{
 		return error.what();
 	}
@@ -49,48 +47,6 @@ void FixedGraphicalInterface::TextWrapper::computeNewOrigin() noexcept
 	setOrigin(origin);
 }
 
-FixedGraphicalInterface::SpriteWrapper::SpriteWrapper(std::string const& sharedTexture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color)
-	: sf::Sprite{ *s_accessingSharedTexture.at(sharedTexture) }, m_curTextureIndex{ 0 }, hide{ false }
-{
-	m_textures.push_back(&(*s_accessingSharedTexture.at(sharedTexture))); // Add the texture to the vector of textures.
-
-	if (rectangle.size == sf::Vector2i{ 0, 0 }) [[likely]]
-		setTextureRect(sf::IntRect{ sf::Vector2i{}, static_cast<sf::Vector2i>(getTexture().getSize()) });
-
-	setPosition(pos);
-	setScale(scale);
-	setRotation(rot);
-	setColor(color);
-	setOrigin(getLocalBounds().getCenter());
-}
-
-FixedGraphicalInterface::SpriteWrapper::SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color) noexcept
-	: sf::Sprite{ texture }, m_curTextureIndex{ 0 }, hide{ false }
-{
-	m_uniqueTextures.push_back(std::move(texture)); // Add the texture to the vector of unique textures.
-	m_textures.push_back(&m_uniqueTextures.back()); // Add the texture to the vector of textures.
-	setTexture(*m_textures.back()); // Has been moved, so reset the texture of the sprite.
-
-	if (rectangle.size == sf::Vector2i{ 0, 0 }) [[likely]]
-		setTextureRect(sf::IntRect{ sf::Vector2i{}, static_cast<sf::Vector2i>(getTexture().getSize()) });
-	setPosition(pos);
-	setScale(scale);
-	setRotation(rot);
-	setColor(color);
-	setOrigin(getLocalBounds().getCenter());
-}
-
-void FixedGraphicalInterface::SpriteWrapper::addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept
-{
-	s_sharedTextures.push_front(std::move(textures)); // Add the texture to the static collection of textures.
-	s_accessingSharedTexture[identifier] = s_sharedTextures.begin(); // Map the identifier to the texture in the static collection.
-}
-
-void FixedGraphicalInterface::SpriteWrapper::removeSharedTexture(std::string const& identifier) noexcept
-{
-	s_sharedTextures.erase(s_accessingSharedTexture.at(identifier)); // Remove the texture from the static collection of textures.
-	s_accessingSharedTexture.erase(identifier); // Remove the identifier from the static collection of textures.
-}
 
 
 FixedGraphicalInterface::FixedGraphicalInterface(FixedGraphicalInterface&& other) noexcept
@@ -169,22 +125,22 @@ FixedGraphicalInterface::FixedGraphicalInterface(sf::RenderWindow* window, std::
 	// Loads the font.
 	auto errorFont{ TextWrapper::loadFont() };
 	if (errorFont.has_value())
-		throw LoadingGUIRessourceFailure{ errorFont.value() };
+		throw LoadingGraphicalRessourceFailure{ errorFont.value() };
 
 	// Loads the background. n  
 	auto errorBackground{ loadBackground(backgroundFileName) };
 	if (errorBackground.has_value())
-		throw LoadingGUIRessourceFailure{ errorBackground.value() };
+		throw LoadingGraphicalRessourceFailure{ errorBackground.value() };
 }
 
 void FixedGraphicalInterface::addSprite(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color)
 {
-	m_sprites.push_back(SpriteWrapper{ texture, pos, scale, rot, rectangle, color });
+	m_sprites.push_back(SpriteWrapper{ texture, pos, scale });
 }
 
 void FixedGraphicalInterface::addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color) noexcept
 {
-	m_sprites.push_back(SpriteWrapper{ std::move(texture), pos, scale, rot, rectangle, color });
+	m_sprites.push_back(SpriteWrapper{ std::move(texture), pos, scale }); //TODO: add the rest of the arg
 }
 
 void FixedGraphicalInterface::draw() const
@@ -204,8 +160,8 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 {
 	float minOfCurrentWindowSize{ static_cast<float>(std::min(window->getSize().x, window->getSize().y)) };
 	float minOfPreviousWindowSize{ static_cast<float>(std::min(window->getSize().x / scalingFactor.x, window->getSize().y / scalingFactor.y)) };
-	sf::Vector2f minScalingFactor{ minOfCurrentWindowSize / minOfPreviousWindowSize, minOfCurrentWindowSize / minOfPreviousWindowSize };
-
+	float a = minOfCurrentWindowSize / minOfPreviousWindowSize;
+	sf::Vector2f minScalingFactor{ a, a };
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
@@ -217,7 +173,7 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 
 		// Updating sprites.
 		for (int i{ 1 }; i < curInterface->m_sprites.size(); ++i) // Avoiding the background by skipping index 0.
-			curInterface->m_sprites[i].windowResized(scalingFactor, minScalingFactor);
+			curInterface->m_sprites[i].resized(scalingFactor, a);
 
 		// Background is always the first sprite, so it is at index 0.
 		curInterface->m_sprites[0].setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
@@ -252,13 +208,13 @@ std::optional<std::string> FixedGraphicalInterface::loadBackground(std::string c
 
 		sf::Texture customTextureBackground{};
 		if (!customTextureBackground.loadFromFile(path))
-			throw LoadingGUIRessourceFailure{ "Failed to load background at: " + path };
+			throw LoadingGraphicalRessourceFailure{ "Failed to load background at: " + path };
 		customTextureBackground.setSmooth(true);
 
 		m_sprites[0].addTexture(std::move(customTextureBackground)); // Adds the texture to the sprite.
 		m_sprites[0].switchToNextTexture();
 	}
-	catch (LoadingGUIRessourceFailure const& error)
+	catch (LoadingGraphicalRessourceFailure const& error)
 	{
 		std::ostringstream oss{};
 

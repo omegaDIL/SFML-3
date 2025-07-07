@@ -2,7 +2,7 @@
 #include <variant>
 #include <sstream>
 #include <iostream>
-#include "Exceptions.hpp"
+#include "GUI/GUIWrappers.hpp"
 #include "GUITexturesLoader.hpp"
 
 
@@ -15,14 +15,14 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
 
 		if (!std::filesystem::exists(completePath)) [[unlikely]]
-			throw LoadingGUIRessourceFailure{ "Font file does not exist: " + completePath.string() + '\n' };
+			throw LoadingGraphicalRessourceFailure{ "Font file does not exist: " + completePath.string() + '\n' };
 
 		if (!font.openFromFile(completePath)) [[unlikely]]
-			throw LoadingGUIRessourceFailure{ "Failed to load font from file " + completePath.string() + '\n'};
+			throw LoadingGraphicalRessourceFailure{ "Failed to load font from file " + completePath.string() + '\n'};
 		
 		font.setSmooth(true); // Enable smooth rendering for the font.
 	}
-	catch (LoadingGUIRessourceFailure const& error)
+	catch (LoadingGraphicalRessourceFailure const& error)
 	{
 		errorMessage << error.what();
 		errorMessage << "This font cannot be displayed\n";
@@ -41,14 +41,14 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
 
 		if (!std::filesystem::exists(completePath)) [[unlikely]]
-			throw LoadingGUIRessourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
+			throw LoadingGraphicalRessourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
 
 		if (!texture.loadFromFile(completePath)) [[unlikely]]
-			throw LoadingGUIRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n'};
+			throw LoadingGraphicalRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n'};
 
 		texture.setSmooth(true); // Enable smooth rendering for the font.
 	}
-	catch (LoadingGUIRessourceFailure const& error)
+	catch (LoadingGraphicalRessourceFailure const& error)
 	{
 		errorMessage << error.what();
 		errorMessage << "This texture cannot be displayed\n";
@@ -69,7 +69,7 @@ sf::Font loadDefaultFont()
 		errorMessage << "Reinstalling the software could solve the issue\n";
 		errorMessage << "Sorry for the inconveniance";
 		std::cout << errorMessage.str();
-		throw LoadingGUIRessourceFailure{ errorMessage.str() };
+		throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
 	}
 
 	return fontOpt.value();
@@ -129,6 +129,6 @@ sf::Texture loadCheckBoxTexture(sf::Vector2u size)
 	}
 	
 	if (!texture.loadFromImage(image))
-		throw LoadingGUIRessourceFailure{ "Failed to load checkbox texture from image." };
+		throw LoadingGraphicalRessourceFailure{ "Failed to load checkbox texture from image." };
 	return texture;	
 }
