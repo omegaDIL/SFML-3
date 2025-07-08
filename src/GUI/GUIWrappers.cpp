@@ -37,7 +37,7 @@ sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept
 }
 
 
-SpriteWrapper::SpriteWrapper(std::string const& sharedTexture, sf::Vector2f pos, sf::Vector2f scale, Alignment alignment, sf::Angle rot, sf::IntRect rectangle, sf::Color color)
+SpriteWrapper::SpriteWrapper(std::string const& sharedTexture, sf::Vector2f pos, sf::Vector2f scale, Alignment alignment, sf::Angle rot, sf::Color color)
 	: sf::Sprite{ *s_accessingSharedTexture.at(sharedTexture) }, TransformableWrapper{ alignment }, m_curTextureIndex{ 0 }
 {
 	m_textures.push_back(&(*s_accessingSharedTexture.at(sharedTexture))); // Add the texture to the vector of textures.
@@ -52,7 +52,7 @@ SpriteWrapper::SpriteWrapper(std::string const& sharedTexture, sf::Vector2f pos,
 	setOrigin(computeNewOrigin(getLocalBounds(), alignment));
 }
 
-SpriteWrapper::SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, Alignment alignment, sf::Angle rot, sf::IntRect rectangle, sf::Color color) noexcept
+SpriteWrapper::SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, Alignment alignment, sf::Angle rot, sf::Color color) noexcept
 	: sf::Sprite{ texture }, TransformableWrapper{ alignment }, m_curTextureIndex{ 0 }
 {
 	m_uniqueTextures.push_back(std::move(texture)); // Add the texture to the vector of unique textures.
