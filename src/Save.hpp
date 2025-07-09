@@ -2,8 +2,8 @@
  * @file Save.hpp
  * @brief Initializes the structures and functions for saving and loading anything safely from/into the files.
  *
- * @author OmegaDIL.
- * @date   July 2024.
+ * \author OmegaDIL.
+ * \date   July 2024.
  *********************************************************************/
 
 #ifndef SAVE_HPP
@@ -20,17 +20,17 @@
 
 
 /**
- * @brief Classes, functions and exceptions to safely handle files.
+ * \brief Classes, functions and exceptions to safely handle files.
  */
 namespace SafeSaves
 {
 /**
- * @brief Checks if a file exists.
- * @complexity O(1)
+ * \brief Checks if a file exists.
+ * \complexity O(1)
  *
- * @param[in] path: Path to the file.
+ * \param[in] path: Path to the file.
  *
- * @return True if the file exists, false otherwise.
+ * \return True if the file exists, false otherwise.
  */
 inline bool checkFileExistence(std::string const& path) noexcept
 {
@@ -38,10 +38,10 @@ inline bool checkFileExistence(std::string const& path) noexcept
 }
 
 /**
- * @brief Checks if a file is writable.
- * @complexity O(1)
+ * \brief Checks if a file is writable.
+ * \complexity O(1)
  *
- * @param[in] path: Path to the file.
+ * \param[in] path: Path to the file.
  *
  * @return True if the file is writable, false otherwise.
  */

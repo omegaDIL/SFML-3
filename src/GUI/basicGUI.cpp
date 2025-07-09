@@ -3,7 +3,6 @@
 #include "../GUITexturesLoader.hpp"
 #include "basicGUI.hpp"
 
-sf::Font FixedGraphicalInterface::TextWrapper::s_font{};
 std::string const FixedGraphicalInterface::ressourcePath{ "../res/" };
 std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> FixedGraphicalInterface::allInterfaces{};
 
@@ -25,26 +24,6 @@ std::optional<std::string> FixedGraphicalInterface::TextWrapper::loadFont() noex
 	}
 
 	return std::nullopt;
-}
-
-void FixedGraphicalInterface::TextWrapper::computeNewOrigin() noexcept
-{
-	sf::Vector2f originTopLeft{ 0, 0 };
-	sf::Vector2f originBottomRight{ getLocalBounds().size };
-	sf::Vector2f origin{ getLocalBounds().getCenter() }; // Center origin by default.
-
-	uint8_t value = static_cast<uint8_t>(m_alignment);
-	if ((value >> 3) & 1)
-		origin.x = originTopLeft.x; // Left side.
-	else if ((value >> 2) & 1)
-		origin.x = originBottomRight.x; // Right side.
-
-	if ((value >> 1) & 1)
-		origin.y = originTopLeft.y; // Top side.
-	else if ((value >> 0) & 1)
-		origin.y = originBottomRight.y; // Bottom side.
-
-	setOrigin(origin);
 }
 
 

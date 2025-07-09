@@ -1,9 +1,9 @@
 /*****************************************************************//**
- * @file   GUITexturesLoader.hpp
- * @brief  Contains functions that help to load textures and images for the GUI.
+ * \file   GUITexturesLoader.hpp
+ * \brief  Contains functions that help to load textures and images for the GUI.
  * 
- * @author OmegaDIL.
- * @date   April 2025
+ * \author OmegaDIL.
+ * \date   April 2025
  *********************************************************************/
 
 #ifndef GUITEXTURESLOADER_HPP
@@ -23,31 +23,31 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Must be a sf::Drawable and a sf::Transformable type in sfml.
+ * \brief Must be a sf::Drawable and a sf::Transformable type in sfml.
  */
 template<typename T>
 concept Drawable = std::derived_from<std::remove_cvref_t<T>, sf::Drawable>
                 && std::derived_from<std::remove_cvref_t<T>, sf::Transformable>;
 
 /**
- * @details From the given drawables, the function creates a texture that visually represents what
+ * \details From the given drawables, the function creates a texture that visually represents what
  *          they look like if drawn separatly, in order. The texture size covers the distance between
  *			the pixel at the leftmost/top edge of the leftmost/top drawable and the pixel at the
  *			rightmost/bottom edge of the rightmost/bottom drawable, not beginning at (0;0).
  * 
- * @tparam Ts: The types of the drawables. Must be derived from sf::Drawable and sf::Transformable.
- * @param[in] drawables: The drawables to create the texture from.
+ * \tparam Ts: The types of the drawables. Must be derived from sf::Drawable and sf::Transformable.
+ * \param[in] drawables: The drawables to create the texture from.
  * 
- * @note The drawables' origins are moved to 0;0, and their positions are changed; therefore the 
+ * \note The drawables' origins are moved to 0;0, and their positions are changed; therefore the 
  *       drawables passed as arguments are very likely going to be modified.
- * @note If you create a texture from shapes, keep in mind that 'shapes' are drawn differently than
+ * \note If you create a texture from shapes, keep in mind that 'shapes' are drawn differently than
  * 		 'sprites' in SFML. Shapes use mathematical formulas to draw themselves, whereas sprites use
  *		 arrays of pixels (textures). While textures can be more detailed, they are also more pixelized.
  *		 Be aware that some may have artefacts in that case, especially if they are rotated, scaled, or
  *		 even if you change the origin of the new sprite (which has the returned texture applied to)
  *		 afterwards.
  * 
- * @return Returns a texture created from the given drawables such as sprites, cricleShape, convexShape...
+ * \return Returns a texture created from the given drawables such as sprites, cricleShape, convexShape...
  */
 template<Drawable... Ts>
 sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept
@@ -91,11 +91,9 @@ sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept
 }
 
 
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../res/") noexcept;
 
 std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../res/") noexcept;
 
-sf::Font loadDefaultFont();
 
 sf::Texture loadDefaultTexture(sf::Vector2f size) noexcept;
 

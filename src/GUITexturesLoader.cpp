@@ -6,31 +6,8 @@
 #include "GUITexturesLoader.hpp"
 
 
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
-{
-	sf::Font font{};
 
-	try
-	{
-		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
 
-		if (!std::filesystem::exists(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Font file does not exist: " + completePath.string() + '\n' };
-
-		if (!font.openFromFile(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Failed to load font from file " + completePath.string() + '\n'};
-		
-		font.setSmooth(true); // Enable smooth rendering for the font.
-	}
-	catch (LoadingGraphicalRessourceFailure const& error)
-	{
-		errorMessage << error.what();
-		errorMessage << "This font cannot be displayed\n";
-		return std::nullopt; 
-	}
-
-	return font;
-}
 
 std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
 {
@@ -44,7 +21,7 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 			throw LoadingGraphicalRessourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
 
 		if (!texture.loadFromFile(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n'};
+			throw LoadingGraphicalRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n' };
 
 		texture.setSmooth(true); // Enable smooth rendering for the font.
 	}
@@ -55,25 +32,9 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 		return std::nullopt;
 	}
 
-	return texture;
+	return std::make_optional(texture);
 }
 
-sf::Font loadDefaultFont()
-{
-	std::ostringstream errorMessage{};
-	auto fontOpt = loadFontFromFile(errorMessage, "defaultFont.ttf");
-
-	if (!fontOpt.has_value()) [[unlikely]]
-	{
-		errorMessage << "\nMajor error: No text can use the default texture\n";
-		errorMessage << "Reinstalling the software could solve the issue\n";
-		errorMessage << "Sorry for the inconveniance";
-		std::cout << errorMessage.str();
-		throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
-	}
-
-	return fontOpt.value();
-}
 
 sf::Texture loadDefaultTexture(sf::Vector2f size) noexcept
 {

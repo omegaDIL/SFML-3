@@ -22,8 +22,6 @@ int main()
 	sf::Texture defaultTexture{ loadDefaultTexture(sf::Vector2f{ 20, 60 }) };
 	mainInterface.addSprite(defaultTexture, sf::Vector2f{ 500, 500 }, sf::Vector2f{ 1.f, 1.f });
 
-
-
 	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())
@@ -72,4 +70,5 @@ int main()
 
 //TODO: tester avec view
 //TODO: Faire les testes
+//TODO: replace @ avec \
 //TODO: Refactor Utils.cpp, GUITexturesLoader.cpp (+ GUIInitializer).

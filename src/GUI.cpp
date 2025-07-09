@@ -53,7 +53,7 @@ bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, 
 }
 
 
-FixedGraphicalInterface::TextWrapper& DynamicGraphicalInterface::getDText(std::string const& identifier)
+TextWrapper& DynamicGraphicalInterface::getDText(std::string const& identifier)
 {
 	return m_texts[m_dynamicTexts.at(identifier)]; // Throws an exception if not there.
 }
