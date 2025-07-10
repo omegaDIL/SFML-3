@@ -186,4 +186,21 @@ private:
 	static std::unordered_multimap<sf::RenderWindow*, FixedGraphicalInterface*> allInterfaces;
 };
 
+
+void loadDefaultFont()
+{
+	std::ostringstream errorMessage{};
+	auto fontOpt = loadFontFromFile(errorMessage, "defaultFont.ttf");
+
+	if (!fontOpt.has_value()) [[unlikely]]
+	{
+		errorMessage << "\nMajor error: No text can use the default font\n";
+		errorMessage << "Reinstalling the software could solve the issue\n";
+		errorMessage << "Sorry for the inconveniance";
+		throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
+	}
+
+	TextWrapper::loadFontIntoWrapper("default", fontOpt.value());
+}
+
 #endif // BASICGUI_HPP

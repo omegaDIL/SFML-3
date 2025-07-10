@@ -41,9 +41,8 @@ public:
 
 
 	/**
+	 * \brief Returns the error message.
 	 * \complexity O(1).
-	 *
-	 * \return the error message.
 	 */
 	inline virtual const char* what() const noexcept override
 	{
@@ -68,7 +67,7 @@ public:
  *		 per pair has to use one more "possibility" in terms of binary representation. In this case, it
  *		 is left and top.
  *  
- * \see operator|.
+ * \see `operator|`, `computeNewOrigin()`.
  */
 enum class Alignment : uint8_t
 {
@@ -117,11 +116,12 @@ sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept
  * whether or not the transformable should be drawn (as they are usually coupled with a `sf::Drawable`)
  * 
  * \note    This class is pure virtual. The functions are `setAlignment` and `setColor`.
+ * \note    You should implement the getter functions for the `sf::Transformable`.
  * \warning Keep the transformable loaded as long as the corresponding instance is used - no nullptr
  *			checks are done. It is only a wrapper, and speed should remain as similar as a regular
  *			`sf::Transformable`.
  * 
- * \see sf::Transformable, Alignment, SpriteWrapper, TextWrapper.
+ * \see `sf::Transformable`, `Alignment`.
  */
 class TransformableWrapper
 {
@@ -141,8 +141,12 @@ public:
 	 * 		 window, the same `sf::Transformable` will appear larger, and vice-versa.
 	 * \note Give the address of the correct `sf::Transformable` since it is not changeable after the
 	 *       constructor, except in the move/copy assignment operators.
+	 * 
+	 * \pre   The transformable pointer must not be nullptr.
+	 * \post  The wrapper will use the right transformable.
+	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
 	 */
-	TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center) noexcept;
+	TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center);
 
 	TransformableWrapper() noexcept = delete;
 	TransformableWrapper(TransformableWrapper const&) noexcept = default;
@@ -214,7 +218,7 @@ public:
 	 * 
 	 * \note It has an implementation even though it is a pure virtual function.
 	 *
-	 * \see sf::Transformable::setOrigin(), computeNewOrigin().
+	 * \see `sf::Transformable::setOrigin()`, `computeNewOrigin()`.
 	 */
 	inline virtual void setAlignment(Alignment alignment) noexcept = 0
 	{
@@ -257,10 +261,6 @@ private:
 	/// What `sf::Transformable` the wrapper is being used for.
 	sf::Transformable* m_transformable; 
 };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Pure Virtual Wrapper.
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -404,10 +404,6 @@ private:
 
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Sprite Wrapper.
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Text Wrapper.
@@ -421,9 +417,14 @@ concept Ostreamable = requires(std::ostream & os, T t)
 };
 
 /**
- * \brief A wrapper for `sf::Text` that initializes the text, keeps the font, manages resizing.
+ * \brief A wrapper for `sf::Text` that simplifies its use.
+ * The `TextWrapper` adds a constructor which allows initializing the class with more parameters
+ * than the one that is available in `sf::Text`. Furthermore, rather than keeping a pointer to a
+ * font like `sf::Text` does, it actually stores multiple fonts for the user to use. He can load/unload
+ * as much as he wants while keeping O(1) complexity. Inherits from `TransformableWrapper` as well
+ * in order to have the alignment, resize functions and hide attribute.
  *
- * \see FixedGraphicalInterface, sf::Text, loadFont().
+ * \see `sf::Text`, `sf::Font`, `TransformableWrapper`.
  */
 class TextWrapper : private sf::Text, public TransformableWrapper
 {
@@ -442,27 +443,31 @@ public:
 	 * \brief Initializes the wrapper.
 	 * \complexity O(1).
 	 *
-	 * \param[out] transformable: What `sf::Transformable` the wrapper is being used for.
-	 * \param[in]  pos: The position of the `sf::Transformable`.
-	 * \param[in]  scale: The scale of the `sf::Transformable`.
-	 * \param[in]  rot: The rotation of the `sf::Transformable`.
-	 * \param[in]  alignment: The alignment of the `sf::Transformable`.
-	 *
-	 * \pre   Either the font "default" or the name of a font you previously loaded
-	 * \post  The text will use your font, or the default one if yours was not find
-	 * \throw LoadingGraphicalRessourceFailure Basic exception guarrentee, but this instance is not
-	 *										   usable 
+	 * \param[in] content: What the text will display.
+	 * \param[in] fontName: The name of the font that'll be used.
+	 * \param[in] characterSize: The character size of the text.
+	 * \param[in] pos: The position of the text.
+	 * \param[in] scale: The scale of the text.
+	 * \param[in] color: The color of the text.
+	 * \param[in] alignment: The alignment of the text.
+	 * \param[in] style: The style of the text (regular, italic, underlined...).
+	 * \param[in] rot: The rotation of the text.
 	 * 
-	 * \note The scale parameter should take into account the current size of the window. In a smaller
-	 * 		 window, the same `sf::Text` will appear larger, and vice-versa..
+	 * \note The scale parameter should take into account the current size of the window.In a smaller
+	 *       window, the same `sf::Text` will appear larger, and vice - versa.
+	 * 
+	 * \pre   You should have loaded a font with the name you gave as argument, using the function
+	 *		 `loadFontIntoWrapper`.
+	 * \post  The correct font will be used.
+	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
 	 */
 	template<Ostreamable T>
-	inline TextWrapper(T const& content, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, std::string name = "default", Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0)) noexcept
-		: sf::Text{ getFontForConstructor(name), "", characterSize}, TransformableWrapper{this, pos, scale, rot, alignment}
+	TextWrapper(T const& content, std::string const& fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
+		: sf::Text{ getFontForConstructor(name), "", characterSize}, TransformableWrapper{ this, pos, scale, rot, alignment }
 	{
 		setFillColor(color);
 		setStyle(style);
-		setContent(content); // Also compute the origin of the text with the correct alignment.
+		setContent(content); // Also computes the origin of the text with the correct alignment.
 	}
 
 	TextWrapper() noexcept = delete;
@@ -473,16 +478,13 @@ public:
 	virtual ~TextWrapper() noexcept = default;
 
 
-	void setFont(std::string const& name);
-
 	/**
 	 * \brief Updates the text content.
 	 * \complexity O(1).
 	 *
-	 * \tparam T: Type that can be streamed to `std::basic_ostream`.
 	 * \param[in] content: The new content for the text.
 	 *
-	 * \see sf::Text::setString().
+	 * \see `sf::Text::setString`.
 	 */
 	template<Ostreamable T>
 	inline void setContent(T const& content) noexcept
@@ -495,12 +497,23 @@ public:
 	}
 
 	/**
-	 * \brief Updates the size of the text.
+	 * \brief Sets a new font for the text.
 	 * \complexity O(1).
 	 *
-	 * \param[in] size: The size of the characters.
-	 *
-	 * \see sf::Text::setCharacterSize().
+	 * \param[in] name: The name of the font that'll be used.
+	 * 
+	 * \pre   You should have loaded a font with the name you gave as argument, using the function
+	 *		 `loadFontIntoWrapper`.
+	 * \post  The correct font will be used.
+	 * \throw std::invalid_argument strong exception guarantee: the instance remains the same as before
+	 *		  the call.
+	 * 
+	 * \see `sf::Text::setFont`.
+	 */
+	void setFont(std::string const& name);
+
+	/**
+	 * \see `sf::Text::setCharacterSize`.
 	 */
 	inline void setCharacterSize(unsigned int size) noexcept
 	{
@@ -508,16 +521,25 @@ public:
 		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
 	}
 
+	/**
+	 * \see `sf::Text::setFillColor`.
+	 */
 	inline virtual void setColor(sf::Color color) noexcept final
 	{
 		setFillColor(color);
 	}
 
+	/**
+	 * \see `sf::Text::setStyle`.
+	 */
 	inline void setStyle(sf::Text::Style style) noexcept
 	{
 		sf::Text::setStyle(style);
 	}
 
+	/**
+	 * \see `sf::TransformableWrapper::setAlignment`.
+	 */
 	inline virtual void setAlignment(Alignment alignment) noexcept final
 	{
 		TransformableWrapper::setAlignment(alignment);
@@ -536,10 +558,42 @@ public:
 	}
 
 
+	/**
+	 * \brief Loads a font into the wrapper with the corresponding name, and can be used by all instances.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of the font.
+	 * \param[in] font: The font you want to load (using std::move is recommended).
+	 * 
+	 * \note You can also use this function to replace an existing font by another one.
+	 * 
+	 * \return `true` if you replaced an existing font and `false` if the font was added without
+	 *		   replacement.
+	 */
 	static bool loadFontIntoWrapper(std::string const& name, sf::Font font) noexcept;
 
+	/**
+	 * \brief Unoads a font from the wrapper with the corresponding name.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of the font.
+	 * 
+	 * \note No font should currently use the font you remove.
+	 *
+	 * \pre   A font must exist with this name.
+	 * \post  The correct font will be removed.
+	 * \throw std::invalid_argument strong exception guarantee: nothing happen.
+	 */
 	static void unloadFontFromWrapper(std::string const& name);
-
+	
+	/**
+	 * \brief Checks if a font exists.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of the font.
+	 *
+	 * \return `true` if the font exists.
+	 */
 	[[nodiscard]] inline static bool doesFontexist(std::string const& name) noexcept
 	{
 		return s_accessToFonts.find(name) != s_accessToFonts.end();
@@ -547,20 +601,45 @@ public:
 
 private:
 
-	static sf::Font& getFontForConstructor(std::string name);
-	
-	static void loadDefaultFont();
+	/**
+	 * @brief Returns a font in order to construct the `sf::Text`
+	 * 
+	 * \param[in] name: The alias of the font.
+	 * 
+	 * \pre   A font must exist with this name.
+	 * \post  The correct font will be returned.
+	 * \throw std::invalid_argument strong exception guarantee: nothing happen.
+	 * 
+	 * \return A reference to the font for the constructor.
+	 */
+	static sf::Font& getFontForConstructor(std::string const& name);
 
 
-	static std::list<sf::Font> s_fonts;
+	/// Contains all loaded fonts
+	static std::list<sf::Font> s_fonts; 
+	/// Allows to find fonts with a name in O(1) time complexity.
 	static std::unordered_map<std::string, std::list<sf::Font>::iterator> s_accessToFonts;
 };
 
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../res/") noexcept;
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Text Wrapper.
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * \brief Loads a font from a file.
+ * \complexity O(1).
+ * 
+ * \param[out] errorMessage: Will add the error message to this stream if the loading fails
+ * \param[in]  fileName: The name of the file.
+ * \param[in]  path: The path to this file (assets file by default).
+ * 
+ * \note The complete path is "path + fileName" therefore it does not matter if the fileName
+ *		 variable contains also a part of the path, as long as the complete path is valid.
+ * \note A message is added to the stream only if the function returns std::nullopt.
+ * 
+ * \return a sf::Font if the loading was successful, std::nullopt otherwise.
+ * 
+ * \see `TextWrapper`, `sf::Font::openFromFile`.
+ */
+std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
 
 #endif //GUIWRAPPERS_HPP
+
+
