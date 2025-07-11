@@ -148,7 +148,7 @@ void FixedGraphicalInterface::windowResized(sf::RenderWindow* window, sf::Vector
 
 		// Updating texts.
 		for (auto& text : curInterface->m_texts)
-			text.windowResized(scalingFactor, minScalingFactor);
+			text.resized(scalingFactor, a);
 
 		// Updating sprites.
 		for (int i{ 1 }; i < curInterface->m_sprites.size(); ++i) // Avoiding the background by skipping index 0.

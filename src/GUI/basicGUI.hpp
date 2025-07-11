@@ -15,12 +15,6 @@
 
 //namespace gui
 
-
-
-
-
-
-
 /**
  * \brief Manages items to create a basic GUI. You can display texts, sprites, a background...
  * \details All elements are fixed and can't be edited nor removed.

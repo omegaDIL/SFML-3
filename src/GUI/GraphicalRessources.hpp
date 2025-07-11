@@ -21,6 +21,8 @@
 #include <optional>
 
 
+// namespace gui
+
  /**
   * \brief An exception thrown for graphical errors when loading ressources.
   *
@@ -67,7 +69,7 @@ public:
  *		 per pair has to use one more "possibility" in terms of binary representation. In this case, it
  *		 is left and top.
  *  
- * \see `operator|`, `computeNewOrigin()`.
+ * \see `operator|`, `computeNewOrigin`.
  */
 enum class Alignment : uint8_t
 {
@@ -512,14 +514,14 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` Wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct TextureHandler
+class TextureHandler
 {
 	// Using a new thread is highly recommended
-	void loadUp(); // Would load a new texure with a higher detail level.
-	void loadDown(); // Would load a new texure with a lower detail level.
+	void loadUp(int nb = 1); // Would load a new texure with a higher detail level (nb = how much level).
+	void loadDown(int nb = 1); // Would load a new texure with a lower detail level.
 	void unload() noexcept; // Would unload the texture
-	
-	// USE MUTEX WITH THREAD - when the thread swaps the texture another thread could use at the moment it is swapped.
+	void load(int index = -1) noexcept; //-1 The lowest detailed texture.
+	// USE MUTEX - when the thread swaps the texture another thread could use at the moment it is swapped.
 	void replaceTexture() noexcept; // Would replace the texture with the new loaded one
 
 	/// The actual texture.
@@ -535,11 +537,18 @@ struct TextureHandler
 	size_t index;
 };
 
+struct TextureInfo
+{
+
+};
+
 struct TextureManager
 {
-	static std::list<TextureHandler> s_sharedTextures;
-	static std::unordered_map<std::string, std::list<TextureHandler>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
+	static std::list<std::unique_ptr<sf::Texture>> s_sharedTextures; // A shared texture is used among a lot of sprites
+	static std::unordered_map<std::string, std::list<std::unique_ptr<sf::Texture>>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
 
+	std::list<TextureHandler> s_uniqueTextures; // A shared texture is used among a lot of sprites
+	std::unordered_map<std::string, std::list<TextureHandler>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
 
 };
 

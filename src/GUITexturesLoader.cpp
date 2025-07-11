@@ -2,7 +2,7 @@
 #include <variant>
 #include <sstream>
 #include <iostream>
-#include "GUI/GUIWrappers.hpp"
+#include "GUI/GraphicalRessourcers.hpp"
 #include "GUITexturesLoader.hpp"
 
 
