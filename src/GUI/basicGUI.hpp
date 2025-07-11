@@ -11,7 +11,7 @@
 #include <concepts>
 #include <sstream>
 #include <cstdint>
-#include "GUIWrappers.hpp"
+#include "GraphicalRessources.hpp"
 
 //namespace gui
 

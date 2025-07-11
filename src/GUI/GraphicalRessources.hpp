@@ -5,19 +5,19 @@
  * \author OmegaDIL.
  * \date   July 2025.
  *
- * \note This file is used by GUI.
  * \note This file depends on the SFML library.
  *********************************************************************/
 
-#ifndef GUIWRAPPERS_HPP
-#define GUIWRAPPERS_HPP
+#ifndef GRAPHICALRESSOURCES_HPP
+#define GRAPHICALRESSOURCES_HPP
 
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <vector>
 #include <list>
 #include <unordered_map>
-#include <cstdint>
 #include <stdexcept>
+#include <cstdint>
 #include <optional>
 
 
@@ -262,152 +262,17 @@ private:
 	sf::Transformable* m_transformable; 
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// A `sf::Transformable` Wrapper.
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Sprite Wrapper.
+/// A `sf::Text` Wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct TextureInfo
-{
-	/**
-	 * \brief Stores a texture pointer with a rectangle
-	 * 
-	 * \param[in,out] tex: The texture
-	 * \param[in] rect: the rectangle for the texture
-	 */
-	TextureInfo(sf::Texture* tex, sf::IntRect rect = sf::IntRect{})
-		: texture{ tex }
-	{
-		if (rect.size == sf::Vector2i{})
-			rectangle.size = static_cast<sf::Vector2i>(texture->getSize());
-	}
+struct FontManager
+{}; //TODO: faire le fontManager
 
-	sf::Texture* texture;
-	sf::IntRect rectangle; 
-};
-
-/**
- * \brief A wrapper for `sf::Sprite` that initializes the sprite, keeps the textures, manages resizing.
- * \details A 
- *
- * \see sf::Sprite, TransformableWrapper, TextWrapper.
- */
-class SpriteWrapper final : private sf::Sprite, public TransformableWrapper
-{
-public:
-
-	using TransformableWrapper::move;
-	using TransformableWrapper::scale;
-	using TransformableWrapper::rotate;
-	using TransformableWrapper::setPosition;
-	using TransformableWrapper::setScale;
-	using TransformableWrapper::setRotation;
-	using TransformableWrapper::resized;
-
-
-	SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0),  Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
-	
-	SpriteWrapper(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0),  Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
-
-	SpriteWrapper() noexcept = delete;
-	SpriteWrapper(SpriteWrapper const&) noexcept = default;
-	SpriteWrapper(SpriteWrapper&&) noexcept = default;
-	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = default;
-	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
-	virtual ~SpriteWrapper() noexcept = default;
-
-
-	inline virtual void setColor(sf::Color color) noexcept final
-	{
-		sf::Sprite::setColor(color);
-	}
-
-	inline virtual void setAlignment(Alignment alignment) noexcept final
-	{
-		TransformableWrapper::setAlignment(alignment);
-		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
-	}
-	
-
-	inline void addTexture(sf::Texture texture) noexcept
-	{
-		m_uniqueTextures.push_back(std::move(texture)); // Add the texture to the vector of unique textures.
-		m_textures.push_back(&m_uniqueTextures.back()); // Add the texture to the vector of textures.
-	}
-
-	inline void addTexture(std::string const& sharedTexture)
-	{
-		m_textures.push_back(&(*s_accessingSharedTexture.at(sharedTexture))); // Add the texture to the vector of textures.
-	}
-
-	inline void switchToNextTexture() noexcept
-	{
-		m_curTextureIndex = (m_curTextureIndex + 1) % m_textures.size(); // Switch to the next texture in the vector.
-		setTexture(*m_textures[m_curTextureIndex].texture); // Set the texture of the sprite to the next texture.
-		setTextureRect(m_textures[m_curTextureIndex].rectangle);
-	}
-
-	inline void switchToNextTexture(size_t i)
-	{
-		if (i >= m_textures.size())
-			throw std::out_of_range{ "Index out of range for the sprites vector." };
-
-		m_curTextureIndex = i; // Switch to the texture at index i.
-		setTexture(*m_textures[m_curTextureIndex].texture); // Set the texture of the sprite to the texture at index i.
-		setTextureRect(m_textures[m_curTextureIndex].rectangle);
-	}
-
-	[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept
-	{
-		return m_curTextureIndex; // Returns the current texture index.
-	}
-
-	[[nodiscard]] inline sf::Texture* getCurrentTexture() /*const*/ noexcept
-	{	// TODO: return const pointer instead of pointer.
-		return m_textures[m_curTextureIndex].texture; // Returns the current texture of the sprite.
-	}
-
-	/**
-	 * \brief Accesses the base `sf::Sprite` object.
-	 * \complexity O(1).
-	 *
-	 * \return A reference to the base `sf::Sprite` object.
-	 */
-	[[nodiscard]] inline sf::Sprite const& getSprite() const noexcept
-	{
-		return *this;
-	}
-
-
-	static void addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept;
-
-	static void removeSharedTexture(std::string const& identifier) noexcept;
-
-	[[nodiscard]] static inline sf::Texture& getSharedTexture(std::string const& identifier)
-	{
-		return *s_accessingSharedTexture.at(identifier);
-	}
-
-	[[nodiscard]] static inline bool checkIfTextureExists(std::string const& identifier) noexcept
-	{
-		return s_accessingSharedTexture.find(identifier) != s_accessingSharedTexture.end();
-	}
-
-private:
-
-	size_t m_curTextureIndex; // The current texture used
-	std::vector<TextureInfo> m_textures; // Textures that are used by this sprite, including unique and shared textures.
-	std::list<sf::Texture> m_uniqueTextures; // Textures that are only used by this sprite.
-
-	static std::list<sf::Texture> s_sharedTextures;
-	static std::unordered_map<std::string, std::list<sf::Texture>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
-
-};
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Text Wrapper.
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The type must be streamable to `std::basic_ostream`.
 template <typename T>
@@ -621,7 +486,6 @@ private:
 	static std::unordered_map<std::string, std::list<sf::Font>::iterator> s_accessToFonts;
 };
 
-
 /**
  * \brief Loads a font from a file.
  * \complexity O(1).
@@ -640,6 +504,184 @@ private:
  */
 std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
 
-#endif //GUIWRAPPERS_HPP
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// A `sf::Text` Wrapper.
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// A `sf::Sprite` Wrapper.
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct TextureHandler
+{
+	// Using a new thread is highly recommended
+	void loadUp(); // Would load a new texure with a higher detail level.
+	void loadDown(); // Would load a new texure with a lower detail level.
+	void unload() noexcept; // Would unload the texture
+	
+	// USE MUTEX WITH THREAD - when the thread swaps the texture another thread could use at the moment it is swapped.
+	void replaceTexture() noexcept; // Would replace the texture with the new loaded one
+
+	/// The actual texture.
+	std::unique_ptr<sf::Texture> texture;
 
 
+	std::unique_ptr<sf::Texture> replacementTexture; // Would likely be private
+
+	/// Index 0 is the file name of the most detailed texture, index 1 is less detailed, and so on...
+	std::vector<std::string> textureFiles;
+
+	/// The current index of the texture.
+	size_t index;
+};
+
+struct TextureManager
+{
+	static std::list<TextureHandler> s_sharedTextures;
+	static std::unordered_map<std::string, std::list<TextureHandler>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
+
+
+};
+
+struct TextureInfo
+{
+	/**
+	 * \brief Stores a texture pointer with a rectangle
+	 *
+	 * \param[in,out] tex: The texture
+	 * \param[in] rect: the rectangle for the texture
+	 */
+	TextureInfo(sf::Texture* tex, sf::IntRect rect = sf::IntRect{})
+		: texture{ tex }
+	{
+		if (rect.size == sf::Vector2i{})
+			rectangle.size = static_cast<sf::Vector2i>(texture->getSize());
+	}
+
+	sf::Texture* texture;
+	sf::IntRect rectangle;
+};
+
+/**
+ * \brief A wrapper for `sf::Sprite` that initializes the sprite, keeps the textures, manages resizing.
+ * \details A
+ *
+ * \see sf::Sprite, TransformableWrapper, TextWrapper.
+ */
+class SpriteWrapper final : private sf::Sprite, public TransformableWrapper
+{
+public:
+
+	using TransformableWrapper::move;
+	using TransformableWrapper::scale;
+	using TransformableWrapper::rotate;
+	using TransformableWrapper::setPosition;
+	using TransformableWrapper::setScale;
+	using TransformableWrapper::setRotation;
+	using TransformableWrapper::resized;
+
+
+	SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
+
+	SpriteWrapper(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+
+	SpriteWrapper() noexcept = delete;
+	SpriteWrapper(SpriteWrapper const&) noexcept = default;
+	SpriteWrapper(SpriteWrapper&&) noexcept = default;
+	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = default;
+	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
+	virtual ~SpriteWrapper() noexcept = default;
+
+
+	inline virtual void setColor(sf::Color color) noexcept final
+	{
+		sf::Sprite::setColor(color);
+	}
+
+	inline virtual void setAlignment(Alignment alignment) noexcept final
+	{
+		TransformableWrapper::setAlignment(alignment);
+		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
+	}
+
+
+	inline void addTexture(sf::Texture texture) noexcept
+	{
+		m_uniqueTextures.push_back(std::move(texture)); // Add the texture to the vector of unique textures.
+		m_textures.push_back(&m_uniqueTextures.back()); // Add the texture to the vector of textures.
+	}
+
+	inline void addTexture(std::string const& sharedTexture)
+	{
+		m_textures.push_back(&(*s_accessingSharedTexture.at(sharedTexture))); // Add the texture to the vector of textures.
+	}
+
+	inline void switchToNextTexture() noexcept
+	{
+		m_curTextureIndex = (m_curTextureIndex + 1) % m_textures.size(); // Switch to the next texture in the vector.
+		setTexture(*m_textures[m_curTextureIndex].texture); // Set the texture of the sprite to the next texture.
+		setTextureRect(m_textures[m_curTextureIndex].rectangle);
+	}
+
+	inline void switchToNextTexture(size_t i)
+	{
+		if (i >= m_textures.size())
+			throw std::out_of_range{ "Index out of range for the sprites vector." };
+
+		m_curTextureIndex = i; // Switch to the texture at index i.
+		setTexture(*m_textures[m_curTextureIndex].texture); // Set the texture of the sprite to the texture at index i.
+		setTextureRect(m_textures[m_curTextureIndex].rectangle);
+	}
+
+	[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept
+	{
+		return m_curTextureIndex; // Returns the current texture index.
+	}
+
+	[[nodiscard]] inline sf::Texture* getCurrentTexture() /*const*/ noexcept
+	{	// TODO: return const pointer instead of pointer.
+		return m_textures[m_curTextureIndex].texture; // Returns the current texture of the sprite.
+	}
+
+	/**
+	 * \brief Accesses the base `sf::Sprite` object.
+	 * \complexity O(1).
+	 *
+	 * \return A reference to the base `sf::Sprite` object.
+	 */
+	[[nodiscard]] inline sf::Sprite const& getSprite() const noexcept
+	{
+		return *this;
+	}
+
+
+	static void addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept;
+
+	static void removeSharedTexture(std::string const& identifier) noexcept;
+
+	[[nodiscard]] static inline sf::Texture& getSharedTexture(std::string const& identifier)
+	{
+		return *s_accessingSharedTexture.at(identifier);
+	}
+
+	[[nodiscard]] static inline bool checkIfTextureExists(std::string const& identifier) noexcept
+	{
+		return s_accessingSharedTexture.find(identifier) != s_accessingSharedTexture.end();
+	}
+
+private:
+
+	size_t m_curTextureIndex; // The current texture used
+	std::vector<TextureInfo> m_textures; // Textures that are used by this sprite, including unique and shared textures.
+	std::list<sf::Texture> m_uniqueTextures; // Textures that are only used by this sprite.
+
+	static std::list<sf::Texture> s_sharedTextures;
+	static std::unordered_map<std::string, std::list<sf::Texture>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
+
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// A `sf::Sprite` Wrapper.
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif //GRAPHICALRESSOURCES_HPP

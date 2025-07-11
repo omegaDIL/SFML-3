@@ -424,14 +424,12 @@ void WritableGraphicalInterface::applyNewText(TextWrapper* text, std::string& ne
 	
 }
 
-// TODO: faire du statique plus souvent -> s_
 // TODO: id -> IDENTIFIER
 // TODO: empecher le texte de slider de se superposer avec le slider
-// TODO: userinteractablegraphicalinterface -> interactablegraphicalinterface
 // TODO: find().second -> at() + faire des reserves pour les maps et les vectors afin d'eviter les reallocations de memoire.
 // TODO: MouseMove d'abord verifier que le hovered actuel ne l 'est tjr pas avant de boucler sur le reste
 // TODO: _ + mqb + to_string -> _ + to_string + _ + mqb
-// TODO: Make the background srite fixed for the user.
+// TODO: remove the background.
 // TODO: erasure texture ? -> parler a victor
 // TODO: mettre __ au lieu de _ lorsque l'utilisateur ne doit pas interagir avec l'élément (ex: __cursorEditing pour le curseur d'édition de texte)
 // TODO: ajouter aux lambdas un argument pour l'interface courante.
@@ -440,12 +438,5 @@ void WritableGraphicalInterface::applyNewText(TextWrapper* text, std::string& ne
 // TODO: rendre coherent le nommage des elements dynamiques -> __ + id quand ajoute par Interface && __nom__ quand ajoute par interface + sans id
 // TODO: permettre de decocher tous les mqb.
 // TODO: remove pointer from interactable element
-// TODO: renommer fixed en basic
-
-// TODO: Futur udpate :
-// Multiple fonts
-// module C++20
-// Ajouter un parametre d'interface courante dans les std::functions
-// Ajouter une std::function pour les mqb
-// Ajouter un intRect/scale pour chaque texture dans SpriteWrapper
-//
+// TODO: module C++20
+// TODO: Ajouter une std::function pour les mqb

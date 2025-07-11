@@ -1,9 +1,9 @@
-#include "GUIWrappers.hpp"
+#include "GraphicalRessources.hpp"
 
-std::list<sf::Texture> SpriteWrapper::s_sharedTextures{};
-std::unordered_map<std::string, std::list<sf::Texture>::iterator> SpriteWrapper::s_accessingSharedTexture{};
 std::list<sf::Font> TextWrapper::s_fonts{};
 std::unordered_map<std::string, std::list<sf::Font>::iterator> TextWrapper::s_accessToFonts{};
+std::list<sf::Texture> SpriteWrapper::s_sharedTextures{};
+std::unordered_map<std::string, std::list<sf::Texture>::iterator> SpriteWrapper::s_accessingSharedTexture{};
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,43 +51,6 @@ TransformableWrapper::TransformableWrapper(sf::Transformable* transformable, sf:
 	setPosition(pos);
 	setScale(scale);
 	setRotation(rot);
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Sprite Wrapper.
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-SpriteWrapper::SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
-	: sf::Sprite{ texture }, TransformableWrapper{ this, pos, scale, rot, alignment }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
-{
-	addTexture(texture);
-	switchToNextTexture(0);
-
-	setColor(color);
-	setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
-}
-
-SpriteWrapper::SpriteWrapper(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
-	: sf::Sprite{ *s_accessingSharedTexture.at(texture)}, TransformableWrapper{ this, pos, scale, rot, alignment}, m_curTextureIndex{0}, m_textures{}, m_uniqueTextures{}
-{
-	addTexture(texture);
-
-	setColor(color);
-	setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
-}
-
-
-void SpriteWrapper::addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept
-{
-	s_sharedTextures.push_front(std::move(textures)); // Add the texture to the static collection of textures.
-	s_accessingSharedTexture[identifier] = s_sharedTextures.begin(); // Map the identifier to the texture in the static collection.
-}
-
-void SpriteWrapper::removeSharedTexture(std::string const& identifier) noexcept
-{
-	s_sharedTextures.erase(s_accessingSharedTexture.at(identifier)); // Remove the texture from the static collection of textures.
-	s_accessingSharedTexture.erase(identifier); // Remove the identifier from the static collection of textures.
 }
 
 
@@ -171,4 +134,41 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 		errorMessage << "This font cannot be displayed\n";
 		return std::nullopt;
 	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Sprite Wrapper.
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+SpriteWrapper::SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
+	: sf::Sprite{ texture }, TransformableWrapper{ this, pos, scale, rot, alignment }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
+{
+	addTexture(texture);
+	switchToNextTexture(0);
+
+	setColor(color);
+	setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
+}
+
+SpriteWrapper::SpriteWrapper(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
+	: sf::Sprite{ *s_accessingSharedTexture.at(texture) }, TransformableWrapper{ this, pos, scale, rot, alignment }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
+{
+	addTexture(texture);
+
+	setColor(color);
+	setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
+}
+
+
+void SpriteWrapper::addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept
+{
+	s_sharedTextures.push_front(std::move(textures)); // Add the texture to the static collection of textures.
+	s_accessingSharedTexture[identifier] = s_sharedTextures.begin(); // Map the identifier to the texture in the static collection.
+}
+
+void SpriteWrapper::removeSharedTexture(std::string const& identifier) noexcept
+{
+	s_sharedTextures.erase(s_accessingSharedTexture.at(identifier)); // Remove the texture from the static collection of textures.
+	s_accessingSharedTexture.erase(identifier); // Remove the identifier from the static collection of textures.
 }
