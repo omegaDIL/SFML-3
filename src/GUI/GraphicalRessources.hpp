@@ -272,10 +272,6 @@ private:
 /// A `sf::Text` Wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct FontManager
-{}; //TODO: faire le fontManager
-
-
 /// The type must be streamable to `std::basic_ostream`.
 template <typename T>
 concept Ostreamable = requires(std::ostream & os, T t)
@@ -514,62 +510,19 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` Wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class TextureHandler
-{
-	// Using a new thread is highly recommended
-	void loadUp(int nb = 1); // Would load a new texure with a higher detail level (nb = how much level).
-	void loadDown(int nb = 1); // Would load a new texure with a lower detail level.
-	void unload() noexcept; // Would unload the texture
-	void load(int index = -1) noexcept; //-1 The lowest detailed texture.
-	// USE MUTEX - when the thread swaps the texture another thread could use at the moment it is swapped.
-	void replaceTexture() noexcept; // Would replace the texture with the new loaded one
 
-	/// The actual texture.
+struct TextureHolder
+{
 	std::unique_ptr<sf::Texture> texture;
-
-
-	std::unique_ptr<sf::Texture> replacementTexture; // Would likely be private
-
-	/// Index 0 is the file name of the most detailed texture, index 1 is less detailed, and so on...
-	std::vector<std::string> textureFiles;
-
-	/// The current index of the texture.
-	size_t index;
+	std::string fileName;
 };
 
 struct TextureInfo
 {
-
+	TextureHolder* texture;
+	sf::IntRect displayedTexturePart;
 };
 
-struct TextureManager
-{
-	static std::list<std::unique_ptr<sf::Texture>> s_sharedTextures; // A shared texture is used among a lot of sprites
-	static std::unordered_map<std::string, std::list<std::unique_ptr<sf::Texture>>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
-
-	std::list<TextureHandler> s_uniqueTextures; // A shared texture is used among a lot of sprites
-	std::unordered_map<std::string, std::list<TextureHandler>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
-
-};
-
-struct TextureInfo
-{
-	/**
-	 * \brief Stores a texture pointer with a rectangle
-	 *
-	 * \param[in,out] tex: The texture
-	 * \param[in] rect: the rectangle for the texture
-	 */
-	TextureInfo(sf::Texture* tex, sf::IntRect rect = sf::IntRect{})
-		: texture{ tex }
-	{
-		if (rect.size == sf::Vector2i{})
-			rectangle.size = static_cast<sf::Vector2i>(texture->getSize());
-	}
-
-	sf::Texture* texture;
-	sf::IntRect rectangle;
-};
 
 /**
  * \brief A wrapper for `sf::Sprite` that initializes the sprite, keeps the textures, manages resizing.
@@ -682,10 +635,10 @@ private:
 
 	size_t m_curTextureIndex; // The current texture used
 	std::vector<TextureInfo> m_textures; // Textures that are used by this sprite, including unique and shared textures.
-	std::list<sf::Texture> m_uniqueTextures; // Textures that are only used by this sprite.
+	std::list<TextureHolder> m_uniqueTextures; // Textures that are only used by this sprite.
 
-	static std::list<sf::Texture> s_sharedTextures;
-	static std::unordered_map<std::string, std::list<sf::Texture>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
+	static std::list<TextureHolder> s_sharedTextures;
+	static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
 
 };
 
