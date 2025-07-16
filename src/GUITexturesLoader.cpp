@@ -9,31 +9,7 @@
 
 
 
-std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
-{
-	sf::Texture texture{};
 
-	try
-	{
-		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
-
-		if (!std::filesystem::exists(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
-
-		if (!texture.loadFromFile(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n' };
-
-		texture.setSmooth(true); // Enable smooth rendering for the font.
-	}
-	catch (LoadingGraphicalRessourceFailure const& error)
-	{
-		errorMessage << error.what();
-		errorMessage << "This texture cannot be displayed\n";
-		return std::nullopt;
-	}
-
-	return std::make_optional(texture);
-}
 
 
 sf::Texture loadDefaultTexture(sf::Vector2f size) noexcept

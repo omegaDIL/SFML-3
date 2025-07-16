@@ -12,14 +12,17 @@
 #define GRAPHICALRESSOURCES_HPP
 
 #include <SFML/Graphics.hpp>
-#include <memory>
 #include <vector>
 #include <list>
 #include <unordered_map>
+#include <unordered_set>
+#include <memory>
 #include <stdexcept>
 #include <cstdint>
 #include <optional>
-
+#include <sstream>
+#include <concepts>
+#include <type_traits>
 
 // namespace gui
 
@@ -510,7 +513,6 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` Wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 struct TextureHolder
 {
 	std::unique_ptr<sf::Texture> texture;
@@ -560,87 +562,112 @@ public:
 		sf::Sprite::setColor(color);
 	}
 
+	// To simulate: move(-computeNewOrigin(getLocalBounds(), m_alignment))
 	inline virtual void setAlignment(Alignment alignment) noexcept final
 	{
 		TransformableWrapper::setAlignment(alignment);
 		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
 	}
 
-
-	inline void addTexture(sf::Texture texture) noexcept
-	{
-		m_uniqueTextures.push_back(std::move(texture)); // Add the texture to the vector of unique textures.
-		m_textures.push_back(&m_uniqueTextures.back()); // Add the texture to the vector of textures.
-	}
-
-	inline void addTexture(std::string const& sharedTexture)
-	{
-		m_textures.push_back(&(*s_accessingSharedTexture.at(sharedTexture))); // Add the texture to the vector of textures.
-	}
-
-	inline void switchToNextTexture() noexcept
-	{
-		m_curTextureIndex = (m_curTextureIndex + 1) % m_textures.size(); // Switch to the next texture in the vector.
-		setTexture(*m_textures[m_curTextureIndex].texture); // Set the texture of the sprite to the next texture.
-		setTextureRect(m_textures[m_curTextureIndex].rectangle);
-	}
-
-	inline void switchToNextTexture(size_t i)
-	{
-		if (i >= m_textures.size())
-			throw std::out_of_range{ "Index out of range for the sprites vector." };
-
-		m_curTextureIndex = i; // Switch to the texture at index i.
-		setTexture(*m_textures[m_curTextureIndex].texture); // Set the texture of the sprite to the texture at index i.
-		setTextureRect(m_textures[m_curTextureIndex].rectangle);
-	}
-
-	[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept
-	{
-		return m_curTextureIndex; // Returns the current texture index.
-	}
-
-	[[nodiscard]] inline sf::Texture* getCurrentTexture() /*const*/ noexcept
-	{	// TODO: return const pointer instead of pointer.
-		return m_textures[m_curTextureIndex].texture; // Returns the current texture of the sprite.
-	}
-
-	/**
-	 * \brief Accesses the base `sf::Sprite` object.
-	 * \complexity O(1).
-	 *
-	 * \return A reference to the base `sf::Sprite` object.
-	 */
-	[[nodiscard]] inline sf::Sprite const& getSprite() const noexcept
-	{
-		return *this;
-	}
+	inline void switchToNextTexture() noexcept;
+	inline bool switchToNextTexture(size_t index) noexcept;
+	[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept;
+	void addTexture(std::string name);
 
 
-	static void addSharedTexture(std::string const& identifier, sf::Texture textures) noexcept;
+	static bool createTexture(std::string const& name, std::string const& fileName, bool shared = false);
+	static bool createTexture(std::string const& name, sf::Texture texture, bool shared = false) noexcept;
+	static void removeTexture(std::string const& name);
+	[[nodiscard]] static sf::Texture* getTexture(std::string const& name) noexcept;
 
-	static void removeSharedTexture(std::string const& identifier) noexcept;
-
-	[[nodiscard]] static inline sf::Texture& getSharedTexture(std::string const& identifier)
-	{
-		return *s_accessingSharedTexture.at(identifier);
-	}
-
-	[[nodiscard]] static inline bool checkIfTextureExists(std::string const& identifier) noexcept
-	{
-		return s_accessingSharedTexture.find(identifier) != s_accessingSharedTexture.end();
-	}
+	static bool loadTexture(std::string const& name) noexcept;
+	static bool deloadTexture(std::string const& name) noexcept;
 
 private:
 
-	size_t m_curTextureIndex; // The current texture used
-	std::vector<TextureInfo> m_textures; // Textures that are used by this sprite, including unique and shared textures.
-	std::list<TextureHolder> m_uniqueTextures; // Textures that are only used by this sprite.
+	/// The current index within the texture vector.
+	size_t m_curTextureIndex; 
+	/// All textures used by the sprite.
+ 	std::vector<TextureInfo> m_textures;
 
-	static std::list<TextureHolder> s_sharedTextures;
-	static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessingSharedTexture; // Maps identifiers to textures for quick access.
-
+	/// Contains all textures, whether they are used or not/loaded or not.
+	static std::list<TextureHolder> s_allTextures;
+	/// Maps identifiers to textures for quick access.
+	static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures; 
+	/// Textures that are used by only one sprite. Uses iterators instead of string to reduce memory usage.
+	static std::unordered_set<std::list<TextureHolder>::iterator> s_uniqueTextures; 
 };
+
+
+std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
+
+/**
+ * \brief Must be a sf::Drawable and a sf::Transformable type in sfml.
+ */
+template<typename T>
+concept Drawable = std::derived_from<std::remove_cvref_t<T>, sf::Drawable>
+&& std::derived_from<std::remove_cvref_t<T>, sf::Transformable>;
+
+/**
+ * \details From the given drawables, the function creates a texture that visually represents what
+ *          they look like if drawn separatly, in order. The texture size covers the distance between
+ *			the pixel at the leftmost/top edge of the leftmost/top drawable and the pixel at the
+ *			rightmost/bottom edge of the rightmost/bottom drawable, not beginning at (0;0).
+ *
+ * \tparam Ts: The types of the drawables. Must be derived from sf::Drawable and sf::Transformable.
+ * \param[in] drawables: The drawables to create the texture from.
+ *
+ * \note The drawables' origins are moved to 0;0, and their positions are changed; therefore the
+ *       drawables passed as arguments are very likely going to be modified.
+ * \note If you create a texture from shapes, keep in mind that 'shapes' are drawn differently than
+ * 		 'sprites' in SFML. Shapes use mathematical formulas to draw themselves, whereas sprites use
+ *		 arrays of pixels (textures). While textures can be more detailed, they are also more pixelized.
+ *		 Be aware that some may have artefacts in that case, especially if they are rotated, scaled, or
+ *		 even if you change the origin of the new sprite (which has the returned texture applied to)
+ *		 afterwards.
+ *
+ * \return Returns a texture created from the given drawables such as sprites, cricleShape, convexShape...
+ */
+template<Drawable... Ts>
+sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept
+{
+	// First, we need to calculate how much space the drawables will occupy in the render texture.
+
+	// Before doing that, we must fix the origin: if a drawable's origin is centered (e.g., at its middle),
+	// then adding its position to its size won't yield the correct bounding area —
+	// because visually, part of the object extends in negative directions from its origin.
+	// For example, a centered origin causes half the shape to be positioned in negative space,
+	// which would lead to incorrect size and position computations.
+
+	// Temporarily move drawables by their negative origin so that they align to (0,0)
+	(std::forward<Ts>(drawables).move(-std::forward<Ts>(drawables).getOrigin()), ...);
+	// Then reset their origin to (0, 0) to make further calculations easier
+	(std::forward<Ts>(drawables).setOrigin(sf::Vector2f{ 0, 0 }), ...);
+
+	// Compute the maximum extent in x and y: rightmost and bottommost edges
+	sf::Vector2f maxSize{ 0, 0 };
+	((maxSize.x = std::max(maxSize.x, std::forward<Ts>(drawables).getGlobalBounds().size.x + std::forward<Ts>(drawables).getGlobalBounds().position.x)), ...);
+	((maxSize.y = std::max(maxSize.y, std::forward<Ts>(drawables).getGlobalBounds().size.y + std::forward<Ts>(drawables).getGlobalBounds().position.y)), ...);
+
+	// Compute the minimum offset in x and y: leftmost and topmost edges
+	sf::Vector2f offset{ maxSize }; // Will use std::min, therefore we use the maximum size as the initial offset.
+	((offset.x = std::min(offset.x, std::forward<Ts>(drawables).getGlobalBounds().position.x)), ...);
+	((offset.y = std::min(offset.y, std::forward<Ts>(drawables).getGlobalBounds().position.y)), ...);
+	(std::forward<Ts>(drawables).move(-offset), ...); // Move all drawables so they align with (0,0) in the new texture space
+
+	// Calculate the true size of the texture based on the maximum extent and offset.
+	sf::Vector2u trueSize{ maxSize - offset };
+	trueSize.x = ceil(trueSize.x); // Round to prevent artifacts due to subpixels
+	trueSize.y = ceil(trueSize.y);
+
+	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(trueSize) };
+	renderTexture.clear(sf::Color::Transparent);
+	(renderTexture.draw(std::forward<Ts>(drawables)), ...);
+	renderTexture.display();
+
+	sf::Texture texture{ renderTexture.getTexture() };
+	return texture;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` Wrapper.
