@@ -23,14 +23,15 @@
 #include <concepts>
 #include <type_traits>
 #include <cassert>
+#include <algorithm>
 
 #ifndef NDEBUG 
 #define ENSURE_VALID_PTR(ptr) \
-    assert((ptr) && "ENSURE_VALID_PTR failed: pointer '" #ptr "' is null.")
+	assert((ptr) && "ENSURE_VALID_PTR failed: pointer '" #ptr "' is null.")
 
 #define ENSURE_NOT_OUT_OF_RANGE(index, size) \
-    assert(((index) >= 0 && static_cast<size_t>((index)) < static_cast<size_t>((size))) && \
-           "ENSURE_NOT_OUT_OF_RANGE failed: index out of valid range.")
+	assert(((index) >= 0 && static_cast<size_t>((index)) < static_cast<size_t>((size))) && \
+		   "ENSURE_NOT_OUT_OF_RANGE failed: index out of valid range.")
 #else
 #define ENSURE_VALID()
 #define ENSURE_NOT_OUT_OF_RANGE(index, size)
@@ -290,13 +291,8 @@ concept Ostreamable = requires(std::ostream & os, T t)
 
 /**
  * \brief A wrapper for `sf::Text` that simplifies its use.
- * The `TextWrapper` adds a constructor which allows initializing the class with more parameters
- * than the one that is available in `sf::Text`. Furthermore, rather than keeping a pointer to a
- * font like `sf::Text` does, it actually stores multiple fonts for the user to use. He can load/unload
- * as much as he wants while keeping O(1) complexity. It inherits from `TransformableWrapper` as well
- * in order to have the alignment, resize functions and hide attribute.
- *
- * \warning Do not erase a font while a text is using it.
+ * Rather than keeping a pointer to a font like `sf::Text` does, it actually stores multiple fonts
+ * for the user to choose from. He can add/remove as much as he wants while keeping O(1) complexity.
  * 
  * \see `sf::Text`, `sf::Font`, `TransformableWrapper`.
  */
@@ -308,29 +304,28 @@ public:
 	 * \brief Initializes the wrapper.
 	 * \complexity O(1).
 	 *
-	 * \param[in] content: What the text will display.
+	 * \param[in] content: What the `sf::Text` will display.
 	 * \param[in] name: The name of the font that'll be used.
-	 * \param[in] characterSize: The character size of the text.
-	 * \param[in] pos: The position of the text.
-	 * \param[in] scale: The scale of the text.
-	 * \param[in] color: The color of the text.
-	 * \param[in] alignment: The alignment of the text.
-	 * \param[in] style: The style of the text (regular, italic, underlined...).
-	 * \param[in] rot: The rotation of the text.
+	 * \param[in] characterSize: The character size of the `sf::Text`.
+	 * \param[in] pos: The position of the `sf::Text`.
+	 * \param[in] scale: The scale of the `sf::Text`.
+	 * \param[in] color: The color of the `sf::Text`.
+	 * \param[in] alignment: The alignment of the `sf::Text`.
+	 * \param[in] style: The style of the `sf::Text` (regular, italic, underlined...).
+	 * \param[in] rot: The rotation of the `sf::Text`.
 	 * 
-	 * \note The scale parameter should take into account the current size of the window.In a smaller
+	 * \note The scale parameter should take into account the current size of the window. In a smaller
 	 *       window, the same `sf::Text` will appear larger, and vice - versa.
 	 * 
 	 * \pre   You should have loaded a font with the name you gave, using the function `createFont`.
 	 * \post  The correct font will be used.
 	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
 	 * 
-	 * \see `createFont`.
+	 * \see `createFont`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
 	inline TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
-		: TransformableWrapper{}, m_textWrapped
-		{ nullptr }
+		: TransformableWrapper{}, m_textWrapped{ nullptr }
 	{
 		sf::Font* usedFont{ getFont(name) };
 		if (usedFont == nullptr)
@@ -358,7 +353,7 @@ public:
 	 *
 	 * \param[in] content: The new content for the text.
 	 *
-	 * \see `sf::Text::setString`.
+	 * \see `sf::Text::setString`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
 	inline void setContent(const T& content) noexcept
@@ -420,7 +415,7 @@ public:
 	 *
 	 * \return A reference to the wrapped `sf::Text` object.
 	 */
-	[[nodiscard]] inline sf::Text const& getText() const noexcept
+	[[nodiscard]] inline const sf::Text& getText() const noexcept
 	{
 		return *m_wrappedText;
 	}
@@ -518,12 +513,29 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * \brief Used within the sprite wrapper to represent a texture.
+ * The pointer to the texture allows the user to have it set to nullptr to free memory whenever he
+ * wants to reduce memory usage. The file name contains the name of the file where the texture is
+ * stored, within the assets folder.
+ * 
+ * \note You should not unload a texture that has no file name attached to it, as it might be not
+ *		 loadable after.
+ * 
+ * \see `SpriteWrapper`, `sf::Texture`. 
+ */
 struct TextureHolder
 {
 	std::unique_ptr<sf::Texture> actualTexture;
 	std::string fileName;
 };
 
+/**
+ * \brief Represents a ressource for a sprite to use, with a texture and a rectangle. 
+ * Does not own the texture.
+ * 
+ * \see `SpriteWrapper`, `TextureHolder`.
+ */
 struct TextureInfo
 {
 	TextureHolder* texture;
@@ -531,28 +543,81 @@ struct TextureInfo
 };
 
 /**
- * \brief A wrapper for `sf::Sprite` that initializes the sprite, keeps the textures, manages resizing.
- * \details A
+ * \brief A wrapper for `sf::Sprite` that simplifies its use.
+ * The wrapper simplify the use of `sf::Texture` as it stores all of them. We can distinguish two
+ * types of textures: shared and reserved; shared textures can be set to multiple sprites while
+ * reserved ones are owned by one instance. You have to call the function `createTexture` to put
+ * textures in the wrapper in both case, and then `loadTexture` for each instance that uses that
+ * texture (only once for reserved texture!). Moreover, as one sprite can also have multiple textures,
+ * the 'texture vector' contains access to the added ones. Call the function `loadTexture` to add
+ * more textures, or the same texture with a different `sf::IntRect`. The 'texture vector' is kept
+ * in the order the textures were added. TODO load/unload
+ * 
+ * \note Reserved texture aren't removable using the function `removeTexture`, but removed when the
+ *		 destructor of that sprite instance is called.
+ * \note Reserved texture may use a small additional amount of memory than shared.
  *
- * \see `sf::Sprite`, `sf::Texture`, `TextureHolder`, `TextureInfo`, `TransformableWrapper`.
+ * \see `sf::Sprite`, `sf::Texture`, `TransformableWrapper`.
  */
 class SpriteWrapper final : public TransformableWrapper
 {
 public:
 
-	//TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0));
-	//TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center);
+	/**
+	 * \brief Initializes the wrapper.
+	 * \complexity O(1).
+	 * 
+	 * \param[in] name: The alias of the texture.
+	 * \param[in] rect: The display part of the texture. If size is 0, it is set to the whole texture size.
+	 * \param[in] pos: The position of the `sf::Sprite`.
+	 * \param[in] scale: The scale of the `sf::Sprite`.
+	 * \param[in] rot: The rotation of the `sf::Sprite`.
+	 * \param[in] alignment: The alignment of the `sf::Sprite`.
+	 * \param[in] color: The color of the `sf::Sprite` that will be multiply by the texture color.
+	 * 
+	 * \note The scale parameter should take into account the current size of the window. In a smaller
+	 *       window, the same `sf::Text` will appear larger, and vice - versa.
+	 * \note The constructor accounts the reserve state of the texture.
+	 * 
+	 * \pre   You should have loaded a texture with the name you gave, using the function `createTexture`.
+	 * \pre   It should not be already reserved.
+	 * \post  The correct texture will be used.
+	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
+	 * 
+	 * \see `createTexture`.
+	 */
+	SpriteWrapper(const std::string& name, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
-	SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
-
-	SpriteWrapper(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+	/**
+	 * \brief Initializes the wrapper.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of the texture. The rect is the whole texture.
+	 * \param[in] pos: The position of the `sf::Sprite`.
+	 * \param[in] scale: The scale of the `sf::Sprite`.
+	 * \param[in] rot: The rotation of the `sf::Sprite`.
+	 * \param[in] alignment: The alignment of the `sf::Sprite`.
+	 * \param[in] color: The color of the `sf::Sprite` that will be multiply by the texture color.
+	 *
+	 * \note The scale parameter should take into account the current size of the window. In a smaller
+	 *       window, the same `sf::Text` will appear larger, and vice - versa.
+	 * \note The constructor accounts the reserve state of the texture.
+	 *
+	 * \pre   You should have loaded a texture with the name you gave, using the function `createTexture`.
+	 * \pre   It should not be already reserved.
+	 * \post  The correct texture will be used.
+	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
+	 *
+	 * \see `createTexture`.
+	 */
+	SpriteWrapper(const std::string& name, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	SpriteWrapper() noexcept = delete;
 	SpriteWrapper(SpriteWrapper const&) noexcept = delete; // For reserved texture.
 	SpriteWrapper(SpriteWrapper&&) noexcept = default;
 	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = delete; // For reserved texture.
 	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
-	virtual ~SpriteWrapper() noexcept;
+	virtual ~SpriteWrapper() noexcept; /// \complexity O(N) where N is the number of reserved texture.
 
 
 	/**
@@ -574,8 +639,8 @@ public:
 	 *		 places. For some reason, this problem does not occur when the origin is at 0;0. So unless, you
 	 *		 want to rotate the sprite by a different alignment, or the texture is big enough to not see the
 	 *		 difference, set the alignment to Top/Left. If you still want to give positions as if the center
-	 *		 was the origin, you can use the `setPosition` function and then use that line: 
-	 *		 `move(-computeNewOrigin(spriteWrapped.getSprite().getLocalBounds(), Alignment::Center))`
+	 *		 was the origin, you can use the `spriteWrapped.setPosition` function and then use that line: 
+	 *		 `spriteWrapped.move(-computeNewOrigin(spriteWrapped.getSprite().getLocalBounds(), Alignment::Center))`
 	 *		 
 	 * \see `sf::Transformable::setOrigin`, `computeNewOrigin`, `Alignment`.
 	 */
@@ -587,7 +652,7 @@ public:
 	 *
 	 * \return A reference to the wrapped `sf::Sprite` object.
 	 */
-	[[nodiscard]] inline sf::Sprite const& getText() const noexcept
+	[[nodiscard]] inline const sf::Sprite& getText() const noexcept
 	{
 		return *m_wrappedSprite;
 	}
@@ -640,11 +705,12 @@ public:
 	 * \brief Adds a texture to the texture vector.
 	 * For each `sf::IntRect` given, a pair of a `sf::Texture` ptr with a `sf::IntRect` is added to the
 	 * instance. Switching between different textures or intrect is done the same way with the function
-	 * `switchToNextTexture`.
-	 * \complexity amor O(1).
+	 * `switchToNextTexture`. Don't be afraid to add a lot of textures, just ptr/ints are stored. Reserved
+	 * textures can stillnbe added this function multiple times. TODO
+	 * \complexity O(N), where N is the number of unique reserved texture already added.
 	 * 
 	 * \param name: The alias of a texture.
-	 * \param rects: All intrect you want to add
+	 * \param rects: All intrects you want to add. If size is 0, it is set to the whole texture size.
 	 * 
 	 * \return `true` if added to the texture vector. Otherwise `false`.
 	 * 
@@ -667,8 +733,10 @@ public:
 		if (mapAccessIterator == s_accessToTextures.end()) [[unlikely]]
 			return false; // Texture not there.
 
-		auto mapUniqueIterator{ s_uniqueTextures.find(mapAccessIterator->second) };
-		if (mapUniqueIterator != s_uniqueTextures.end() && mapUniqueIterator->second == true)
+		auto mapUniqueIterator{ s_allUniqueTextures.find(mapAccessIterator->second) };
+		if (mapUniqueIterator != s_allUniqueTextures.end() // is reserved.
+		&&  mapUniqueIterator->second == true // has already been claimed by an instance...
+		&&  std::find(m_uniqueTextures.begin(), m_uniqueTextures.end(), name) == m_uniqueTextures.end()) [[unlikely]] // ...not by this instance.
 			throw std::invalid_argument{ "The reserved texture was not available anymore for this sprite instance" };
 
 		TextureHolder* texture{ &mapAccessIterator->second };
@@ -677,21 +745,26 @@ public:
 
 		if (mapUniqueIterator->second == false) // For reserved texture.
 		{
-			mapUniqueIterator->second = true;  // Mark it as true, meaning it is reserved.
-			m_allUniqueTextures.push_back(name);
+			mapUniqueIterator->second = true;  // Mark it as true, meaning the reserve state was claimed.
+			m_uniqueTextures.push_back(name);
 		}
 
 		return true;
 	}
 
+	/**
+	 * \see Similar to the `addTexture` template overloaded function, with an IntRect that covers the
+	 *		whole texture since it has a size 0.
+	 */
+	inline bool addTexture(std::string name)
+	{
+		return addTexture(name, sf::IntRect{});
+	}
 
 	/**
 	 * \brief Tells whether or not a texture should be reserved to a specific instance.
 	 * `Yes` if you want the texture to be availabe for a single sprite, preventing
 	 *  any other instances to use it.
-	 * 
-	 * \note It isn't removable using the function `removeTexture`, but removed when the destructor of
-	 *		 that sprite instance is called. 
 	 */
 	enum class Reserved : uint8_t { Yes, No };
 
@@ -814,14 +887,14 @@ private:
 	/// All textures used by the sprite.
 	std::vector<TextureInfo> m_textures;
 	/// Contains the name of all textures used only by this sprite.
-	std::vector<std::string> m_allUniqueTextures;
+	std::vector<std::string> m_uniqueTextures;
 
 	/// Contains all textures, whether they are used or not/loaded or not.
 	static std::list<TextureHolder> s_allTextures;
 	/// Maps identifiers to textures for quick access.
 	static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures; 
 	/// Textures that can be used just once by a single instance.
-	static std::unordered_map<std::list<TextureHolder>::iterator, bool> s_uniqueTextures;
+	static std::unordered_map<std::list<TextureHolder>::iterator, bool> s_allUniqueTextures;
 };
 
 

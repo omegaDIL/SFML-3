@@ -4,7 +4,7 @@ std::list<sf::Font> TextWrapper::s_allFonts{};
 std::unordered_map<std::string, std::list<sf::Font>::iterator> TextWrapper::s_accessToFonts{};
 std::list<TextureHolder> SpriteWrapper::s_allTextures{};
 std::unordered_map<std::string, std::list<TextureHolder>::iterator> SpriteWrapper::s_accessToTextures;
-std::unordered_map<std::list<TextureHolder>::iterator, bool> SpriteWrapper::s_uniqueTextures;
+std::unordered_map<std::list<TextureHolder>::iterator, bool> SpriteWrapper::s_allUniqueTextures;
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +164,7 @@ void TextWrapper::createFont(const std::string& name, const std::string& fileNam
 {
 	std::ostringstream errorMessage{};
 	auto optFont{ loadFontFromFile(errorMessage, fileName) };
-	if (!optFont.has_value())
+	if (!optFont.has_value()) [[unlikely]]
 		throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
 
 	createFont(name, std::move(optFont.value()));
@@ -235,19 +235,38 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+SpriteWrapper::SpriteWrapper(const std::string& name, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
+	: TransformableWrapper{}, m_wrappedSprite{ nullptr }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
+{
+	sf::Texture* usedTexture{ getTexture(name)->actualTexture.get() };
+
+	if (usedTexture == nullptr) [[unlikely]]
+		throw std::invalid_argument{ "This name is not affiliate with any texture" };
+	
+	addTexture(name, rect);
+	m_wrappedSprite = std::make_unique<sf::Sprite>(*usedTexture, rect);
+
+	this->create(m_wrappedSprite.get(), pos, scale, rot, alignment);
+	setColor(color);
+}
+
+SpriteWrapper::SpriteWrapper(const std::string& name, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
+	: SpriteWrapper{ name, sf::IntRect{}, pos, scale, rot, alignment, color }
+{}
+
 SpriteWrapper::~SpriteWrapper() noexcept
 {
-	for (auto& reservedTexture : m_allUniqueTextures)
+	for (auto& reservedTexture : m_uniqueTextures)
 	{
 		auto mapAccessIterator{ s_accessToTextures.find(reservedTexture) };
 		s_allTextures.erase(mapAccessIterator->second); // Remove the actual texture from the list.
-		s_uniqueTextures.erase(mapAccessIterator->second); // Remove the texture from the reserved map.
+		s_allUniqueTextures.erase(mapAccessIterator->second); // Remove the texture from the reserved map.
 		s_accessToTextures.erase(mapAccessIterator); // Remove the access toward the texture from the access map.
 	}
 
 	m_wrappedSprite = nullptr;
 	m_textures.clear();
-	m_allUniqueTextures.clear();
+	m_uniqueTextures.clear();
 }
 
 void SpriteWrapper::setColor(sf::Color color) noexcept
@@ -265,24 +284,25 @@ inline void SpriteWrapper::switchToNextTexture()
 {
 	m_curTextureIndex = (++m_curTextureIndex) % m_textures.size();
 	TextureInfo& newTextureInfo{ m_textures[m_curTextureIndex] };
+	std::unique_ptr<sf::Texture>& newTexture{ newTextureInfo.texture->actualTexture }; // From texture holder
 
-	m_wrappedSprite->setTextureRect(newTextureInfo.displayedTexturePart);
-
-	// Comparing pointers to see if it
-	std::unique_ptr<sf::Texture>& newTexture{ newTextureInfo.texture->actualTexture };
-	if (newTexture.get() == &m_wrappedSprite->getTexture())
-		return; // If both addresses are the same, then no need to reapply it. 
-
-	if (newTexture == nullptr)
+	if (newTexture == nullptr) [[unlikely]]
 	{	// Not loaded yet, so we need to load it first.
 		std::ostringstream errorMessage{};
 		auto optTexture{ loadTextureFromFile(errorMessage, newTextureInfo.texture->fileName) };
 		
-		if (!optTexture.has_value())
+		if (!optTexture.has_value()) [[unlikely]]
 			throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
 
 		newTexture = std::make_unique<sf::Texture>(std::move(optTexture.value()));
-	}
+	}	
+	
+	if (newTextureInfo.displayedTexturePart.size == sf::Vector2i{}) // If rect is 0,0 then the rect should cover the whole texture.
+		newTextureInfo.displayedTexturePart.size = static_cast<sf::Vector2i>(newTexture->getSize());
+	m_wrappedSprite->setTextureRect(newTextureInfo.displayedTexturePart);
+
+	if (newTexture.get() == &m_wrappedSprite->getTexture())
+		return; // If both addresses are the same, then no need to reapply it. 
 
 	m_wrappedSprite->setTexture(*newTexture); 
 }
@@ -332,7 +352,7 @@ void SpriteWrapper::createTexture(const std::string& name, const std::string& fi
 	s_accessToTextures[name] = s_allTextures.begin();
 
 	if (shared == Reserved::Yes)
-		s_uniqueTextures[s_allTextures.begin()] = false;
+		s_allUniqueTextures[s_allTextures.begin()] = false;
 
 	if (loadImmediately)
 		loadTexture(name, true); // True means we delete the texture if the loading fails.
@@ -352,7 +372,7 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 	auto mapIterator{ s_accessToTextures.find(name) };
 
 	if (mapIterator == s_accessToTextures.end() 
-	|| s_uniqueTextures.find(mapIterator->second) != s_uniqueTextures.end()) // If it is a unique texture.
+	|| s_allUniqueTextures.find(mapIterator->second) != s_allUniqueTextures.end()) // If it is a unique texture.
 		return;
 
 	s_allTextures.erase(mapIterator->second); // First, removing the actual texture.
