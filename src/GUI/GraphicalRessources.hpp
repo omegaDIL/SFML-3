@@ -15,7 +15,6 @@
 #include <vector>
 #include <list>
 #include <unordered_map>
-#include <unordered_set>
 #include <memory>
 #include <stdexcept>
 #include <cstdint>
@@ -23,6 +22,18 @@
 #include <sstream>
 #include <concepts>
 #include <type_traits>
+#include <cassert>
+
+#ifndef NDEBUG 
+#define ENSURE_VALID_PTR(ptr) \
+    assert((ptr) && "ENSURE_VALID_PTR failed: pointer '" #ptr "' is null.")
+
+#define ENSURE_NOT_OUT_OF_RANGE(index, size) \
+    assert(((index) >= 0 && static_cast<size_t>((index)) < static_cast<size_t>((size))) && \
+           "ENSURE_NOT_OUT_OF_RANGE failed: index out of valid range.")
+#else
+#define ENSURE_VALID()
+#endif
 
 // namespace gui
 
@@ -57,7 +68,7 @@ public:
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// A `sf::Transformable` Wrapper.
+/// A `sf::Transformable` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -106,6 +117,8 @@ Alignment operator|(Alignment lhs, Alignment rhs) noexcept;
  * \param[in] alignment: The alignment of the `sf::Transformable`.
  * 
  * \return Returns the corresponding origin given an alignment and a bound of a `sf::Transformable`.
+ * 
+ * \see `Alignment`, `sf::Transformable::setOrigin`.
  */
 sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept;
 
@@ -124,7 +137,7 @@ sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept
  * \note    You should implement the getter functions for the `sf::Transformable`.
  * \warning Keep the transformable loaded as long as the corresponding instance is used - no nullptr
  *			checks are done. It is only a wrapper, and speed should remain as similar as a regular
- *			`sf::Transformable`.
+ *			`sf::Transformable` instance. The program will assert otherwise.
  * 
  * \see `sf::Transformable`, `Alignment`.
  */
@@ -144,16 +157,14 @@ public:
 	 * 
 	 * \note The scale parameter should take into account the current size of the window. In a smaller
 	 * 		 window, the same `sf::Transformable` will appear larger, and vice-versa.
-	 * \note Give the address of the correct `sf::Transformable` since it is not changeable after the
-	 *       constructor, except in the move/copy assignment operators.
 	 * 
 	 * \pre   The transformable pointer must not be nullptr.
 	 * \post  The wrapper will use the right transformable.
 	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
 	 */
 	TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center);
-
-	TransformableWrapper() noexcept = delete;
+	
+	TransformableWrapper() noexcept : hide{ false }, m_alignment{ Alignment::Center }, m_transformable{ nullptr } {}
 	TransformableWrapper(TransformableWrapper const&) noexcept = default;
 	TransformableWrapper(TransformableWrapper&&) noexcept = default;
 	TransformableWrapper& operator=(TransformableWrapper const&) noexcept = default;
@@ -164,34 +175,22 @@ public:
 	/**
 	 * \see Similar to the `sf::Transformable::move` function.
 	 */
-	inline void move(sf::Vector2f pos) noexcept
-	{
-		m_transformable->move(pos);
-	}
+	void move(sf::Vector2f pos) noexcept;
 
 	/**
 	 * \see Similar to the `sf::Transformable::scale` function.
 	 */
-	inline void scale(sf::Vector2f scale) noexcept
-	{
-		m_transformable->scale(scale);
-	}
+	void scale(sf::Vector2f scale) noexcept;
 
 	/**
 	 * \see Similar to the `sf::Transformable::rotate` function.
 	 */
-	inline void rotate(sf::Angle rot) noexcept
-	{
-		m_transformable->rotate(rot);
-	}
+	void rotate(sf::Angle rot) noexcept;
 
 	/**
 	 * \see Similar to the `sf::Transformable::setPosition` function.
 	 */
-	inline void setPosition(sf::Vector2f pos) noexcept
-	{
-		m_transformable->setPosition(pos);
-	}
+	void setPosition(sf::Vector2f pos) noexcept;
 
 	/**
 	 * \see Similar to the `sf::Transformable::setScale` function.
@@ -199,43 +198,32 @@ public:
 	 * \note The scale parameter should take into account the current size of the window. In a smaller
 	 * 		 window, the same `sf::Transformable` will appear larger, and vice-versa.
 	 */
-	inline void setScale(sf::Vector2f scale) noexcept
-	{
-		m_transformable->setScale(scale);
-	}
+	void setScale(sf::Vector2f scale) noexcept;
 
 	/**
 	 * \see Similar to the `sf::Transformable::setRotation` function.
 	 */
-	inline void setRotation(sf::Angle angle) noexcept
-	{
-		m_transformable->setRotation(angle);
-	}
+	void setRotation(sf::Angle angle) noexcept;
 
 	/**
 	 * \brief Sets the `sf::Transformable`'s origin given alignment.
 	 * If the alignment is top/left, then the origin will be located at the top/left corner, which is
-	 * (0;0) in sfml. If the alignment is center/right, then the origin should be located at the
+	 * (0;0) in SFML. If the alignment is center/right, then the origin should be located at the
 	 * coordinate (size.x/2; size).
 	 * \complexity O(1).
 	 *
 	 * \param[in] alignment The new alignment of the `sf::Transformable`.
-	 * 
-	 * \note It has an implementation even though it is a pure virtual function.
 	 *
 	 * \see `sf::Transformable::setOrigin()`, `computeNewOrigin()`.
 	 */
-	inline virtual void setAlignment(Alignment alignment) noexcept = 0
-	{
-		m_alignment = alignment;
-	}
+	virtual void setAlignment(Alignment alignment) noexcept = 0;
 
 	/**
 	 * \brief Apply a new color to the `sf::Transformable` object.
 	 * 
 	 * \param[in] color: The new color.
 	 */
-	inline virtual void setColor(sf::Color color) noexcept = 0;
+	virtual void setColor(sf::Color color) noexcept = 0;
 
 	/**
 	 * \brief Resizes and repositions the `sf::Transformable`, e.g., when the window is resized.
@@ -246,18 +234,34 @@ public:
 	 *            the scale factor is (0.9, 2), and the smallest axis ratio is 600 / 300 = 2.
 	 *            This helps to scale elements uniformly based on the smaller dimension.
 	 */
-	inline void resized(sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept
-	{
-		scale(sf::Vector2f{ relativeMinAxisScale, relativeMinAxisScale });
-		setPosition(sf::Vector2f{ windowScaleFactor.x * m_transformable->getPosition().x, windowScaleFactor.x * m_transformable->getPosition().x });
-	}
+	void resized(sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
 
 
-	/// Tells the interface if the element should be drawn.
+	/// Tells if the element should be drawn.
 	bool hide; 
 
 protected:
 	
+	/**
+	 * \brief Initializes the wrapper.
+	 * \complexity O(1).
+	 *
+	 * \param[out] transformable: What `sf::Transformable` the wrapper is being used for.
+	 * \param[in]  pos: The position of the `sf::Transformable`.
+	 * \param[in]  scale: The scale of the `sf::Transformable`.
+	 * \param[in]  rot: The rotation of the `sf::Transformable`.
+	 * \param[in]  alignment: The alignment of the `sf::Transformable`.
+	 *
+	 * \note The scale parameter should take into account the current size of the window. In a smaller
+	 * 		 window, the same `sf::Transformable` will appear larger, and vice-versa.
+	 *
+	 * \pre   The transformable pointer must not be nullptr.
+	 * \post  The wrapper will use the right transformable.
+	 * \throw std::invalid_argument strong exception guarantee: you can call this function again.
+	 */
+	void create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center);
+
+
 	/// The current alignment of the `sf::Transformable`.
 	Alignment m_alignment; 
 
@@ -268,11 +272,11 @@ private:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// A `sf::Transformable` Wrapper.
+/// A `sf::Transformable` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// A `sf::Text` Wrapper.
+/// A `sf::Text` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// The type must be streamable to `std::basic_ostream`.
@@ -287,30 +291,23 @@ concept Ostreamable = requires(std::ostream & os, T t)
  * The `TextWrapper` adds a constructor which allows initializing the class with more parameters
  * than the one that is available in `sf::Text`. Furthermore, rather than keeping a pointer to a
  * font like `sf::Text` does, it actually stores multiple fonts for the user to use. He can load/unload
- * as much as he wants while keeping O(1) complexity. Inherits from `TransformableWrapper` as well
+ * as much as he wants while keeping O(1) complexity. It inherits from `TransformableWrapper` as well
  * in order to have the alignment, resize functions and hide attribute.
  *
+ * \warning Do not erase a font while a text is using it.
+ * 
  * \see `sf::Text`, `sf::Font`, `TransformableWrapper`.
  */
-class TextWrapper : private sf::Text, public TransformableWrapper
+class TextWrapper final : public TransformableWrapper
 {
 public:
-
-	using TransformableWrapper::move;
-	using TransformableWrapper::scale;
-	using TransformableWrapper::rotate;
-	using TransformableWrapper::setPosition;
-	using TransformableWrapper::setScale;
-	using TransformableWrapper::setRotation;
-	using TransformableWrapper::resized;
-
 
 	/**
 	 * \brief Initializes the wrapper.
 	 * \complexity O(1).
 	 *
 	 * \param[in] content: What the text will display.
-	 * \param[in] fontName: The name of the font that'll be used.
+	 * \param[in] name: The name of the font that'll be used.
 	 * \param[in] characterSize: The character size of the text.
 	 * \param[in] pos: The position of the text.
 	 * \param[in] scale: The scale of the text.
@@ -322,15 +319,24 @@ public:
 	 * \note The scale parameter should take into account the current size of the window.In a smaller
 	 *       window, the same `sf::Text` will appear larger, and vice - versa.
 	 * 
-	 * \pre   You should have loaded a font with the name you gave as argument, using the function
-	 *		 `loadFontIntoWrapper`.
+	 * \pre   You should have loaded a font with the name you gave, using the function `createFont`.
 	 * \post  The correct font will be used.
 	 * \throw std::invalid_argument basic exception guarantee: the instance is not usable.
+	 * 
+	 * \see `createFont`.
 	 */
 	template<Ostreamable T>
-	TextWrapper(T const& content, std::string const& fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
-		: sf::Text{ getFontForConstructor(name), "", characterSize}, TransformableWrapper{ this, pos, scale, rot, alignment }
+	inline TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
+		: TransformableWrapper{}, m_textWrapped
+		{ nullptr }
 	{
+		sf::Font* usedFont{ getFont(name) };
+		if (usedFont == nullptr)
+			throw std::invalid_argument{ "This name is not affiliate with any font" };
+		
+		m_wrappedText = std::make_unique<sf::Text>(*usedFont, "", characterSize);
+		this->create(m_wrappedText.get(), pos, scale, rot, alignment);
+
 		setFillColor(color);
 		setStyle(style);
 		setContent(content); // Also computes the origin of the text with the correct alignment.
@@ -353,139 +359,136 @@ public:
 	 * \see `sf::Text::setString`.
 	 */
 	template<Ostreamable T>
-	inline void setContent(T const& content) noexcept
+	inline void setContent(const T& content) noexcept
 	{
-		std::ostringstream oss{}; // Convert the content to a string
+		std::ostringstream oss{}; // Convert the content to a string.
 		oss << content; // Assigning the content to the variable.
 
-		setString(oss.str());
-		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
+		m_wrappedText->setString(oss.str());
+		m_wrappedText->setOrigin(computeNewOrigin(m_wrappedText->getLocalBounds(), m_alignment));
 	}
 
 	/**
-	 * \brief Sets a new font for the text.
+	 * \brief Sets a new font for the text, only if the resource exists.
 	 * \complexity O(1).
 	 *
 	 * \param[in] name: The name of the font that'll be used.
-	 * 
-	 * \pre   You should have loaded a font with the name you gave as argument, using the function
-	 *		 `loadFontIntoWrapper`.
-	 * \post  The correct font will be used.
-	 * \throw std::invalid_argument strong exception guarantee: the instance remains the same as before
-	 *		  the call.
-	 * 
-	 * \see `sf::Text::setFont`.
+	 *
+	 * \return `true` if it was set, false `otherwise`.
+	 *
+	 * \note This function is designed not to throw, to support scenarios where the user tries multiple
+	 *		 font names until one is successfully found and set. This is useful when font loading may have
+	 *		 failed earlier, and fallback attempts are expected behavior.
+	 *
+	 * \see `sf::Text::setFont`, `createFont`, `loadFontFromFile`.
 	 */
-	void setFont(std::string const& name);
+	bool setFont(const std::string& name) noexcept;
 
 	/**
 	 * \see `sf::Text::setCharacterSize`.
 	 */
-	inline void setCharacterSize(unsigned int size) noexcept
-	{
-		sf::Text::setCharacterSize(size);
-		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
-	}
+	void setCharacterSize(unsigned int size) noexcept;
 
 	/**
 	 * \see `sf::Text::setFillColor`.
 	 */
-	inline virtual void setColor(sf::Color color) noexcept final
-	{
-		setFillColor(color);
-	}
+	virtual void setColor(sf::Color color) noexcept final;
 
 	/**
 	 * \see `sf::Text::setStyle`.
 	 */
-	inline void setStyle(sf::Text::Style style) noexcept
-	{
-		sf::Text::setStyle(style);
-	}
+	void setStyle(sf::Text::Style style) noexcept;
 
 	/**
-	 * \see `sf::TransformableWrapper::setAlignment`.
-	 */
-	inline virtual void setAlignment(Alignment alignment) noexcept final
-	{
-		TransformableWrapper::setAlignment(alignment);
-		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
-	}
-
-	/**
-	 * \brief Accesses the base `sf::Text` object.
+	 * \brief Sets the `sf::Text`'s origin given alignment.
+	 * If the alignment is top/left, then the origin will be located at the top/left corner, which is
+	 * (0;0) in SFML. If the alignment is center/right, then the origin should be located at the
+	 * coordinate (size.x/2; size).
 	 * \complexity O(1).
 	 *
-	 * \return A reference to the base `sf::Text` object.
+	 * \param[in] alignment The new alignment of the `sf::Text`.
+	 *
+	 * \see `sf::Transformable::setOrigin()`, `computeNewOrigin()`.
+	 */
+	virtual void setAlignment(Alignment alignment) noexcept final;
+
+	/**
+	 * \brief Accesses the wrapped `sf::Text` object.
+	 * \complexity O(1).
+	 *
+	 * \return A reference to the wrapped `sf::Text` object.
 	 */
 	[[nodiscard]] inline sf::Text const& getText() const noexcept
 	{
-		return *this;
+		return *m_wrappedText;
 	}
 
 
 	/**
-	 * \brief Loads a font into the wrapper with the corresponding name, and can be used by all instances.
+	 * \brief Returns a font ptr, or nullptr if it does not exist.
 	 * \complexity O(1).
 	 *
-	 * \param[in] name: The alias of the font.
+	 * \param[in] name: The alias of a font.
+	 *
+	 * \return The address of the font.
+	 */
+	[[nodiscard]] static sf::Font* getFont(const std::string& name) noexcept;
+
+	/**
+	 * \brief Creates a font into the wrapper with a name, which can be used by all instances.
+	 * You can also use this function to replace an existing font by another one.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a font.
+	 * \param[in] fileName: The file within the assets folder that contains the font.
+	 *
+	 * \note The font will be loaded immediately.
+	 * \warning Do not replace a font which is currently in use.
+	 *
+	 * \pre The file name should be a correct path to a font within the assets folder.
+	 * \post The font will be loaded.
+	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
+	 *
+	 * \see `loadFontFromFile`, `setFont`.
+	 */
+	static void createFont(const std::string& name, const std::string& fileName);
+
+	/**
+	 * \brief Creates a font into the wrapper with a name, which can be used by all instances.
+	 * You can also use this function to replace an existing font by another one.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a font.
 	 * \param[in] font: The font you want to load (using std::move is recommended).
 	 * 
-	 * \note You can also use this function to replace an existing font by another one.
+	 * \warning Do not replace a font which is currently in use.
 	 * 
-	 * \return `true` if you replaced an existing font and `false` if the font was added without
-	 *		   replacement.
+	 * \see `loadFontFromFile`, `setFont`.
 	 */
-	static bool loadFontIntoWrapper(std::string const& name, sf::Font font) noexcept;
-
-	/**
-	 * \brief Unoads a font from the wrapper with the corresponding name.
-	 * \complexity O(1).
-	 *
-	 * \param[in] name: The alias of the font.
-	 * 
-	 * \note No font should currently use the font you remove.
-	 *
-	 * \pre   A font must exist with this name.
-	 * \post  The correct font will be removed.
-	 * \throw std::invalid_argument strong exception guarantee: nothing happen.
-	 */
-	static void unloadFontFromWrapper(std::string const& name);
+	static void createFont(const std::string& name, sf::Font font) noexcept;
 	
 	/**
-	 * \brief Checks if a font exists.
+	 * \brief Removes the font from the wrapper with the name given. No effet if not there.
 	 * \complexity O(1).
 	 *
-	 * \param[in] name: The alias of the font.
-	 *
-	 * \return `true` if the font exists.
+	 * \param[in] name: The alias of a font.
+	 * 
+	 * \warning No font should currently use the font you remove.
 	 */
-	[[nodiscard]] inline static bool doesFontexist(std::string const& name) noexcept
-	{
-		return s_accessToFonts.find(name) != s_accessToFonts.end();
-	}
+	static void removeFont(const std::string& name) noexcept;
 
 private:
 
-	/**
-	 * @brief Returns a font in order to construct the `sf::Text`
-	 * 
-	 * \param[in] name: The alias of the font.
-	 * 
-	 * \pre   A font must exist with this name.
-	 * \post  The correct font will be returned.
-	 * \throw std::invalid_argument strong exception guarantee: nothing happen.
-	 * 
-	 * \return A reference to the font for the constructor.
-	 */
-	static sf::Font& getFontForConstructor(std::string const& name);
+	/// What `sf::Text` the wrapper is being used for.
+	std::unique_ptr<sf::Text> m_wrappedText;
 
 
 	/// Contains all loaded fonts
-	static std::list<sf::Font> s_fonts; 
+	static std::list<sf::Font> s_allFonts; 
 	/// Allows to find fonts with a name in O(1) time complexity.
 	static std::unordered_map<std::string, std::list<sf::Font>::iterator> s_accessToFonts;
 };
+
 
 /**
  * \brief Loads a font from a file.
@@ -495,27 +498,27 @@ private:
  * \param[in]  fileName: The name of the file.
  * \param[in]  path: The path to this file (assets file by default).
  * 
+ * \return a sf::Font if the loading was successful, std::nullopt otherwise.
+ * 
  * \note The complete path is "path + fileName" therefore it does not matter if the fileName
  *		 variable contains also a part of the path, as long as the complete path is valid.
  * \note A message is added to the stream only if the function returns std::nullopt.
- * 
- * \return a sf::Font if the loading was successful, std::nullopt otherwise.
  * 
  * \see `TextWrapper`, `sf::Font::openFromFile`.
  */
 std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// A `sf::Text` Wrapper.
+/// A `sf::Text` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// A `sf::Sprite` Wrapper.
+/// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct TextureHolder
 {
-	std::unique_ptr<sf::Texture> texture;
+	std::unique_ptr<sf::Texture> actualTexture;
 	std::string fileName;
 };
 
@@ -525,152 +528,320 @@ struct TextureInfo
 	sf::IntRect displayedTexturePart;
 };
 
-
 /**
  * \brief A wrapper for `sf::Sprite` that initializes the sprite, keeps the textures, manages resizing.
  * \details A
  *
- * \see sf::Sprite, TransformableWrapper, TextWrapper.
+ * \see `sf::Sprite`, `sf::Texture`, `TextureHolder`, `TextureInfo`, `TransformableWrapper`.
  */
-class SpriteWrapper final : private sf::Sprite, public TransformableWrapper
+class SpriteWrapper final : public TransformableWrapper
 {
 public:
 
-	using TransformableWrapper::move;
-	using TransformableWrapper::scale;
-	using TransformableWrapper::rotate;
-	using TransformableWrapper::setPosition;
-	using TransformableWrapper::setScale;
-	using TransformableWrapper::setRotation;
-	using TransformableWrapper::resized;
-
+	//TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0));
 
 	SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 
 	SpriteWrapper(std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	SpriteWrapper() noexcept = delete;
-	SpriteWrapper(SpriteWrapper const&) noexcept = default;
+	SpriteWrapper(SpriteWrapper const&) noexcept = delete; // For reserved texture.
 	SpriteWrapper(SpriteWrapper&&) noexcept = default;
-	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = default;
+	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = delete; // For reserved texture.
 	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
-	virtual ~SpriteWrapper() noexcept = default;
+	virtual ~SpriteWrapper() noexcept;
 
 
-	inline virtual void setColor(sf::Color color) noexcept final
+	/**
+	 * \see `sf::Sprite::setColor`.
+	 */
+	virtual void setColor(sf::Color color) noexcept final;
+
+	/**
+	 * \brief Sets the `sf::Sprite`'s origin given alignment.
+	 * If the alignment is top/left, then the origin will be located at the top/left corner, which is
+	 * (0;0) in SFML. If the alignment is center/right, then the origin should be located at the
+	 * coordinate (size.x/2; size).
+	 * \complexity O(1).
+	 *
+	 * \param[in] alignment The new alignment of the `sf::Sprite`.
+	 *
+	 * \note Keeping the origin of a small sprite at Top/Left is recommended. The way SFML handles drawing
+	 *		 sprites make their textures, sometimes, larger at certain lines/pixels and smaller at other
+	 *		 places. For some reason, this problem does not occur when the origin is at 0;0. So unless, you
+	 *		 want to rotate the sprite by a different alignment, or the texture is big enough to not see the
+	 *		 difference, set the alignment to Top/Left. If you still want to give positions as if the center
+	 *		 was the origin, you can use the `setPosition` function and then use that line: 
+	 *		 `move(-computeNewOrigin(spriteWrapped.getSprite().getLocalBounds(), Alignment::Center))`
+	 *		 
+	 * \see `sf::Transformable::setOrigin`, `computeNewOrigin`, `Alignment`.
+	 */
+	virtual void setAlignment(Alignment alignment) noexcept final;
+
+	/**
+	 * \brief Accesses the wrapped `sf::Sprite` object.
+	 * \complexity O(1).
+	 *
+	 * \return A reference to the wrapped `sf::Sprite` object.
+	 */
+	[[nodiscard]] inline sf::Sprite const& getText() const noexcept
 	{
-		sf::Sprite::setColor(color);
+		return *m_wrappedSprite;
 	}
 
-	// To simulate: move(-computeNewOrigin(getLocalBounds(), m_alignment))
-	inline virtual void setAlignment(Alignment alignment) noexcept final
+	/**
+	 * \brief Applies the texture/its rect to the sprite by looking at the next index. Loop otherwise.
+	 * \complexity O(1).
+	 * 
+	 * \note The function will load the next texture if it was not previously loaded. That being said,
+	 *		 if you want to avoid a sudden loss of fps (especially for large texture), consider load it
+	 *		 before
+	 * \note The previous texture is not unloaded. 
+	 * 
+	 * \pre If loading, the file name should be a correct path to a texture within the assets folder.
+	 * \post The texture will be loaded.
+	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
+	 */
+	void switchToNextTexture();
+
+	/**
+	 * \brief Applies the texture/its rect to the sprite located at a specific index.
+	 * \complexity O(1).
+	 * 
+	 * \param[in] index: An index whithin the texture vector.
+	 * 
+	 * \note The function will load the next texture if it was not previously loaded. That being said,
+	 *		 if you want to avoid a sudden loss of fps (especially for large texture), consider load it
+	 *		 before
+	 * \note The previous texture is not unloaded. 
+	 * \warning If the index is out if range, the program will assert
+	 * 
+	 * \pre If loading, the file name should be a correct path to a texture within the assets folder.
+	 * \post The texture will be loaded.
+	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
+	 */
+	void switchToNextTexture(size_t index) ;
+
+	/**
+	 * \brief Returns the index of the texture set to this sprite, within the texture vector.
+	 * \complexity O(1).
+	 * 
+	 * \return The index within vector.
+	 */
+	[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept
 	{
-		TransformableWrapper::setAlignment(alignment);
-		setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
+		return m_curTextureIndex;
 	}
 
-	inline void switchToNextTexture() noexcept;
-	inline bool switchToNextTexture(size_t index) noexcept;
-	[[nodiscard]] inline size_t getCurrentTextureIndex() const noexcept;
-	void addTexture(std::string name);
+	/**
+	 * \brief Adds a texture to the texture vector.
+	 * For each `sf::IntRect` given, a pair of a `sf::Texture` ptr with a `sf::IntRect` is added to the
+	 * instance. Switching between different textures or intrect is done the same way with the function
+	 * `switchToNextTexture`.
+	 * \complexity amor O(1).
+	 * 
+	 * \param name: The alias of a texture.
+	 * \param rects: All intrect you want to add
+	 * 
+	 * \return `true` if added to the texture vector. Otherwise `false`.
+	 * 
+	 * \note The first pair (texture + rect) is added as index 0, the second one as index, and so on...
+	 *       You keep track of your indexes.
+	 * \note This function is designed not to throw if the texture was not found, to support scenarios
+	 *		 where the user tries multiple textures names until one is successfully found and set. This is
+	 *		 useful when texture loading may have failed earlier, and fallback attempts are expected behavior.
+	 * 
+	 * \pre For reserved textures, it must not have been reserved yet.
+	 * \post The texture will be added.
+	 * \throw std::invalid_argument strong exception guarantee: nothing happens.
+	 * 
+	 * \see `createTexture`, `loadTexture`, `unloadTexture`, `switchToNextTexture`.
+	 */
+	template<typename... Ts> requires (std::same_as<Ts, sf::IntRect> && ...)
+	bool addTexture(std::string name, Ts... rects)
+	{
+		auto mapAccessIterator{ s_accessToTextures.find(name) };
+		if (mapAccessIterator == s_accessToTextures.end()) [[unlikely]]
+			return false; // Texture not there.
+
+		auto mapUniqueIterator{ s_uniqueTextures.find(mapAccessIterator->second) };
+		if (mapUniqueIterator != s_uniqueTextures.end() && mapUniqueIterator->second == true)
+			throw std::invalid_argument{ "The reserved texture was not available anymore for this sprite instance" };
+
+		TextureHolder* texture{ &mapAccessIterator->second };
+
+		(m_textures.push_back(TextureInfo{ texture, std::forward<Ts>(rects) }), ...);
+
+		if (mapUniqueIterator->second == false) // For reserved texture.
+		{
+			mapUniqueIterator->second = true;  // Mark it as true, meaning it is reserved.
+			m_allUniqueTextures.push_back(name);
+		}
+
+		return true;
+	}
 
 
-	static bool createTexture(std::string const& name, std::string const& fileName, bool shared = false);
-	static bool createTexture(std::string const& name, sf::Texture texture, bool shared = false) noexcept;
-	static void removeTexture(std::string const& name);
-	[[nodiscard]] static sf::Texture* getTexture(std::string const& name) noexcept;
+	/**
+	 * \brief Tells whether or not a texture should be reserved to a specific instance.
+	 * `Yes` if you want the texture to be availabe for a single sprite, preventing
+	 *  any other instances to use it.
+	 * 
+	 * \note It isn't removable using the function `removeTexture`, but removed when the destructor of
+	 *		 that sprite instance is called. 
+	 */
+	enum class Reserved : uint8_t { Yes, No };
 
-	static bool loadTexture(std::string const& name) noexcept;
-	static bool deloadTexture(std::string const& name) noexcept;
+	/**
+	 * \brief Returns a textureHolder ptr, or nullptr if it does not exist.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a texture.
+	 *
+	 * \return The address of the texture.
+	 * 
+	 * \see `TextureHolder`.
+	 */
+	[[nodiscard]] static TextureHolder* getTexture(const std::string& name) noexcept;
+
+	/**
+	 * \brief Creates a texture into the wrapper with a name, which could be used by all instances.
+	 * You can also use this function to replace an existing texture by another one.
+	 * \complexity amor O(1).
+	 *
+	 * \param[in] name: The alias of a texture.
+	 * \param[in] fileName: The file within the assets folder that contains the texture.
+	 * \param[in] shared: `Yes` if the first instance to use the texture reserves it. 
+	 * \param[in] loadImmediately: `true` if you want the texture to be loaded from the file when the
+	 *							   function is called. if so, may throw an exception if failed.
+	 *
+	 * \note If you replace a texture, the reserved state is not updated. A reserved texture belongs to
+	 *		 its sprite instance and you can't "take it away" once specified, only replace it.
+	 * \warning Do not replace a texture which is currently set to a `sf::Sprite`.
+	 *
+	 * \pre The file name should be a correct path to a texture within the assets folder.
+	 * \post The texture will be loaded.
+	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
+	 *
+	 * \see `loadTextureFromFile`, `addTexture`.
+	 */
+	static void createTexture(const std::string& name, const std::string& fileName, Reserved shared = Reserved::Yes, bool loadImmediately = false);
+	
+	/**
+	 * \brief Creates a texture into the wrapper with a name, which could be used by all instances.
+	 * You can also use this function to replace an existing texture by another one.
+	 * \complexity amor O(1).
+	 *
+	 * \param[in] name: The alias of a texture.
+	 * \param[in] fileName: The file within the assets folder that contains the texture.
+	 * \param[in] shared: `Yes` if the first instance to use the texture reserves it.
+	 *
+	 * \note Because only a `sf::Texture` was given without a file name, the texture can't be unloaded.
+	 * \note If you replace a texture, the reserved state is not updated. A reserved texture belongs to
+	 *		 its sprite instance and you can't "take it away" once specified, only replace it.
+	 * \warning Do not replace a texture which is currently set to a `sf::Sprite`.
+	 *
+	 * \see `loadTextureFromFile`, `addTexture`.
+	 */
+	static void createTexture(const std::string& name, sf::Texture texture, Reserved shared = Reserved::Yes) noexcept;
+	
+	/**
+	 * \brief Removes the texture from the wrapper with the name given. No effet if not there. 
+	 * You can remove a loaded or unloaded texture.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a texture.
+	 *
+	 * \warning The texture should not be within any texture vector.
+	 * 
+	 * \see `unloadTexture`.
+	 */
+	static void removeTexture(const std::string& name) noexcept;
+
+	/**
+	 * \brief Loads an existing texture from a file into the graphical ram. 
+	 * No effect if the texture name was not found or the file name was not provided.
+	 * \complexity O(1).
+	 * 
+	 * \param[in] name: The alias of a texture.
+	 * \param[in] failingImpliesRemoval: By setting this to `true`, if the loading fails, the texture
+	 *			  will automatically be totally removed from the wrapper (see `removeTexture`).
+	 * 
+	 * \return `true` if loading was successful/already loaded, `false` otherwise.
+	 * 
+	 * \note Using another thread is recommended for heavy texture.
+	 * \note This function is designed not to throw if the texture was not found, to support scenarios
+	 *		 where the user tries multiple textures names until one is successfully found and set. This is
+	 *		 useful when texture loading may have failed earlier, and fallback attempts are expected behavior.
+	 * 
+	 * \pre The file name should be a correct path to a texture within the assets folder.
+	 * \post The texture will be loaded.
+	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
+	 * 
+	 * \see `unloadTexture`, `createTexture`, `addTexture`.
+	 */
+	static bool loadTexture(const std::string& name, bool failingImpliesRemoval = false);
+	
+	/**
+	 * \brief Unloads (without removing it) an existing texture from the graphical ram.
+	 * No effect if the texture name was not found or the file name was not provided, since it would be
+	 * then impossible to load it again.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a texture.
+	 *
+	 * \return `true` if unloading was successful/already unloaded, `false` otherwise.
+	 *
+	 * \note This function is designed not to throw if the texture was not found, to support scenarios
+	 *		 where the user tries multiple textures names until one is successfully found and set. This is
+	 *		 useful when texture loading may have failed earlier, and fallback attempts are expected behavior.
+	 * \warning No texture should not be set to any sprite instances, but can be within any texture vector.
+	 * 
+	 * \see `loadTexture`, `removeTexture`.
+	 */
+	static bool unloadTexture(const std::string& name) noexcept;
 
 private:
+
+	/// What `sf::Sprite` the wrapper is being used for.
+	std::unique_ptr<sf::Sprite> m_wrappedSprite;
 
 	/// The current index within the texture vector.
 	size_t m_curTextureIndex; 
 	/// All textures used by the sprite.
- 	std::vector<TextureInfo> m_textures;
+	std::vector<TextureInfo> m_textures;
+	/// Contains the name of all textures used only by this sprite.
+	std::vector<std::string> m_allUniqueTextures;
 
 	/// Contains all textures, whether they are used or not/loaded or not.
 	static std::list<TextureHolder> s_allTextures;
 	/// Maps identifiers to textures for quick access.
 	static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures; 
-	/// Textures that are used by only one sprite. Uses iterators instead of string to reduce memory usage.
-	static std::unordered_set<std::list<TextureHolder>::iterator> s_uniqueTextures; 
+	/// Textures that can be used just once by a single instance.
+	static std::unordered_map<std::list<TextureHolder>::iterator, bool> s_uniqueTextures;
 };
 
 
+/**
+ * \brief Loads a texture from a file.
+ * \complexity O(1).
+ *
+ * \param[out] errorMessage: Will add the error message to this stream if the loading fails
+ * \param[in]  fileName: The name of the file.
+ * \param[in]  path: The path to this file (assets file by default).
+ *
+ * \return a sf::Texture if the loading was successful, std::nullopt otherwise.
+ * 
+ * \note The complete path is "path + fileName" therefore it does not matter if the fileName
+ *		 variable contains also a part of the path, as long as the complete path is valid.
+ * \note A message is added to the stream only if the function returns std::nullopt.
+ * 
+ * \see `SpriteWrapper`, `sf::Sprite::loadFromFile`.
+ */
 std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
 
-/**
- * \brief Must be a sf::Drawable and a sf::Transformable type in sfml.
- */
-template<typename T>
-concept Drawable = std::derived_from<std::remove_cvref_t<T>, sf::Drawable>
-&& std::derived_from<std::remove_cvref_t<T>, sf::Transformable>;
-
-/**
- * \details From the given drawables, the function creates a texture that visually represents what
- *          they look like if drawn separatly, in order. The texture size covers the distance between
- *			the pixel at the leftmost/top edge of the leftmost/top drawable and the pixel at the
- *			rightmost/bottom edge of the rightmost/bottom drawable, not beginning at (0;0).
- *
- * \tparam Ts: The types of the drawables. Must be derived from sf::Drawable and sf::Transformable.
- * \param[in] drawables: The drawables to create the texture from.
- *
- * \note The drawables' origins are moved to 0;0, and their positions are changed; therefore the
- *       drawables passed as arguments are very likely going to be modified.
- * \note If you create a texture from shapes, keep in mind that 'shapes' are drawn differently than
- * 		 'sprites' in SFML. Shapes use mathematical formulas to draw themselves, whereas sprites use
- *		 arrays of pixels (textures). While textures can be more detailed, they are also more pixelized.
- *		 Be aware that some may have artefacts in that case, especially if they are rotated, scaled, or
- *		 even if you change the origin of the new sprite (which has the returned texture applied to)
- *		 afterwards.
- *
- * \return Returns a texture created from the given drawables such as sprites, cricleShape, convexShape...
- */
-template<Drawable... Ts>
-sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept
-{
-	// First, we need to calculate how much space the drawables will occupy in the render texture.
-
-	// Before doing that, we must fix the origin: if a drawable's origin is centered (e.g., at its middle),
-	// then adding its position to its size won't yield the correct bounding area —
-	// because visually, part of the object extends in negative directions from its origin.
-	// For example, a centered origin causes half the shape to be positioned in negative space,
-	// which would lead to incorrect size and position computations.
-
-	// Temporarily move drawables by their negative origin so that they align to (0,0)
-	(std::forward<Ts>(drawables).move(-std::forward<Ts>(drawables).getOrigin()), ...);
-	// Then reset their origin to (0, 0) to make further calculations easier
-	(std::forward<Ts>(drawables).setOrigin(sf::Vector2f{ 0, 0 }), ...);
-
-	// Compute the maximum extent in x and y: rightmost and bottommost edges
-	sf::Vector2f maxSize{ 0, 0 };
-	((maxSize.x = std::max(maxSize.x, std::forward<Ts>(drawables).getGlobalBounds().size.x + std::forward<Ts>(drawables).getGlobalBounds().position.x)), ...);
-	((maxSize.y = std::max(maxSize.y, std::forward<Ts>(drawables).getGlobalBounds().size.y + std::forward<Ts>(drawables).getGlobalBounds().position.y)), ...);
-
-	// Compute the minimum offset in x and y: leftmost and topmost edges
-	sf::Vector2f offset{ maxSize }; // Will use std::min, therefore we use the maximum size as the initial offset.
-	((offset.x = std::min(offset.x, std::forward<Ts>(drawables).getGlobalBounds().position.x)), ...);
-	((offset.y = std::min(offset.y, std::forward<Ts>(drawables).getGlobalBounds().position.y)), ...);
-	(std::forward<Ts>(drawables).move(-offset), ...); // Move all drawables so they align with (0,0) in the new texture space
-
-	// Calculate the true size of the texture based on the maximum extent and offset.
-	sf::Vector2u trueSize{ maxSize - offset };
-	trueSize.x = ceil(trueSize.x); // Round to prevent artifacts due to subpixels
-	trueSize.y = ceil(trueSize.y);
-
-	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(trueSize) };
-	renderTexture.clear(sf::Color::Transparent);
-	(renderTexture.draw(std::forward<Ts>(drawables)), ...);
-	renderTexture.display();
-
-	sf::Texture texture{ renderTexture.getTexture() };
-	return texture;
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-/// A `sf::Sprite` Wrapper.
+/// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif //GRAPHICALRESSOURCES_HPP
