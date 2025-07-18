@@ -237,6 +237,17 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 
 SpriteWrapper::~SpriteWrapper() noexcept
 {
+	for (auto& reservedTexture : m_allUniqueTextures)
+	{
+		auto mapAccessIterator{ s_accessToTextures.find(reservedTexture) };
+		s_allTextures.erase(mapAccessIterator->second); // Remove the actual texture from the list.
+		s_uniqueTextures.erase(mapAccessIterator->second); // Remove the texture from the reserved map.
+		s_accessToTextures.erase(mapAccessIterator); // Remove the access toward the texture from the access map.
+	}
+
+	m_wrappedSprite = nullptr;
+	m_textures.clear();
+	m_allUniqueTextures.clear();
 }
 
 void SpriteWrapper::setColor(sf::Color color) noexcept

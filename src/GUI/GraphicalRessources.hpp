@@ -33,7 +33,9 @@
            "ENSURE_NOT_OUT_OF_RANGE failed: index out of valid range.")
 #else
 #define ENSURE_VALID()
+#define ENSURE_NOT_OUT_OF_RANGE(index, size)
 #endif
+
 
 // namespace gui
 
@@ -539,6 +541,7 @@ class SpriteWrapper final : public TransformableWrapper
 public:
 
 	//TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0));
+	//TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center);
 
 	SpriteWrapper(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 
