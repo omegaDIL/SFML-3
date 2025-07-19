@@ -217,6 +217,12 @@ public:
 	 *
 	 * \param[in] alignment The new alignment of the `sf::Transformable`.
 	 *
+	 * \code
+	 * // Implementation should be like:
+	 * m_alignment = alignment;
+	 * setOrigin(computeNewOrigin(getLocalBounds(), m_alignment));
+	 * \endcode
+	 * 
 	 * \see `sf::Transformable::setOrigin()`, `computeNewOrigin()`.
 	 */
 	virtual void setAlignment(Alignment alignment) noexcept = 0;
@@ -544,14 +550,19 @@ struct TextureInfo
 
 /**
  * \brief A wrapper for `sf::Sprite` that simplifies its use.
- * The wrapper simplify the use of `sf::Texture` as it stores all of them. We can distinguish two
+ * The wrapper simplifies the use of `sf::Texture` as it stores all of them. We can distinguish two
  * types of textures: shared and reserved; shared textures can be set to multiple sprites while
  * reserved ones are owned by one instance. You have to call the function `createTexture` to put
- * textures in the wrapper in both case, and then `loadTexture` for each instance that uses that
+ * textures in the wrapper in both case, and then `addTexture` for each instance that uses that
  * texture (only once for reserved texture!). Moreover, as one sprite can also have multiple textures,
- * the 'texture vector' contains access to the added ones. Call the function `loadTexture` to add
- * more textures, or the same texture with a different `sf::IntRect`. The 'texture vector' is kept
- * in the order the textures were added. TODO load/unload
+ * the 'texture vector' contains access to them. Call the function `addTexture` to add more textures,
+ * or the same texture with a different `sf::IntRect`. The 'texture vector' is kept in the order the
+ * textures were added. Keep in mind the difference between the functions `create`/`remove` and 
+ * `load`/`unload`. The function `remove` completely deletes a texture when it has no chance to be
+ * used again (e.g., when no sprite instance can access it from their 'texture vector'). The function
+ * `unload` only frees memory for a texture, but all ptr in 'texture vector' will still be valid.
+ * Obviously, you should do that only if you know that it is not currently set to be the texture of
+ * any `sf::Sprite`, and before switching to that texture, you should call `loadTexture`.
  * 
  * \note Reserved texture aren't removable using the function `removeTexture`, but removed when the
  *		 destructor of that sprite instance is called.
@@ -577,7 +588,7 @@ public:
 	 * 
 	 * \note The scale parameter should take into account the current size of the window. In a smaller
 	 *       window, the same `sf::Text` will appear larger, and vice - versa.
-	 * \note The constructor accounts the reserve state of the texture.
+	 * \note The constructor accounts for the reserve state of the texture.
 	 * 
 	 * \pre   You should have loaded a texture with the name you gave, using the function `createTexture`.
 	 * \pre   It should not be already reserved.
@@ -601,7 +612,7 @@ public:
 	 *
 	 * \note The scale parameter should take into account the current size of the window. In a smaller
 	 *       window, the same `sf::Text` will appear larger, and vice - versa.
-	 * \note The constructor accounts the reserve state of the texture.
+	 * \note The constructor accounts for the reserve state of the texture.
 	 *
 	 * \pre   You should have loaded a texture with the name you gave, using the function `createTexture`.
 	 * \pre   It should not be already reserved.
@@ -703,19 +714,21 @@ public:
 
 	/**
 	 * \brief Adds a texture to the texture vector.
-	 * For each `sf::IntRect` given, a pair of a `sf::Texture` ptr with a `sf::IntRect` is added to the
+	 * For each `sf::IntRect` given, a pair of `sf::Texture` ptr + `sf::IntRect` is added to the
 	 * instance. Switching between different textures or intrect is done the same way with the function
 	 * `switchToNextTexture`. Don't be afraid to add a lot of textures, just ptr/ints are stored. Reserved
-	 * textures can stillnbe added this function multiple times. TODO
-	 * \complexity O(N), where N is the number of unique reserved texture already added.
+	 * textures are restricted to a single instance, but this function can still be called with a reserved
+	 * texture if it belongs to the current instance.
+	 * \complexity O(N), where N is the number of unique reserved texture already added to that instance.
 	 * 
 	 * \param name: The alias of a texture.
 	 * \param rects: All intrects you want to add. If size is 0, it is set to the whole texture size.
 	 * 
 	 * \return `true` if added to the texture vector. Otherwise `false`.
 	 * 
-	 * \note The first pair (texture + rect) is added as index 0, the second one as index, and so on...
+	 * \note The first pair (texture + rect) is added as index 0, the second one as index 1, and so on...
 	 *       You keep track of your indexes.
+	 * \note You can't edit the order/indexes and which texture was set to the sprite once added.
 	 * \note This function is designed not to throw if the texture was not found, to support scenarios
 	 *		 where the user tries multiple textures names until one is successfully found and set. This is
 	 *		 useful when texture loading may have failed earlier, and fallback attempts are expected behavior.
