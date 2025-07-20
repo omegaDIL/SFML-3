@@ -11,7 +11,7 @@ int main()
 {
 	sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 1000, 1000 } }, "Template sfml 3" };
 	WGInterface mainInterface{ &window };
-	FixedGraphicalInterface* curInterface{ &mainInterface };
+	BasicInterface* curInterface{ &mainInterface };
 	mainInterface.addMQB("mqb1", sf::Vector2f{ 100, 500 }, sf::Vector2f{ 0, 50 }, sf::Vector2f{ 1.f, 1.f }, 5, true, 3);
 	
 	sf::RectangleShape shape{ sf::Vector2f{ 100, 100 } };

@@ -68,9 +68,9 @@
  * window.display();
  * \endcode
  *
- * \see FixedGraphicalInterface, UserInteractableGraphicalInterface.
+ * \see BasicInterface, UserInteractableGraphicalInterface.
  */
-class DynamicGraphicalInterface : public FixedGraphicalInterface
+class DynamicGraphicalInterface : public BasicInterface
 {
 public:
 
@@ -88,7 +88,7 @@ public:
 	 * \param[out] window: The window where the interface elements will be rendered.
 	 */
 	explicit DynamicGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "")
-		: FixedGraphicalInterface{ window, backgroundFileName }, m_dynamicTexts{}, m_dynamicSprites{}
+		: BasicInterface{ window, backgroundFileName }, m_dynamicTexts{}, m_dynamicSprites{}
 	{
 		m_dynamicSprites.emplace("_background", 0); // The background is the first element in the vector.
 	}
@@ -507,7 +507,7 @@ public:
 	 *
 	 * \note No effect if the active GUI is not an interactable GUI.
 	 */
-	static IdentifierInteractableItem mouseMoved(FixedGraphicalInterface* activeGUI) noexcept;
+	static IdentifierInteractableItem mouseMoved(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the mouse is pressed.
@@ -536,7 +536,7 @@ public:
 	 * }
 	 * \endcode
 	 */
-	static IdentifierInteractableItem mousePressed(FixedGraphicalInterface* activeGUI) noexcept;
+	static IdentifierInteractableItem mousePressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the mouse is released.
@@ -549,7 +549,7 @@ public:
 	 * \note No effect if the active GUI is not an interactable GUI or nothing is hovered.
 	 * \note You should call this function when the mouse released event is triggered.
 	 */
-	static IdentifierInteractableItem mouseUnpressed(FixedGraphicalInterface* activeGUI) noexcept;
+	static IdentifierInteractableItem mouseUnpressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \complexity O(1).
@@ -590,7 +590,7 @@ public:
 
 	void setCurrentlyEditedText(std::string const& identifier) noexcept;
 
-	static std::string textEntered(FixedGraphicalInterface* curInterface, char32_t unicodeValue) noexcept;
+	static std::string textEntered(BasicInterface* curInterface, char32_t unicodeValue) noexcept;
 
 	[[nodiscard]] inline bool isCurrentlyEditing() const noexcept
 	{
@@ -624,7 +624,7 @@ private:
 	std::function<void(char32_t&, std::string&)> m_textEnteredFunction; // Pour chaque texte
 };
 
-using FGInterface = FixedGraphicalInterface;
+using FGInterface = BasicInterface;
 using GUIAlign = Alignment;
 using DGInterface = DynamicGraphicalInterface;
 using IGInterface = UserInteractableGraphicalInterface;

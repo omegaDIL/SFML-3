@@ -280,9 +280,9 @@ void SpriteWrapper::setAlignment(Alignment alignment) noexcept
 	m_wrappedSprite->setOrigin(computeNewOrigin(m_wrappedSprite->getLocalBounds(), m_alignment));
 }
 
-inline void SpriteWrapper::switchToNextTexture()
+inline void SpriteWrapper::switchToNextTexture(long long indexOffset)
 {
-	m_curTextureIndex = (++m_curTextureIndex) % m_textures.size();
+	m_curTextureIndex = static_cast<size_t>(m_curTextureIndex + indexOffset) % m_textures.size();
 	TextureInfo& newTextureInfo{ m_textures[m_curTextureIndex] };
 	std::unique_ptr<sf::Texture>& newTexture{ newTextureInfo.texture->actualTexture }; // From texture holder
 
@@ -301,13 +301,11 @@ inline void SpriteWrapper::switchToNextTexture()
 		newTextureInfo.displayedTexturePart.size = static_cast<sf::Vector2i>(newTexture->getSize());
 	m_wrappedSprite->setTextureRect(newTextureInfo.displayedTexturePart);
 
-	if (newTexture.get() == &m_wrappedSprite->getTexture())
-		return; // If both addresses are the same, then no need to reapply it. 
-
-	m_wrappedSprite->setTexture(*newTexture); 
+	if (newTexture.get() != &m_wrappedSprite->getTexture())
+		m_wrappedSprite->setTexture(*newTexture);
 }
 
-inline void SpriteWrapper::switchToNextTexture(size_t index)
+inline void SpriteWrapper::switchToTexture(size_t index)
 {
 	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size());
 

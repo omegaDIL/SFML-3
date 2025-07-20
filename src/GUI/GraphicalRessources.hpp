@@ -27,7 +27,7 @@
 
 #ifndef NDEBUG 
 #define ENSURE_VALID_PTR(ptr) \
-	assert((ptr) && "ENSURE_VALID_PTR failed: pointer '" #ptr "' is null.")
+	assert((ptr) && "ENSURE_VALID_PTR failed: pointer is null.")
 
 #define ENSURE_NOT_OUT_OF_RANGE(index, size) \
 	assert(((index) >= 0 && static_cast<size_t>((index)) < static_cast<size_t>((size))) && \
@@ -331,7 +331,7 @@ public:
 	 */
 	template<Ostreamable T>
 	inline TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
-		: TransformableWrapper{}, m_textWrapped{ nullptr }
+		: TransformableWrapper{}, m_wrappedText{ nullptr }
 	{
 		sf::Font* usedFont{ getFont(name) };
 		if (usedFont == nullptr)
@@ -340,7 +340,7 @@ public:
 		m_wrappedText = std::make_unique<sf::Text>(*usedFont, "", characterSize);
 		this->create(m_wrappedText.get(), pos, scale, rot, alignment);
 
-		setFillColor(color);
+		setColor(color);
 		setStyle(style);
 		setContent(content); // Also computes the origin of the text with the correct alignment.
 	}
@@ -556,19 +556,68 @@ struct TextureInfo
  * textures in the wrapper in both case, and then `addTexture` for each instance that uses that
  * texture (only once for reserved texture!). Moreover, as one sprite can also have multiple textures,
  * the 'texture vector' contains access to them. Call the function `addTexture` to add more textures,
- * or the same texture with a different `sf::IntRect`. The 'texture vector' is kept in the order the
- * textures were added. Keep in mind the difference between the functions `create`/`remove` and 
+ * or the same texture with different `sf::IntRect`s. The 'texture vector' is kept in order as
+ * textures are added. Keep in mind the difference between the functions `create`/`remove` and 
  * `load`/`unload`. The function `remove` completely deletes a texture when it has no chance to be
  * used again (e.g., when no sprite instance can access it from their 'texture vector'). The function
- * `unload` only frees memory for a texture, but all ptr in 'texture vector' will still be valid.
- * Obviously, you should do that only if you know that it is not currently set to be the texture of
- * any `sf::Sprite`, and before switching to that texture, you should call `loadTexture`.
+ * `unload` only frees memory for a texture, but all ptr in any 'texture vector' of all instances
+ * will still be valid. Reserved texture aren't removable using the function `removeTexture`, but
+ * removed when the destructor of that sprite instance is called. However, they can be unloaded.
  * 
- * \note Reserved texture aren't removable using the function `removeTexture`, but removed when the
- *		 destructor of that sprite instance is called.
  * \note Reserved texture may use a small additional amount of memory than shared.
  *
  * \see `sf::Sprite`, `sf::Texture`, `TransformableWrapper`.
+ * 
+ * \code Simple sprites: buttons.
+ * std::string button{ "buttonTex" };
+ * SpriteWrapper::createTexture(button, "button.jpg", Reserved::No, true); // Loads it immediately
+ * 
+ * sf::Vector2f scale{ std::min(windowSize.x, windowSize.y) / 1080, 0 };
+ * scale.y = scale.x; // Scale the buttons for different screen definition.
+ * SpriteWrapper launchGame  { button, { 200, 200 }, scale, sf::degrees(0), Alignment::Top | Alignment::Left };
+ * SpriteWrapper settingsGame{ button, { 400, 200 }, scale, sf::degrees(0), Alignment::Top | Alignment::Left };
+ * SpriteWrapper closeGame   { button, { 600, 200 }, scale, sf::degrees(0), Alignment::Top | Alignment::Left };
+ * \endcode
+ * 
+ * \code main character sprite
+ * sf::Vector2f scale{ std::min(windowSize.x, windowSize.y) / 1080, 0 };
+ * scale.y = scale.x; // Scale the buttons for different screen definition.
+ * 
+ * // No sense for these textures to be applied to other sprite so they are reserved
+ * SpriteWrapper::createTexture("hero run1080", "1080/running_sprite.png", Reserved::Yes, true);
+ * SpriteWrapper::createTexture("hero run2160", "2160/running_sprite.png", Reserved::Yes); // false by default.
+ * SpriteWrapper::createTexture("hero attack1080", "1080/attacking_sprite.png", Reserved::Yes, true);
+ * SpriteWrapper::createTexture("hero attack2160", "2160/attacking_sprite.png", Reserved::Yes);
+ * 
+ * // Applies the texture to the sprite while claiming the reserve state.
+ * SpriteWrapper player{ "hero run1080", sf::IntRect{ {}, {50, 50} }, { 960, 540 }, scale };
+ * player.addTexture("hero run1080", sf::IntRec{ {50, 50}, {50, 50} }); // First intRect was added in the constructor.
+ * player.addTexture("hero run2160, sf::IntRect{ {}, {100, 100} }, sf::IntRec{ {100, 100}, {100, 100} }); // 4k texture are larger
+ * player.addTexture("hero attack1080", sf::IntRec{ {0, 0}, {50, 50} }, sf::IntRec{ {50, 50}, {50, 50} }); // First intRect was added in the constructor.
+ * player.addTexture("hero attack2160, sf::IntRect{ {}, {100, 100} }, sf::IntRec{ {100, 100}, {100, 100} });
+ * 
+ * // Let's assume we're in the game loop
+ * if (player.getSprite().getScale().x == 1.8) // Accounts for screen definition and other scaling reasons (e.g. gameplay, zooming).
+ * {	// Let's say 1.8 times is too pixeled so we load the 4k textures. 
+ *		SpriteWrapper::loadTexture("hero run2160"); // using another thread is recommended.
+ *		SpriteWrapper::loadTexture("hero attack2160"); // using another thread is recommended.
+ * 
+ *		player.setScale(0.5f, 0.5f); // 4K is 2 times larger on each axis
+ *		player.switchToNextTexture(2); // 4k textures were added 2 index after 1080p, regardless of which textures is set.
+ * 
+ *		SpriteWrapper::unloadTexture("hero run1080"); // using another thread is recommended.
+ *		SpriteWrapper::unloadTexture("hero attack1080"); // using another thread is recommended.
+ * }	// The same would go for smaller scaled textures to reduce memery usage
+ * 
+ * if (isRunning) // Running animation is played
+ * {
+ *		if(DidEnoughTimeElapse) // boolean flag to animate the textures
+ *		{	// Two textures (intRect here) for the running animation: if first is displayed then switch to next one, otherwise previous one.
+ *			int nextAnimatingRunningTexture{ (player.getCurrentTextureIndex() % 2 == 0) ? 1 : -1  };
+ *			player.switchToNextTexture(nextAnimatingRunningTexture);
+ *		}
+ * }
+ * \endcode
  */
 class SpriteWrapper final : public TransformableWrapper
 {
@@ -628,7 +677,7 @@ public:
 	SpriteWrapper(SpriteWrapper&&) noexcept = default;
 	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = delete; // For reserved texture.
 	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
-	virtual ~SpriteWrapper() noexcept; /// \complexity O(N) where N is the number of reserved texture.
+	virtual ~SpriteWrapper() noexcept; /// \complexity O(N) where N is the number of reserved texture to deallocate.
 
 
 	/**
@@ -663,43 +712,36 @@ public:
 	 *
 	 * \return A reference to the wrapped `sf::Sprite` object.
 	 */
-	[[nodiscard]] inline const sf::Sprite& getText() const noexcept
+	[[nodiscard]] inline const sf::Sprite& getSprite() const noexcept
 	{
 		return *m_wrappedSprite;
 	}
 
 	/**
-	 * \brief Applies the texture/its rect to the sprite by looking at the next index. Loop otherwise.
+	 * \brief Applies the texture/its rect to the sprite by looking at the next index.
+	 * Loop If the overall index is out of range. If it 2 past the last texture, then the texture applied
+	 * is the texture indexed at 2 in the texture vector. 
 	 * \complexity O(1).
+	 * 
+	 * @param[in] indexOffset: The next index. By default 1 : index = curIndex + 1. Can be negative
 	 * 
 	 * \note The function will load the next texture if it was not previously loaded. That being said,
 	 *		 if you want to avoid a sudden loss of fps (especially for large texture), consider load it
 	 *		 before
 	 * \note The previous texture is not unloaded. 
-	 * 
+	 *
 	 * \pre If loading, the file name should be a correct path to a texture within the assets folder.
 	 * \post The texture will be loaded.
 	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
 	 */
-	void switchToNextTexture();
+	void switchToNextTexture(long long indexOffset = 1);
 
 	/**
-	 * \brief Applies the texture/its rect to the sprite located at a specific index.
-	 * \complexity O(1).
+	 * \see Same as switchToNextTexture but you specify the index.
 	 * 
-	 * \param[in] index: An index whithin the texture vector.
-	 * 
-	 * \note The function will load the next texture if it was not previously loaded. That being said,
-	 *		 if you want to avoid a sudden loss of fps (especially for large texture), consider load it
-	 *		 before
-	 * \note The previous texture is not unloaded. 
-	 * \warning If the index is out if range, the program will assert
-	 * 
-	 * \pre If loading, the file name should be a correct path to a texture within the assets folder.
-	 * \post The texture will be loaded.
-	 * \throw LoadingGraphicalRessourceFailure strong exception guarantee: nothing happens.
+	 * \warning If the index is out if range, the program will assert.
 	 */
-	void switchToNextTexture(size_t index) ;
+	void switchToTexture(size_t index);
 
 	/**
 	 * \brief Returns the index of the texture set to this sprite, within the texture vector.
@@ -719,7 +761,9 @@ public:
 	 * `switchToNextTexture`. Don't be afraid to add a lot of textures, just ptr/ints are stored. Reserved
 	 * textures are restricted to a single instance, but this function can still be called with a reserved
 	 * texture if it belongs to the current instance.
-	 * \complexity O(N), where N is the number of unique reserved texture already added to that instance.
+	 * \complexity O(1), if the texture is not reserved, or if it is then it must be not claimed yet.
+	 * \complexity O(N) otherwise, where N is the number of unique reserved texture already added to
+	 *				    that instance.
 	 * 
 	 * \param name: The alias of a texture.
 	 * \param rects: All intrects you want to add. If size is 0, it is set to the whole texture size.

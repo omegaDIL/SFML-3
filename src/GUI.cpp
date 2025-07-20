@@ -198,7 +198,7 @@ bool UserInteractableGraphicalInterface::removeMQB(std::string const& identifier
 	return true;
 }
 
-UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseMoved(FixedGraphicalInterface* activeGUI) noexcept
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseMoved(BasicInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
 
@@ -250,7 +250,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 	return m_hoveredElement;
 }
 
-UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mousePressed(FixedGraphicalInterface* activeGUI) noexcept
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mousePressed(BasicInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
 
@@ -265,7 +265,7 @@ UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableG
 	return m_hoveredElement;
 }
 
-UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseUnpressed(FixedGraphicalInterface* activeGUI) noexcept
+UserInteractableGraphicalInterface::IdentifierInteractableItem UserInteractableGraphicalInterface::mouseUnpressed(BasicInterface* activeGUI) noexcept
 {
 	UserInteractableGraphicalInterface* isDerived{ dynamic_cast<UserInteractableGraphicalInterface*>(activeGUI) };
 	
@@ -379,7 +379,7 @@ void WritableGraphicalInterface::setCurrentlyEditedText(std::string const& ident
 }
 
 
-std::string WritableGraphicalInterface::textEntered(FixedGraphicalInterface* curInterface, char32_t unicodeValue) noexcept
+std::string WritableGraphicalInterface::textEntered(BasicInterface* curInterface, char32_t unicodeValue) noexcept
 {
 	//TODO: verifier les printable characters.
 	WGInterface* isDerived{ dynamic_cast<WGInterface*>(curInterface) };
