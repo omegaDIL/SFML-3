@@ -1,3 +1,13 @@
+/*******************************************************************
+ * \file   basicGUI.hpp
+ * \brief  Declare a basic graphical user interface that has rudimentary features.
+ *
+ * \author OmegaDIL.
+ * \date   July 2025.
+ *
+ * \note This file depends on the SFML library.
+ *********************************************************************/
+
 #ifndef BASICGUI_HPP
 #define BASICGUI_HPP
 
@@ -5,6 +15,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <cassert>
 
 #ifndef NDEBUG 
@@ -24,24 +35,11 @@
  * \note This class stores UI componenents; it will use a considerable amount of memory.
  * \warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *
- * \code
- * sf::RenderWindow window{ ... };
- * BasicInterface gui{ &window };
- *
- * ...
- *
- * gui.addText("Hello, World", sf::Vector2f{ 100, 100 }, 12, windowSizeMin / 1080.f);
- * gui.addText("Bonjour, le Monde", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
- * gui.addSprite(myTexture, sf);
- *
- * ...
- *
- * window.clear();
- * gui.draw();
- * window.display();
- * \endcode
- *
  * \see `sf::RenderWindow`, `TextWrapper`, `SpriteWrapper`.
+ *
+ * \code
+ * 
+ * \endcode
  */
 class BasicInterface
 {
@@ -52,13 +50,15 @@ public:
 	 * \complexity O(1).
 	 *
 	 * \param[in,out] window: The window where the interface elements will be rendered.
+	 * \param[in] relativeScaling: 
 	 *
 	 * \note A default font is loaded when the first instance is called
 	 * \warning The program assert if the window is not valid (nullptr or size 0)
 	 *
 	 * \pre A font should be named defaultFont.ttf in the assets folder.
 	 * \post The font is loaded.
-	 * \throw LoadingGraphicalRessourceFailure Strong exception guarrantee, but no text can be displayed.
+	 * \throw LoadingGraphicalRessourceFailure Strong exception guarrantee, but no text can use the
+	 *		  default font and you'll have to load and use your own font.
 	 */
 	explicit BasicInterface(sf::RenderWindow* window, unsigned int relativeScaling = 1080);
 
@@ -82,12 +82,12 @@ public:
 	 * \param[in] color: The color of the text.
 	 * \param[in] rot: The rotation of the text.
 	 *
-	 * \see BasicInterface::TextWrapper, addSprite(), addShape().
+	 * \see TextWrapper, addSprite().
 	 */
 	template<Ostreamable T>
-	void addText(const T& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0)) noexcept
+	void addText(const T& content, unsigned int characterSize, sf::Vector2f position, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::Angle rot = sf::degrees(0)) noexcept
 	{
-		TextWrapper newText{ content, characterSize, position, sf::Vector2f{ scale, scale }, color };
+		TextWrapper newText{ content, characterSize, position, scale, color };
 		m_texts.push_back(std::move(newText));
 	}
 

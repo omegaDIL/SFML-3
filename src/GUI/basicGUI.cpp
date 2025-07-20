@@ -123,12 +123,27 @@ void BasicInterface::draw() const
 			m_window->draw(text.getText());
 }
 
-void BasicInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalingFactor) noexcept
+void BasicInterface::windowResized(sf::RenderWindow* window) noexcept
 {
-	float minOfCurrentWindowSize{ static_cast<float>(std::min(window->getSize().x, window->getSize().y)) };
-	float minOfPreviousWindowSize{ static_cast<float>(std::min(window->getSize().x / scalingFactor.x, window->getSize().y / scalingFactor.y)) };
-	float a = minOfCurrentWindowSize / minOfPreviousWindowSize;
-	sf::Vector2f minScalingFactor{ a, a };
+	sf::Vector2u const maxSize{ sf::VideoMode::getDesktopMode().size };
+	sf::Vector2u newSize{ window->getSize() }; // window size returns the visual size of the window.
+
+	// Windows (OS) does not like windows (app) that are larger than the screen definition.
+	if (newSize.x > maxSize.x)
+		newSize.x = maxSize.x;
+	if (newSize.y > maxSize.y)
+		newSize.y = maxSize.y;
+
+	sf::Vector2f const previsousSize{ window->getView().getSize() }; // View size is the inner size of the window.
+	sf::Vector2f const scalingFactor{ newSize.x / previsousSize.x, newSize.y / previsousSize.y };
+
+	sf::View view{ window->getView() };
+	view.setSize(static_cast<sf::Vector2f>(newSize));
+	view.setCenter(sf::Vector2f{ newSize.x / 2.f, newSize.y / 2.f });
+
+	window->setView(view);
+	window->setSize(newSize); // Avoid having a window that is larger than the screen.
+
 	auto interfaceRange{ allInterfaces.equal_range(window) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
@@ -141,10 +156,5 @@ void BasicInterface::windowResized(sf::RenderWindow* window, sf::Vector2f scalin
 		// Updating sprites.
 		for (int i{ 1 }; i < curInterface->m_sprites.size(); ++i) // Avoiding the background by skipping index 0.
 			curInterface->m_sprites[i].resized(scalingFactor, a);
-
-		// Background is always the first sprite, so it is at index 0.
-		curInterface->m_sprites[0].setPosition(sf::Vector2f{ window->getSize().x / 2.f, window->getSize().y / 2.f });
-		if (curInterface->m_sprites[0].getCurrentTextureIndex() == 0) // Only if the default background is used.	
-			curInterface->m_sprites[0].scale(scalingFactor); // The default background is a solid color, so we can scale it without issues.
 	}
 }

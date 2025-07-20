@@ -1,5 +1,5 @@
 /*******************************************************************
- * \file   GUIWrappers.hpp
+ * \file   GraphicalRessources.hpp
  * \brief  Declare the entity wrappers for creating and managing graphical user interfaces.
  *
  * \author OmegaDIL.
@@ -33,7 +33,7 @@
 	assert(((index) >= 0 && static_cast<size_t>((index)) < static_cast<size_t>((size))) && \
 		   "ENSURE_NOT_OUT_OF_RANGE failed: index out of valid range.")
 #else
-#define ENSURE_VALID()
+#define ENSURE_VALID_PTR()
 #define ENSURE_NOT_OUT_OF_RANGE(index, size)
 #endif
 
@@ -322,6 +322,7 @@ public:
 	 * 
 	 * \note The scale parameter should take into account the current size of the window. In a smaller
 	 *       window, the same `sf::Text` will appear larger, and vice - versa.
+	 * \note Some styles may not be available with your font.
 	 * 
 	 * \pre   You should have loaded a font with the name you gave, using the function `createFont`.
 	 * \post  The correct font will be used.
@@ -399,6 +400,8 @@ public:
 
 	/**
 	 * \see `sf::Text::setStyle`.
+	 * 
+	 * \note Some styles may not be available with your font.
 	 */
 	void setStyle(sf::Text::Style style) noexcept;
 
