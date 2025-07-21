@@ -102,11 +102,6 @@ inline std::vector<T> convertBackFromString(std::vector<std::string> const& toCo
 void showErrorsUsingWindow(std::string const& errorTitle, std::string const& errorMessage) noexcept;
 
 
-/**
- * @brief Handles the changes due to a resize of the window with its GUIs.
- * 
- * @param[in,out] window: the window.
- */
-void handleEventResize(sf::RenderWindow* window) noexcept;
+
 
 #endif //UTILS_HPP

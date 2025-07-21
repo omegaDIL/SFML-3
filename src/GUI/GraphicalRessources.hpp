@@ -37,9 +37,6 @@
 #define ENSURE_NOT_OUT_OF_RANGE(index, size)
 #endif
 
-
-// namespace gui
-
  /**
   * \brief An exception thrown for graphical errors when loading ressources.
   *
@@ -69,6 +66,8 @@ public:
 	}
 };
 
+namespace gui
+{
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Transformable` wrapper.
@@ -311,7 +310,7 @@ public:
 	 * \complexity O(1).
 	 *
 	 * \param[in] content: What the `sf::Text` will display.
-	 * \param[in] name: The name of the font that'll be used.
+	 * \param[in] fontName: The name of the font that'll be used.
 	 * \param[in] characterSize: The character size of the `sf::Text`.
 	 * \param[in] pos: The position of the `sf::Text`.
 	 * \param[in] scale: The scale of the `sf::Text`.
@@ -331,10 +330,10 @@ public:
 	 * \see `createFont`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
-	inline TextWrapper(const T& content, const std::string& name, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
+	inline TextWrapper(const T& content, const std::string& fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
 		: TransformableWrapper{}, m_wrappedText{ nullptr }
 	{
-		sf::Font* usedFont{ getFont(name) };
+		sf::Font* usedFont{ getFont(fontName) };
 		if (usedFont == nullptr)
 			throw std::invalid_argument{ "This name is not affiliate with any font" };
 		
@@ -562,12 +561,12 @@ struct TextureInfo
  * or the same texture with different `sf::IntRect`s. The 'texture vector' is kept in order as
  * textures are added. Keep in mind the difference between the functions `create`/`remove` and 
  * `load`/`unload`. The function `remove` completely deletes a texture when it has no chance to be
- * used again (e.g., when no sprite instance can access it from their 'texture vector'). The function
+ * used again (e.g. when no sprite instance can access it from their 'texture vector'). The function
  * `unload` only frees memory for a texture, but all ptr in any 'texture vector' of all instances
  * will still be valid. Reserved texture aren't removable using the function `removeTexture`, but
  * removed when the destructor of that sprite instance is called. However, they can be unloaded.
  * 
- * \note Reserved texture may use a small additional amount of memory than shared.
+ * \note Reserved texture may use a small additional amount of memory.
  *
  * \see `sf::Sprite`, `sf::Texture`, `TransformableWrapper`.
  * 
@@ -587,29 +586,29 @@ struct TextureInfo
  * scale.y = scale.x; // Scale the buttons for different screen definition.
  * 
  * // No sense for these textures to be applied to other sprite so they are reserved
- * SpriteWrapper::createTexture("hero run1080", "1080/running_sprite.png", Reserved::Yes, true);
+ * SpriteWrapper::createTexture("hero run1080", "1080/running_sprite.png", Reserved::Yes, true); // true means they are loaded
  * SpriteWrapper::createTexture("hero run2160", "2160/running_sprite.png", Reserved::Yes); // false by default.
  * SpriteWrapper::createTexture("hero attack1080", "1080/attacking_sprite.png", Reserved::Yes, true);
- * SpriteWrapper::createTexture("hero attack2160", "2160/attacking_sprite.png", Reserved::Yes);
+ * SpriteWrapper::createTexture("hero attack2160", "2160/attacking_sprite.png"); // Reserved and false by default.
  * 
  * // Applies the texture to the sprite while claiming the reserve state.
  * SpriteWrapper player{ "hero run1080", sf::IntRect{ {}, {50, 50} }, { 960, 540 }, scale };
  * player.addTexture("hero run1080", sf::IntRec{ {50, 50}, {50, 50} }); // First intRect was added in the constructor.
  * player.addTexture("hero run2160, sf::IntRect{ {}, {100, 100} }, sf::IntRec{ {100, 100}, {100, 100} }); // 4k texture are larger
- * player.addTexture("hero attack1080", sf::IntRec{ {0, 0}, {50, 50} }, sf::IntRec{ {50, 50}, {50, 50} }); // First intRect was added in the constructor.
+ * player.addTexture("hero attack1080", sf::IntRec{ {0, 0}, {50, 50} }, sf::IntRec{ {50, 50}, {50, 50} });
  * player.addTexture("hero attack2160, sf::IntRect{ {}, {100, 100} }, sf::IntRec{ {100, 100}, {100, 100} });
  * 
  * // Let's assume we're in the game loop
  * if (player.getSprite().getScale().x == 1.8) // Accounts for screen definition and other scaling reasons (e.g. gameplay, zooming).
  * {	// Let's say 1.8 times is too pixeled so we load the 4k textures. 
  *		SpriteWrapper::loadTexture("hero run2160"); // using another thread is recommended.
- *		SpriteWrapper::loadTexture("hero attack2160"); // using another thread is recommended.
+ *		SpriteWrapper::loadTexture("hero attack2160");
  * 
  *		player.setScale(0.5f, 0.5f); // 4K is 2 times larger on each axis
- *		player.switchToNextTexture(2); // 4k textures were added 2 index after 1080p, regardless of which textures is set.
+ *		player.switchToNextTexture(2); // 4k textures were added 2 index after 1080p, regardless of which textures is currently set.
  * 
  *		SpriteWrapper::unloadTexture("hero run1080"); // using another thread is recommended.
- *		SpriteWrapper::unloadTexture("hero attack1080"); // using another thread is recommended.
+ *		SpriteWrapper::unloadTexture("hero attack1080");
  * }	// The same would go for smaller scaled textures to reduce memery usage
  * 
  * if (isRunning) // Running animation is played
@@ -630,7 +629,7 @@ public:
 	 * \brief Initializes the wrapper.
 	 * \complexity O(1).
 	 * 
-	 * \param[in] name: The alias of the texture.
+	 * \param[in] textureName: The alias of the texture.
 	 * \param[in] rect: The display part of the texture. If size is 0, it is set to the whole texture size.
 	 * \param[in] pos: The position of the `sf::Sprite`.
 	 * \param[in] scale: The scale of the `sf::Sprite`.
@@ -649,13 +648,13 @@ public:
 	 * 
 	 * \see `createTexture`.
 	 */
-	SpriteWrapper(const std::string& name, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+	SpriteWrapper(const std::string& textureName, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	/**
 	 * \brief Initializes the wrapper.
 	 * \complexity O(1).
 	 *
-	 * \param[in] name: The alias of the texture. The rect is the whole texture.
+	 * \param[in] textureName: The alias of the texture. The rect is the whole texture.
 	 * \param[in] pos: The position of the `sf::Sprite`.
 	 * \param[in] scale: The scale of the `sf::Sprite`.
 	 * \param[in] rot: The rotation of the `sf::Sprite`.
@@ -673,7 +672,7 @@ public:
 	 *
 	 * \see `createTexture`.
 	 */
-	SpriteWrapper(const std::string& name, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+	SpriteWrapper(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	SpriteWrapper() noexcept = delete;
 	SpriteWrapper(SpriteWrapper const&) noexcept = delete; // For reserved texture.
@@ -722,8 +721,8 @@ public:
 
 	/**
 	 * \brief Applies the texture/its rect to the sprite by looking at the next index.
-	 * Loop If the overall index is out of range. If it 2 past the last texture, then the texture applied
-	 * is the texture indexed at 2 in the texture vector. 
+	 * Loop If the overall index is out of range. If it is 2 past the last texture, then the texture
+	 * applied is the texture indexed at 2 in the texture vector. 
 	 * \complexity O(1).
 	 * 
 	 * @param[in] indexOffset: The next index. By default 1 : index = curIndex + 1. Can be negative
@@ -764,9 +763,9 @@ public:
 	 * `switchToNextTexture`. Don't be afraid to add a lot of textures, just ptr/ints are stored. Reserved
 	 * textures are restricted to a single instance, but this function can still be called with a reserved
 	 * texture if it belongs to the current instance.
-	 * \complexity O(1), if the texture is not reserved, or if it is then it must be not claimed yet.
-	 * \complexity O(N) otherwise, where N is the number of unique reserved texture already added to
-	 *				    that instance.
+	 * \complexity O(1) For shared textures or non claimed reserved textures.
+	 * \complexity O(N) For claimed reserved textures. N is the number of unique reserved texture already
+	 *					added to that instance.
 	 * 
 	 * \param name: The alias of a texture.
 	 * \param rects: All intrects you want to add. If size is 0, it is set to the whole texture size.
@@ -796,7 +795,7 @@ public:
 		auto mapUniqueIterator{ s_allUniqueTextures.find(mapAccessIterator->second) };
 		if (mapUniqueIterator != s_allUniqueTextures.end() // is reserved.
 		&&  mapUniqueIterator->second == true // has already been claimed by an instance...
-		&&  std::find(m_uniqueTextures.begin(), m_uniqueTextures.end(), name) == m_uniqueTextures.end()) [[unlikely]] // ...not by this instance.
+		&&  std::find(m_uniqueTextures.begin(), m_uniqueTextures.end(), name) == m_uniqueTextures.end()) [[unlikely]] // ...but not by this one.
 			throw std::invalid_argument{ "The reserved texture was not available anymore for this sprite instance" };
 
 		TextureHolder* texture{ &mapAccessIterator->second };
@@ -979,5 +978,7 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+} // gui namespace
 
 #endif //GRAPHICALRESSOURCES_HPP

@@ -30,7 +30,7 @@ int main()
 				WGInterface::textEntered(curInterface, event->getIf<sf::Event::TextEntered>()->unicode);
 
 			if (event->is<sf::Event::Resized>())
-				handleEventResize(&window);
+				BasicInterface::windowResized(&window);
 
 			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 				IGInterface::mouseMoved(curInterface);

@@ -1,11 +1,13 @@
 #include "GraphicalRessources.hpp"
 
+namespace gui
+{
+
 std::list<sf::Font> TextWrapper::s_allFonts{};
 std::unordered_map<std::string, std::list<sf::Font>::iterator> TextWrapper::s_accessToFonts{};
 std::list<TextureHolder> SpriteWrapper::s_allTextures{};
 std::unordered_map<std::string, std::list<TextureHolder>::iterator> SpriteWrapper::s_accessToTextures;
 std::unordered_map<std::list<TextureHolder>::iterator, bool> SpriteWrapper::s_allUniqueTextures;
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Transformable` wrapper.
@@ -235,23 +237,23 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-SpriteWrapper::SpriteWrapper(const std::string& name, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
+SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
 	: TransformableWrapper{}, m_wrappedSprite{ nullptr }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
 {
-	sf::Texture* usedTexture{ getTexture(name)->actualTexture.get() };
+	sf::Texture* usedTexture{ getTexture(textureName)->actualTexture.get() };
 
 	if (usedTexture == nullptr) [[unlikely]]
 		throw std::invalid_argument{ "This name is not affiliate with any texture" };
-	
-	addTexture(name, rect);
-	m_wrappedSprite = std::make_unique<sf::Sprite>(*usedTexture, rect);
 
+	m_wrappedSprite = std::make_unique<sf::Sprite>(*usedTexture, rect);
 	this->create(m_wrappedSprite.get(), pos, scale, rot, alignment);
+
+	addTexture(textureName, rect);
 	setColor(color);
 }
 
-SpriteWrapper::SpriteWrapper(const std::string& name, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
-	: SpriteWrapper{ name, sf::IntRect{}, pos, scale, rot, alignment, color }
+SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
+	: SpriteWrapper{ textureName, sf::IntRect{}, pos, scale, rot, alignment, color }
 {}
 
 SpriteWrapper::~SpriteWrapper() noexcept
@@ -283,13 +285,14 @@ void SpriteWrapper::setAlignment(Alignment alignment) noexcept
 inline void SpriteWrapper::switchToNextTexture(long long indexOffset)
 {
 	m_curTextureIndex = static_cast<size_t>(m_curTextureIndex + indexOffset) % m_textures.size();
-	TextureInfo& newTextureInfo{ m_textures[m_curTextureIndex] };
-	std::unique_ptr<sf::Texture>& newTexture{ newTextureInfo.texture->actualTexture }; // From texture holder
+	TextureInfo& textureInfo{ m_textures[m_curTextureIndex] };
+	ENSURE_VALID_PTR(textureInfo.texture);
+	std::unique_ptr<sf::Texture>& newTexture{ textureInfo.texture->actualTexture }; // From texture holder
 
 	if (newTexture == nullptr) [[unlikely]]
 	{	// Not loaded yet, so we need to load it first.
 		std::ostringstream errorMessage{};
-		auto optTexture{ loadTextureFromFile(errorMessage, newTextureInfo.texture->fileName) };
+		auto optTexture{ loadTextureFromFile(errorMessage, textureInfo.texture->fileName) };
 		
 		if (!optTexture.has_value()) [[unlikely]]
 			throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
@@ -297,9 +300,9 @@ inline void SpriteWrapper::switchToNextTexture(long long indexOffset)
 		newTexture = std::make_unique<sf::Texture>(std::move(optTexture.value()));
 	}	
 	
-	if (newTextureInfo.displayedTexturePart.size == sf::Vector2i{}) // If rect is 0,0 then the rect should cover the whole texture.
-		newTextureInfo.displayedTexturePart.size = static_cast<sf::Vector2i>(newTexture->getSize());
-	m_wrappedSprite->setTextureRect(newTextureInfo.displayedTexturePart);
+	if (textureInfo.displayedTexturePart.size == sf::Vector2i{}) [[unlikely]] // If rect is 0,0 then the rect should cover the whole texture.
+		textureInfo.displayedTexturePart.size = static_cast<sf::Vector2i>(newTexture->getSize());
+	m_wrappedSprite->setTextureRect(textureInfo.displayedTexturePart);
 
 	if (newTexture.get() != &m_wrappedSprite->getTexture())
 		m_wrappedSprite->setTexture(*newTexture);
@@ -313,7 +316,7 @@ inline void SpriteWrapper::switchToTexture(size_t index)
 		return;
 
 	m_curTextureIndex = --index; // The call to switchToNextTexture will add one.
-	switchToNextTexture();
+	switchToNextTexture(1);
 }
 
 TextureHolder* SpriteWrapper::getTexture(const std::string& name) noexcept
@@ -443,3 +446,5 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+} // namespace gui

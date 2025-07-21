@@ -11,27 +11,13 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include <SFML/Graphics.hpp>
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <utility>
-#include <optional>
-#include <stdexcept>
-#include <list>
-#include <algorithm>
-#include <cstdint>
-#include <unordered_set>
-#include <memory>
-#include <functional>
-#include <sstream>
-#include "Exceptions.hpp"
-#include "GUITexturesLoader.hpp"
-#include "GUI/basicGUI.hpp"
+#include "GUI/BasicInterface.hpp"
+#include "GUI/MutableInterface.hpp"
+#include "GUI/InteractableInterface.hpp"
+#include "GUI/AdvancedInterface.hpp"
 
-
-
-
+using BGUI = gui::BasicInterface;
+using MGUI = gui::MutableInterface;
 
 
 /**
@@ -89,9 +75,7 @@ public:
 	 */
 	explicit DynamicGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "")
 		: BasicInterface{ window, backgroundFileName }, m_dynamicTexts{}, m_dynamicSprites{}
-	{
-		m_dynamicSprites.emplace("_background", 0); // The background is the first element in the vector.
-	}
+	{}
 
 
 	/**
@@ -245,8 +229,8 @@ protected:
 	std::unordered_map<std::string, size_t> m_dynamicSprites; // All indexes of dynamic sprites in the interface.
 
 	
-	template<typename T>
-	bool removeDynamicElement(std::string const& identifier, std::vector<T>& element, std::unordered_map<std::string, size_t>& identifierMap, std::unordered_map<size_t, std::string>& indexMap)
+	template<typename T> requires (std::same_as<T, TextWrapper> || std::same_as<T, SpriteWrapper>)
+	bool removeDynamicElement(const std::string& identifier, std::vector<T>& element, std::unordered_map<std::string, size_t>& identifierMap, std::unordered_map<size_t, std::string>& indexMap)
 	{
 		auto itElementToRemove{ identifierMap.find(identifier) };
 
@@ -624,8 +608,6 @@ private:
 	std::function<void(char32_t&, std::string&)> m_textEnteredFunction; // Pour chaque texte
 };
 
-using FGInterface = BasicInterface;
-using GUIAlign = Alignment;
 using DGInterface = DynamicGraphicalInterface;
 using IGInterface = UserInteractableGraphicalInterface;
 using WGInterface = WritableGraphicalInterface;
