@@ -1,11 +1,11 @@
 /*******************************************************************
- * \file   basicGUI.hpp
- * \brief  Declare a graphical user interface that can add, edit or remove texts and sprites
+ * \file   MutableInterface.hpp, MutableInterface.cpp
+ * \brief  Declare a gui that can add, edit or remove texts and sprites
  *
  * \author OmegaDIL.
  * \date   July 2025.
  *
- * \note This file depends on the SFML library.
+ * \note These files depend on the SFML library.
  *********************************************************************/
 
 #ifndef MUTABLEINTERFACE_HPP
@@ -29,10 +29,6 @@ namespace gui
 /**
  * \brief  Manages an interface with changeable contents: texts and shapes.
  *
- * \note You should not put an underscore before dynamic elements' identifiers, as they are reserved
- *       for the class.
- * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
- *		 a similar identifier.
  * \note This class stores UI componenents; it will use a considerable amount of memory.
  * \warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *			The progam will assert otherwise. 
@@ -40,7 +36,18 @@ namespace gui
  * \see `BasicInterface`.
  *
  * \code
+ * sf::Vector2u size{ 2560, 1440 };
+ * sf::RenderWindow window{ sf::VideoMode{ size }, "My project" };
+ * MutableInterface mainInterface{ &window, 1080 }; // All elements will be scaled with	a factor 1440/1080 = 1.33f.
  * 
+ * mainInterface.addDynamicText("greetings", "Welcome!!", { 1280, 500 }, sf::Color{ 255, 255, 255 }, 48, "__default", SpriteWrapper::Alignment::Center, sf::Style::Bold | sf::Style::Underlined);
+ * mainInterface.addSprite("projectIcon.png", window.getView().getCenter(), sf::Vector{ 0.5f, 0.5f }); // You can still	add regular sprites/texts.
+ * 
+ * // Lets assume we are within the loop (see BasicInterface) and we met a particular condition.
+ * mainInterface.getDynamicText("greetings")->setPosition(window.getView().getCenter()); // Access the TextWrapper class.
+ * // Some other conditions met.
+ * mainInterface.removeDynamicText("greetings");
+ * // Same goes for sprites.
  * \endcode
  */
 class MutableInterface : public BasicInterface
@@ -98,6 +105,10 @@ public:
 	 * \param[in] rot: The rotation of the `sf::Text`.
 	 *
 	 * \note Some styles may not be available with your font.
+	 * \note You should not put an underscore before dynamic elements' identifiers, as they are reserved
+	 *       for the class.
+	 * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
+	 *		 a similar identifier.
 	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \pre   A font should have been loaded with the name you gave.
@@ -133,6 +144,10 @@ public:
 	 * \param[in] alignment: The alignment of the `sf::Sprite`.
 	 * \param[in] color: The color of the `sf::Sprite` that will be multiply by the texture color.
 	 *
+	 * \note You should not put an underscore before dynamic elements' identifiers, as they are reserved
+	 *       for the class.
+	 * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
+	 *		 a similar identifier.
 	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \pre   A texture should have loaded with the name you gave.
@@ -158,6 +173,10 @@ public:
 	 * \param[in] alignment: The alignment of the `sf::Sprite`.
 	 * \param[in] color: The color of the `sf::Sprite` that will be multiply by the texture color.
 	 *
+	 * \note You should not put an underscore before dynamic elements' identifiers, as they are reserved
+	 *       for the class.
+	 * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
+	 *		 a similar identifier.
 	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \see `SpriteWrapper`, `addSprite`.
@@ -174,7 +193,7 @@ public:
 	 *
 	 * \see `removeDynamicSprite`.
 	 */
-	virtual void removeDynamicText(std::string const& identifier) noexcept;
+	virtual void removeDynamicText(const std::string& identifier) noexcept;
 
 	/**
 	 * \brief Removes a sprite from the GUI. No effet if not there.
@@ -186,7 +205,7 @@ public:
 	 *
 	 * \see `removeDynamicText`.
 	 */
-	virtual void removeDynamicSprite(std::string const& identifier) noexcept;
+	virtual void removeDynamicSprite(const std::string& identifier) noexcept;
 
 	/**
 	 * \brief Returns a text Wrapper ptr, or nullptr if it does not exist.
@@ -200,7 +219,7 @@ public:
 	 *
 	 * \see `TextWrapper`.
 	 */
-	[[nodiscard]] TextWrapper* getDynamicText(std::string const& identifier);
+	[[nodiscard]] TextWrapper* const getDynamicText(const std::string& identifier) const noexcept;
 
 	/**
 	 * \brief Returns a sprite Wrapper ptr, or nullptr if it does not exist.
@@ -214,7 +233,7 @@ public:
 	 *
 	 * \see `SpriteWrapper`.
 	 */
-	[[nodiscard]] SpriteWrapper* getDynamicSprite(std::string const& identifier);
+	[[nodiscard]] SpriteWrapper* const getDynamicSprite(const std::string& identifier) const noexcept;
 
 protected:
 
@@ -234,7 +253,7 @@ protected:
 	 * \see `removeDynamicSprite`, `removeDynamicText`.
 	 */
 	template<typename T> requires (std::same_as<T, TextWrapper> || std::same_as<T, SpriteWrapper>)
-	void removeDynamicElement(const std::string& identifier, std::vector<T>& vector, std::unordered_map<std::string, size_t>& identifierMap, std::unordered_map<size_t, UmapDynamicsIterator>& indexMap)
+	void removeDynamicElement(const std::string& identifier, std::vector<T>& vector, std::unordered_map<std::string, size_t>& identifierMap, std::unordered_map<size_t, UmapDynamicsIterator>& indexMap) noexcept
 	{
 		auto iteratorToRemove{ identifierMap.find(identifier) };
 
@@ -259,10 +278,10 @@ protected:
 		// maps. In that matter, we avoid removing everything and readding everthing to reduce computional
 		// time. We change the values of the map keys (that were immuable) to fit the swap.
 
-		const std::string idLast{ indexMap.at(targetIndex)->first };
-		identifierMap[idLast] = targetIndex;
-		indexMap[targetIndex] = identifierMap.find(idLast);
-		indexMap.erase(lastIndex); // Remove the old index from the index map.
+		const std::string idLastElement{ indexMap.at(lastIndex)->first };
+		identifierMap[idLastElement] = targetIndex;
+		indexMap[targetIndex] = identifierMap.find(idLastElement);
+		indexMap.erase(lastIndex); // lastIndex is out of range as the container lost 
 	}
 
 	

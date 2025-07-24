@@ -1,6 +1,6 @@
 /*******************************************************************
  * \file   GUI.hpp
- * \brief  Declare the entities for creating and managing graphical user interfaces.
+ * \brief  Group all entities for creating and managing graphical user interfaces.
  *
  * \author OmegaDIL.
  * \date   July 2024.
@@ -11,16 +11,16 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
+#include "GUI/GraphicalRessources.hpp"
 #include "GUI/BasicInterface.hpp"
 #include "GUI/MutableInterface.hpp"
-#include "GUI/InteractableInterface.hpp"
+#include "GUI/InteractiveInterface.hpp"
 #include "GUI/AdvancedInterface.hpp"
 
 using BGUI = gui::BasicInterface;
 using MGUI = gui::MutableInterface;
+using IGUI = gui::InteractiveInterface; // Often enough for most apps
 
-#include <algorithm>
-#include <functional>
 
 
 /** 

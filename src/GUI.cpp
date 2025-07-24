@@ -31,15 +31,6 @@ IGInterface* IGInterface::m_interfaceWithHoveredElement{ nullptr };
 
 
 
-bool UserInteractableGraphicalInterface::addButton(std::string const& identifier, std::function<void()> function) noexcept
-{
-	if (m_buttons.find(identifier) != m_buttons.end() || m_dynamicTexts.find(identifier) == m_dynamicTexts.end())
-		return false; 
-
-	m_buttons[identifier] = function; // Adds the button with the text id and the function.
-
-	return true;
-}
 
 bool UserInteractableGraphicalInterface::addSlider(std::string const& identifier, sf::Vector2u size, sf::Vector2f pos, sf::Vector2f scale, std::function<float(float)> mathFunction, std::function<void(float)> userFunction, int interval, bool showValueWithText) noexcept
 {

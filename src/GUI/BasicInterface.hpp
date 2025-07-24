@@ -1,11 +1,11 @@
 /*******************************************************************
- * \file   basicGUI.hpp
+ * \file   BasicInterface.hpp, BasicInterface.cpp
  * \brief  Declare a basic graphical user interface that has rudimentary features.
  *
  * \author OmegaDIL.
  * \date   July 2025.
  *
- * \note This file depends on the SFML library.
+ * \note These files depend on the SFML library.
  *********************************************************************/
 
 #ifndef BASICINTERFACE_HPP
@@ -174,7 +174,7 @@ public:
 	void addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 
 	/**
-	 * \brief Renders the interface.
+	 * \brief Renders the interface. Texts are drawn above sprites.
 	 * \complexity O(N), where N is the number of graphical elements.
 	 * 
 	 * \warning The program assert if the window is not valid (nullptr or size 0)
@@ -260,7 +260,7 @@ protected:
 	std::vector<SpriteWrapper> m_sprites;
 
 	/// All scales are multiply by a factor one if the min axis definition is this value. 
-	/// Otherwise larger factor for larger window, and vice-versa.
+	/// Otherwise there is a larger factor for larger windows, and vice-versa.
 	unsigned int m_relativeScalingDefinition;
 
 private:

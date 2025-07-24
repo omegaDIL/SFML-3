@@ -1,11 +1,11 @@
 /*******************************************************************
- * \file   GraphicalRessources.hpp
+ * \file   GraphicalRessources.hpp, GraphicalRessources.cpp
  * \brief  Declare the entity wrappers for creating and managing graphical user interfaces.
  *
  * \author OmegaDIL.
  * \date   July 2025.
  *
- * \note This file depends on the SFML library.
+ * \note These files depend on the SFML library.
  *********************************************************************/
 
 #ifndef GRAPHICALRESSOURCES_HPP
@@ -480,7 +480,7 @@ public:
 	 *
 	 * \return The address of the font.
 	 */
-	[[nodiscard]] static sf::Font* getFont(const std::string& name) noexcept;
+	[[nodiscard]] static sf::Font* const getFont(const std::string& name) noexcept;
 
 private:
 
@@ -892,20 +892,20 @@ public:
 	 *
 	 * \see `TextureHolder`.
 	 */
-	[[nodiscard]] static TextureHolder* getTexture(const std::string& name) noexcept;
+	[[nodiscard]] static TextureHolder* const getTexture(const std::string& name) noexcept;
 
 	/**
 	 * \brief Loads an existing texture from a file into the graphical ram. 
-	 * No effect if the texture name was not found or the file name was not provided.
 	 * \complexity O(1).
 	 * 
 	 * \param[in] name: The alias of a texture.
 	 * \param[in] failingImpliesRemoval: By setting this to `true`, if the loading fails, the texture
-	 *			  will automatically be totally removed from the wrapper (see `removeTexture`).
+	 *			  will automatically be totally removed from the wrapper (see `removeTexture`). ONLY includes
+	 *			  LOADING FAILURE, not if the texture path was not provided/the texture not found/already loaded.
 	 * 
 	 * \return `true` if loading was successful/already loaded, `false` otherwise.
 	 * 
-	 * \note Using another thread is recommended for heavy texture.
+	 * \note Using another thread is recommended for heavy textures.
 	 * \note This function is designed not to throw if the texture was not found, to support scenarios
 	 *		 where the user tries multiple textures names until one is successfully found and set. This is
 	 *		 useful when texture loading may have failed earlier, and fallback attempts are expected behavior.

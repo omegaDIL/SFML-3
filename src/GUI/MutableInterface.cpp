@@ -27,7 +27,7 @@ void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Textu
 	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = m_dynamicSprites.find(identifier); // Add the index to the vector of indexes for dynamic sprites.
 }
 
-void MutableInterface::removeDynamicText(std::string const& identifier) noexcept
+void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
 {
 	ENSURE_STRING_NOT_EMPTY(identifier);
 
@@ -37,7 +37,7 @@ void MutableInterface::removeDynamicText(std::string const& identifier) noexcept
 	removeDynamicElement(identifier, m_texts, m_dynamicTexts, m_indexesForEachDynamicTexts); // Removes the text with the given identifier.
 }
 
-void MutableInterface::removeDynamicSprite(std::string const& identifier) noexcept
+void MutableInterface::removeDynamicSprite(const std::string& identifier) noexcept
 {
 	ENSURE_STRING_NOT_EMPTY(identifier);
 
@@ -47,7 +47,7 @@ void MutableInterface::removeDynamicSprite(std::string const& identifier) noexce
 	removeDynamicElement(identifier, m_sprites, m_dynamicSprites, m_indexesForEachDynamicSprites); // Removes the text with the given identifier.
 }
 
-TextWrapper* MutableInterface::getDynamicText(std::string const& identifier)
+TextWrapper* const MutableInterface::getDynamicText(const std::string& identifier) const noexcept
 {
 	ENSURE_STRING_NOT_EMPTY(identifier);
 
@@ -59,7 +59,7 @@ TextWrapper* MutableInterface::getDynamicText(std::string const& identifier)
 	return &m_texts[mapIterator->second];
 }
 
-SpriteWrapper* MutableInterface::getDynamicSprite(std::string const& identifier)
+SpriteWrapper* const MutableInterface::getDynamicSprite(const std::string& identifier) const noexcept
 {
 	ENSURE_STRING_NOT_EMPTY(identifier);
 
@@ -71,4 +71,4 @@ SpriteWrapper* MutableInterface::getDynamicSprite(std::string const& identifier)
 	return &m_sprites[mapIterator->second];
 }
 
-}
+} // gui namespace
