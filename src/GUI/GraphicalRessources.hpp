@@ -17,13 +17,12 @@
 #include <unordered_map>
 #include <memory>
 #include <stdexcept>
-#include <cstdint>
 #include <optional>
 #include <sstream>
+#include <cstdint>
 #include <concepts>
 #include <type_traits>
 #include <cassert>
-#include <algorithm>
 
 #ifndef NDEBUG 
 #define ENSURE_VALID_PTR(ptr) \
@@ -235,11 +234,12 @@ public:
 
 	/**
 	 * \brief Resizes and repositions the `sf::Transformable`, e.g., when the window is resized.
+	 * Avoid distortion. If you actually want distortion, you can't use this function.
 	 *
 	 * \param[in] windowScaleFactor The per-axis scaling factor (x and y) of the window size.
 	 * \param[in] relativeMinAxisScale The ratio between the new and old smallest window axis.
-	 *            For example, if the window was resized from (1000, 300) to (900, 600),
-	 *            the scale factor is (0.9, 2), and the smallest axis ratio is 600 / 300 = 2.
+	 *            For example, if the window was resized from (1000, 500) to (750, 1000),
+	 *            the scale factor is (0.75, 2), and the smallest axis ratio is 500 / 750 = 0.67
 	 *            This helps to scale elements uniformly based on the smaller dimension.
 	 */
 	void resized(sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
@@ -362,7 +362,7 @@ public:
 	 * \see `sf::Text::setString`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
-	inline void setContent(const T& content) noexcept
+	void setContent(const T& content) noexcept
 	{
 		std::ostringstream oss{}; // Convert the content to a string.
 		oss << content; // Assigning the content to the variable.
@@ -430,16 +430,6 @@ public:
 
 
 	/**
-	 * \brief Returns a font ptr, or nullptr if it does not exist.
-	 * \complexity O(1).
-	 *
-	 * \param[in] name: The alias of a font.
-	 *
-	 * \return The address of the font.
-	 */
-	[[nodiscard]] static sf::Font* getFont(const std::string& name) noexcept;
-
-	/**
 	 * \brief Creates a font into the wrapper with a name, which can be used by all instances.
 	 * You can also use this function to replace an existing font by another one.
 	 * \complexity O(1).
@@ -478,9 +468,19 @@ public:
 	 *
 	 * \param[in] name: The alias of a font.
 	 * 
-	 * \warning No font should currently use the font you remove.
+	 * \warning No text should currently use the font you remove.
 	 */
 	static void removeFont(const std::string& name) noexcept;
+
+	/**
+	 * \brief Returns a font ptr, or nullptr if it does not exist.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a font.
+	 *
+	 * \return The address of the font.
+	 */
+	[[nodiscard]] static sf::Font* getFont(const std::string& name) noexcept;
 
 private:
 
@@ -721,11 +721,11 @@ public:
 
 	/**
 	 * \brief Applies the texture/its rect to the sprite by looking at the next index.
-	 * Loop If the overall index is out of range. If it is 2 past the last texture, then the texture
-	 * applied is the texture indexed at 2 in the texture vector. 
+	 * Similar to texture = cur + offset. Loop If the overall index is out of range. If it is 2 past
+	 * the last texture, then the texture applied is the texture indexed at 2 in the texture vector. 
 	 * \complexity O(1).
 	 * 
-	 * @param[in] indexOffset: The next index. By default 1 : index = curIndex + 1. Can be negative
+	 * @param[in] indexOffset: The next index. By default 1 : index = curIndex + 1. Can be negative.
 	 * 
 	 * \note The function will load the next texture if it was not previously loaded. That being said,
 	 *		 if you want to avoid a sudden loss of fps (especially for large texture), consider load it
@@ -765,12 +765,12 @@ public:
 	 * texture if it belongs to the current instance.
 	 * \complexity O(1) For shared textures or non claimed reserved textures.
 	 * \complexity O(N) For claimed reserved textures. N is the number of unique reserved texture already
-	 *					added to that instance.
+	 *					claimed by this instance.
 	 * 
 	 * \param name: The alias of a texture.
 	 * \param rects: All intrects you want to add. If size is 0, it is set to the whole texture size.
 	 * 
-	 * \return `true` if added to the texture vector. Otherwise `false`.
+	 * \return `true` if added to the texture vector, `false` otherwise.
 	 * 
 	 * \note The first pair (texture + rect) is added as index 0, the second one as index 1, and so on...
 	 *       You keep track of your indexes.
@@ -798,9 +798,9 @@ public:
 		&&  std::find(m_uniqueTextures.begin(), m_uniqueTextures.end(), name) == m_uniqueTextures.end()) [[unlikely]] // ...but not by this one.
 			throw std::invalid_argument{ "The reserved texture was not available anymore for this sprite instance" };
 
-		TextureHolder* texture{ &mapAccessIterator->second };
+		TextureHolder* texture{ &*mapAccessIterator->second };
 
-		(m_textures.push_back(TextureInfo{ texture, std::forward<Ts>(rects) }), ...);
+		(m_textures.push_back(TextureInfo{ texture, rects }), ...);
 
 		if (mapUniqueIterator->second == false) // For reserved texture.
 		{
@@ -820,24 +820,13 @@ public:
 		return addTexture(name, sf::IntRect{});
 	}
 
+
 	/**
 	 * \brief Tells whether or not a texture should be reserved to a specific instance.
 	 * `Yes` if you want the texture to be availabe for a single sprite, preventing
 	 *  any other instances to use it.
 	 */
 	enum class Reserved : uint8_t { Yes, No };
-
-	/**
-	 * \brief Returns a textureHolder ptr, or nullptr if it does not exist.
-	 * \complexity O(1).
-	 *
-	 * \param[in] name: The alias of a texture.
-	 *
-	 * \return The address of the texture.
-	 * 
-	 * \see `TextureHolder`.
-	 */
-	[[nodiscard]] static TextureHolder* getTexture(const std::string& name) noexcept;
 
 	/**
 	 * \brief Creates a texture into the wrapper with a name, which could be used by all instances.
@@ -887,11 +876,23 @@ public:
 	 *
 	 * \param[in] name: The alias of a texture.
 	 *
-	 * \warning The texture should not be within any texture vector.
+	 * \warning The texture should not be within any instances' texture vector.
 	 * 
 	 * \see `unloadTexture`.
 	 */
 	static void removeTexture(const std::string& name) noexcept;
+
+	/**
+	 * \brief Returns a textureHolder ptr, or nullptr if it does not exist.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The alias of a texture.
+	 *
+	 * \return The address of the texture.
+	 *
+	 * \see `TextureHolder`.
+	 */
+	[[nodiscard]] static TextureHolder* getTexture(const std::string& name) noexcept;
 
 	/**
 	 * \brief Loads an existing texture from a file into the graphical ram. 

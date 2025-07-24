@@ -28,50 +28,7 @@ IGInterface* IGInterface::m_interfaceWithHoveredElement{ nullptr };
 
 
 
-bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color) noexcept
-{
-	if (identifier.empty() || m_dynamicSprites.find(identifier) != m_dynamicSprites.end() )
-		return false; // Not already added or identifier is empty.
 
-	addSprite(texture, pos, scale, rot, rectangle, color);
-	m_dynamicSprites[identifier] = m_sprites.size() - 1; // The last sprite added has the highest index.
-	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = identifier; // Add the index to the vector of indexes for dynamic sprites.
-
-	return true;
-}
-
-bool DynamicGraphicalInterface::addDynamicSprite(std::string const& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, sf::IntRect rectangle, sf::Color color) noexcept
-{
-	if (identifier.empty() || m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
-		return false; // Not already added or identifier is empty.
-
-	addSprite(texture, pos, scale, rot, rectangle, color);
-	m_dynamicSprites[identifier] = m_sprites.size() - 1; // The last sprite added has the highest index.
-	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = identifier; // Add the index to the vector of indexes for dynamic sprites.
-
-	return true;
-}
-
-
-TextWrapper& DynamicGraphicalInterface::getDText(std::string const& identifier)
-{
-	return m_texts[m_dynamicTexts.at(identifier)]; // Throws an exception if not there.
-}
-
-SpriteWrapper& DynamicGraphicalInterface::getDSprite(std::string const& identifier)
-{
-	return m_sprites[m_dynamicSprites.at(identifier)]; // Throws an exception if not there.
-}
-
-bool DynamicGraphicalInterface::removeDText(std::string const& identifier) noexcept
-{
-	return removeDynamicElement(identifier, m_texts, m_dynamicTexts, m_indexesForEachDynamicTexts); // Removes the text with the given identifier.
-}
-
-bool DynamicGraphicalInterface::removeDSprite(std::string const& identifier) noexcept
-{
-	return removeDynamicElement(identifier, m_sprites, m_dynamicSprites, m_indexesForEachDynamicSprites); // Removes the text with the given identifier.
-}
 
 
 bool UserInteractableGraphicalInterface::addButton(std::string const& identifier, std::function<void()> function) noexcept
@@ -165,7 +122,7 @@ bool UserInteractableGraphicalInterface::removeDText(std::string const& identifi
 	if (removeInButtons != m_buttons.end())
 		m_buttons.erase(removeInButtons); // Erase from the buttons map if it exists.
 
-	return DynamicGraphicalInterface::removeDText(identifier);
+	return MutableInterface::removeDText(identifier);
 }
 
 bool UserInteractableGraphicalInterface::removeSlider(std::string const& identifier) noexcept
@@ -429,8 +386,6 @@ void WritableGraphicalInterface::applyNewText(TextWrapper* text, std::string& ne
 // TODO: find().second -> at() + faire des reserves pour les maps et les vectors afin d'eviter les reallocations de memoire.
 // TODO: MouseMove d'abord verifier que le hovered actuel ne l 'est tjr pas avant de boucler sur le reste
 // TODO: _ + mqb + to_string -> _ + to_string + _ + mqb
-// TODO: remove the background.
-// TODO: erasure texture ? -> parler a victor
 // TODO: mettre __ au lieu de _ lorsque l'utilisateur ne doit pas interagir avec l'élément (ex: __cursorEditing pour le curseur d'édition de texte)
 // TODO: ajouter aux lambdas un argument pour l'interface courante.
 // TODO: mettre des int a la place des unsigned int pour les MQB, car c le bordel de faire -1 et on aura jamais plus de 2 millards de boxes dans 1 mqb
@@ -440,3 +395,4 @@ void WritableGraphicalInterface::applyNewText(TextWrapper* text, std::string& ne
 // TODO: remove pointer from interactable element
 // TODO: module C++20
 // TODO: Ajouter une std::function pour les mqb
+// TODO: Mettre message custom dans assert

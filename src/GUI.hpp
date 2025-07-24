@@ -19,259 +19,21 @@
 using BGUI = gui::BasicInterface;
 using MGUI = gui::MutableInterface;
 
-
-/**
- * \brief  Manages an interface with changeable contents of elements (texts and shapes).
- *
- * \note This class stores UI componenents; it will consume a considerable amount of memory.
- * \note The background is dynamic and changeable with the getDSprite() function using the identifier
- *       "_background".
- * \note You should not put an underscore before dynamic elements' identifiers, as they are reserved
- *       for the class.
- * \note Ids must be unique within the text vector, and the shape/sprite vector. However, they can 
- * 		 be the same between a text and a sprite/shape.
- * \warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
- *
- * \code
- * sf::RenderWindow window{ ... };
- * DynamicGraphicalInterface gui{ &window };
- *
- * ...
- *
- * gui.addDynamicText("text 1", "Hello", sf::Vector2f{ 300, 100 }, 12, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
- * gui.addDynamicText("text 2", "Hallo", sf::Vector2f{ 100, 100 }, 14, windowSizeMin / 1080.f, sf::Color{ 255, 0, 0 });
- * gui.addText("text 3", "Bonjour", sf::Vector2f{ 200, 200 }, 14, windowSizeMin / 1080.f, sf::Color{ 0, 255, 0 }); // Not dynamic.
- * gui.addDynamicSprite("sprite", std::move(player), std::move(texturePlayer));
- * 
- * gui.getDText("text 1").updateContent("Hello World");
- * auto charSize = gui.getDText("text 2").getText().getCharacterSize(); // 14.
- *
- * ...
- *
- * window.clear();
- * gui.draw(); // First to be drawn.
- * ...
- * window.display();
- * \endcode
- *
- * \see BasicInterface, UserInteractableGraphicalInterface.
- */
-class DynamicGraphicalInterface : public BasicInterface
-{
-public:
-
-	DynamicGraphicalInterface() noexcept = delete;
-	DynamicGraphicalInterface(DynamicGraphicalInterface const&) noexcept = delete;
-	DynamicGraphicalInterface(DynamicGraphicalInterface&&) noexcept = default;
-	DynamicGraphicalInterface& operator=(DynamicGraphicalInterface const&) noexcept = delete;
-	DynamicGraphicalInterface& operator=(DynamicGraphicalInterface&&) noexcept = default;
-	virtual ~DynamicGraphicalInterface() noexcept = default;
-
-	/**
-	 * \brief Constructs the interface with a default background.
-	 * \complexity O(1).
-	 *
-	 * \param[out] window: The window where the interface elements will be rendered.
-	 */
-	explicit DynamicGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "")
-		: BasicInterface{ window, backgroundFileName }, m_dynamicTexts{}, m_dynamicSprites{}
-	{}
-
-
-	/**
-	 * \brief Adds a dynamic text element to the interface.
-	 * \complexity O(1) : best case.
-	 * \complexity O(N) : worst case, where N is the number of fixed AND dynamic texts already added
-	 *  			      (if vector resizes).
-	 *
-	 * \tparam T: Type that can be streamed to `std::basic_ostream`.
-	 * \param[in] content: The text label.
-	 * \param[in] position: The position of the text.
-	 * \param[in] characterSize: The size of the text characters.
-	 * \param[in] scale: The scale of the text.
-	 * \param[in] color: The color of the text.
-	 * \param[in] rot: The rotation of the text.
-	 * 
-	 * \return True if added.
-	 * 
-	 * \note The scale is the same for both x and y axis.
-	 * 
-	 * \see addText().
-	 */
-	template<Ostreamable T>
-	bool addDynamicText(std::string const& identifier, T const& content, sf::Vector2f position, unsigned int characterSize, float scale, sf::Color color = sf::Color{ 255, 255, 255 }, sf::Angle rot = sf::degrees(0))
-	{
-		if (m_dynamicTexts.find(identifier) != m_dynamicTexts.end() || identifier.empty())
-			return false;
-
-		addText(content, position, characterSize, scale, color);
-		m_dynamicTexts[identifier] = m_texts.size() - 1;
-		m_indexesForEachDynamicTexts[m_texts.size() - 1] = identifier; // Add the index to the vector of indexes for dynamic sprites.
-
-		return true;
-	}
-
-	/**
-	 * \brief Adds a dynamic sprite element to the interface.
-	 * \complexity O(1) : best case.
-	 * \complexity O(N) : worst case, where N is the number of fixed AND dynamic sprites/shapes already
-	 *				      added (if vector resizes).
-	 *
-	 * \param[in] identifier: The sprite identifier.
-	 * \param[in] sprite: The sprite to add.
-	 * \param[in] texture: The texture of the sprite.
-	 *
-	 * \return True if added.
-	 * 
-	 * \note The texture is not copied and therefore has to point somewhere that remains valid as long
-	 *		 as the sprite is used. You could (and should) either point to a newly dynamically allocated
-	 *		 texture, or to a texture that is already stored in the interface.
-	 *
-	 * \see addSprite(), addDynamicShape().
-	 */
-	bool addDynamicSprite(std::string const& identifier, std::string const& texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), sf::IntRect rectangle = sf::IntRect{ sf::Vector2i{}, sf::Vector2i{} }, sf::Color color = sf::Color::White) noexcept;
-	
-	/**
-	 * .
-	 * 
-	 * \param identifier
-	 * \param texture
-	 * \param pos
-	 * \param scale
-	 * \param rot
-	 * \param rectangle
-	 * \param color
-	 */
-	bool addDynamicSprite(std::string const& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), sf::IntRect rectangle = sf::IntRect{ sf::Vector2i{}, sf::Vector2i{} }, sf::Color color = sf::Color::White) noexcept;
-
-	/**
-	 * \param[in] identifier: The id of the dynamic text you want to check.
-	 * \complexity O(1).
-	 * 
-	 * \return True if it exists.
-	 */
-	[[nodiscard]] inline bool doesDTextExist(std::string const& identifier) const noexcept
-	{
-		return m_dynamicTexts.find(identifier) != m_dynamicTexts.end();
-	}
-
-	/**
-	 * \param[in] identifier: The id of the dynamic sprite you want to check.
-	 * \complexity O(1).
-	 * 
-	 * \return True if it exists.
-	 */
-	[[nodiscard]] inline bool doesDSpriteExist(std::string const& identifier) const noexcept
-	{
-		return m_dynamicSprites.find(identifier) != m_dynamicSprites.end();
-	}
-
-	/**
-	 * \brief Allows you to change some attributes of a dynamic text.
-	 * \complexity O(1).
-	 * 
-	 * \param[in] identifier: The id of the text you want to access.
-	 * 
-	 * \return A reference to the text you want to access.
-	 * 
-	 * \pre Be sure that you added a text with this id.
-	 * \post The appropriate text is returned.
-	 * \throw std::out_of_range Strong exception guarrantee.
-	 */
-	[[nodiscard]] inline TextWrapper& getDText(std::string const& identifier);
-
-	/**
-	 * \brief Allows you to change some attributes of a dynamic sprite.
-	 * \complexity O(1).
-	 *
-	 * \param[in] identifier: The id of the sprite you want to access.
-	 *
-	 * \return A reference to the sprite, with its texture, you want to access.
-	 *
-	 * \pre Be sure that you added the sprite/shape with this id.
-	 * \post The appropriate sprite/texture is returned.
-	 * \throw std::out_of_range Strong exception guarrantee.
-	 */
-	[[nodiscard]] inline SpriteWrapper& getDSprite(std::string const& identifier);
-
-	/**
-	 * \brief Removes a dynamic text element.
-	 * \complexity O(N) : where N is the number of fixed AND dynamic texts already added.
-	 *
-	 * \param[in] identifier: The id of the text you want to remove.
-	 * 
-	 * \return True if removed.
-	 *
-	 * \note No effect if not there.
-	 */
-	virtual bool removeDText(std::string const& identifier) noexcept;
-
-	/**
-	 * \brief Removes a dynamic sprite element.
-	 * \complexity O(N) : where N is the number of fixed AND dynamic sprites/shapes already added.
-	 *
-	 * \param[in] identifier: The id of the sprite you want to remove.
-	 * 
-	 * \return True if removed.
-	 *
-	 * \note No effect if not there.
-	 * \note You can't remove the background : it has no effect.
-	 * \note Since shapes are converted to sprites, you can remove them with this function.
-	 */
-	bool removeDSprite(std::string const& identifier) noexcept;
-
-protected:
-
-	std::unordered_map<size_t, std::string> m_indexesForEachDynamicTexts; // Allows removal of dynamic texts in O(1).
-	std::unordered_map<size_t, std::string> m_indexesForEachDynamicSprites; // Allows removal of dynamic sprites in O(1). 
-	
-	std::unordered_map<std::string, size_t> m_dynamicTexts; // All indexes of dynamic texts in the interface.
-	std::unordered_map<std::string, size_t> m_dynamicSprites; // All indexes of dynamic sprites in the interface.
-
-	
-	template<typename T> requires (std::same_as<T, TextWrapper> || std::same_as<T, SpriteWrapper>)
-	bool removeDynamicElement(const std::string& identifier, std::vector<T>& element, std::unordered_map<std::string, size_t>& identifierMap, std::unordered_map<size_t, std::string>& indexMap)
-	{
-		auto itElementToRemove{ identifierMap.find(identifier) };
-
-		if (itElementToRemove == identifierMap.end())
-			return false; // No effect if not there.
-
-		size_t removedIndex{ itElementToRemove->second }; // Get the index of the element to remove.
-		size_t swappedIndex{ element.size() - 1 }; // Get the last index of the vector.
-
-		std::swap(element[removedIndex], element[swappedIndex]); // Swap the element to remove with the last element.
-		element.pop_back(); // Remove the last element (which is now the one to remove).
-
-		identifierMap.erase(itElementToRemove); // Remove the identifier from the map.
-		if (removedIndex != swappedIndex && indexMap.find(swappedIndex) != indexMap.end())
-		{
-			std::string& swappedId{ indexMap[swappedIndex] };
-			indexMap[removedIndex] = swappedId;
-			identifierMap[swappedId] = removedIndex; // Update the identifier map with the new index of the swapped element.
-			indexMap.erase(swappedIndex); // Remove the old index from the index map.
-		}
-		else
-		{
-			indexMap.erase(removedIndex); // Remove the index from the index map.
-		}
-
-		return true; // Element removed successfully.
-	}
-};
+#include <algorithm>
+#include <functional>
 
 
 /** 
  * \brief Manages an interface in which the user can interact such as writing, pressing buttons...
  *
  * \note This class stores UI componenents; it will consume a considerable amount of memory.
- * \note This class does not add any new possibilities than DynamicGraphicalInterfaces, it only add
+ * \note This class does not add any new possibilities than MutableInterfaces, it only add
  * 		 prebuilt interactable elements such as buttons, sliders and multiple question boxes.
  * \warning Do not delete the `sf::RenderWindow` passed as an argument while this class is in use.
  *
- * \see DynamicGraphicalInterface.
+ * \see MutableInterface.
  */
-class UserInteractableGraphicalInterface : public DynamicGraphicalInterface
+class UserInteractableGraphicalInterface : public gui::MutableInterface
 {
 private:
 
@@ -349,7 +111,7 @@ public:
 	 * \see createBackground().
 	 */
 	inline explicit UserInteractableGraphicalInterface(sf::RenderWindow* window, std::string const& backgroundFileName = "") noexcept
-		: DynamicGraphicalInterface{ window, backgroundFileName }, m_buttons{}, m_sliders{}
+		: MutableInterface{ window, backgroundFileName }, m_buttons{}, m_sliders{}
 	{}
 
 	/**
@@ -601,17 +363,15 @@ public:
 
 private:
 
-	void applyNewText(TextWrapper* text, std::string& newText) noexcept;
+	void applyNewText(gui::TextWrapper* text, std::string& newText) noexcept;
 
 
 	std::string m_currentlyEditedText;
 	std::function<void(char32_t&, std::string&)> m_textEnteredFunction; // Pour chaque texte
 };
 
-using DGInterface = DynamicGraphicalInterface;
 using IGInterface = UserInteractableGraphicalInterface;
 using WGInterface = WritableGraphicalInterface;
-using GUI = DGInterface;
 //TODO: mettre les using en haut
 
 #endif // GUI_HPP

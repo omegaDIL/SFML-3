@@ -152,16 +152,6 @@ void TextWrapper::setAlignment(Alignment alignment) noexcept
 	m_wrappedText->setOrigin(computeNewOrigin(m_wrappedText->getLocalBounds(), m_alignment));
 }
 
-sf::Font* TextWrapper::getFont(const std::string& name) noexcept
-{
-	auto mapIterator{ s_accessToFonts.find(name) };
-
-	if (mapIterator != s_accessToFonts.end()) [[unlikely]]
-		return nullptr;
-
-	return &*mapIterator->second;
-}
-
 void TextWrapper::createFont(const std::string& name, const std::string& fileName)
 {
 	std::ostringstream errorMessage{};
@@ -202,6 +192,16 @@ void TextWrapper::removeFont(const std::string& name) noexcept
 
 	s_allFonts.erase(mapIterator->second); // First, removing the actual font.
 	s_accessToFonts.erase(mapIterator); // Then, the accessing item within the map.
+}
+
+sf::Font* TextWrapper::getFont(const std::string& name) noexcept
+{
+	auto mapIterator{ s_accessToFonts.find(name) };
+
+	if (mapIterator != s_accessToFonts.end()) [[unlikely]]
+		return nullptr;
+
+		return &*mapIterator->second;
 }
 
 
@@ -319,16 +319,6 @@ inline void SpriteWrapper::switchToTexture(size_t index)
 	switchToNextTexture(1);
 }
 
-TextureHolder* SpriteWrapper::getTexture(const std::string& name) noexcept
-{
-	auto mapIterator{ s_accessToTextures.find(name) };
-
-	if (mapIterator == s_accessToTextures.end())
-		return nullptr;
-
-	return &*mapIterator->second;
-}
-
 void SpriteWrapper::createTexture(const std::string& name, const std::string& fileName, Reserved shared, bool loadImmediately)
 {
 	TextureHolder newTexture{ .fileName = fileName };
@@ -378,6 +368,16 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 
 	s_allTextures.erase(mapIterator->second); // First, removing the actual texture.
 	s_accessToTextures.erase(mapIterator); // Then, the accessing item within the map.
+}
+
+TextureHolder* SpriteWrapper::getTexture(const std::string& name) noexcept
+{
+	auto mapIterator{ s_accessToTextures.find(name) };
+
+	if (mapIterator == s_accessToTextures.end())
+		return nullptr;
+
+	return &*mapIterator->second;
 }
 
 bool SpriteWrapper::loadTexture(const std::string& name, bool failingImpliesRemoval)

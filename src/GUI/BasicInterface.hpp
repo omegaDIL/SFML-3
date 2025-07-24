@@ -34,18 +34,18 @@ namespace gui
 {
 
 /**
- * \brief Manages items to create a basic GUI. You can display texts, sprites, a background...
+ * \brief Manages items to create a basic GUI. You can display texts and sprites.
  * \details All elements are fixed and can't be edited nor removed.
  *
  * \note This class stores UI componenents; it will use a considerable amount of memory.
  * \warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *			The progam will assert otherwise.
  *
- *
  * \see `sf::RenderWindow`, `TextWrapper`, `SpriteWrapper`.
  *
  * \code
- * sf::RenderWindow window{ sf::VideoMode{ sf::Vector2u{ 2560, 1440 } }, "My project" };
+ * sf::Vector2u size{ 2560, 1440 };
+ * sf::RenderWindow window{ sf::VideoMode{ size }, "My project" };
  * BasicInterface mainInterface{ &window, 1440 };
  * 
  * mainInterface.addText("Welcome!!", { 1280, 500 }, sf::Color{ 255, 255, 255 }, 48, "__default", SpriteWrapper::Alignment::Center, sf::Style::Bold | sf::Style::Underlined);
@@ -56,7 +56,7 @@ namespace gui
  *		while (const std::optional event = window.pollEvent())
  *		{
  *			if (event->is<sf::Event::Resized>())
- *				BasicInterface::windowResized(&window);
+ *				BasicInterface::windowResized(&window, size);
  * 
  * 			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
  *				window.close();
@@ -80,20 +80,21 @@ public:
 	 * \param[in] relativeScaling: The scales of the `sf::Transformable`s are absolute and will make an
 	 *			  item appear at a certain size. However, in smaller windows, the same scale will make a 
 	 *			  `sf::Transformable` appear larger compared to the window. Therefore a factor will be multiplied
-	 *			  to the scales to adjust them. This factor is equal to 1.f with windows that have `relativeScaling`
-	 *            (this parameter) as their smallest in x or y axis. For example with 1080: if your
-	 *			  window is currently set to 1080 in x or y axis, then all scales are multiply by 1.f. But if
-	 *			  the window is suddenly set to 2160, then all scales are multiply by 2.
+	 *			  to the scales to adjust them. This factor is equal to 1.f with windows that have 
+	 *			  `relativeScalingDefinition` (this parameter) as their smallest in x or y axis. For example,
+	 *			  with 1080: if your window is currently set to 1080 in x or y axis, then all scales are multiply
+	 *			  by 1.f. But if the window is suddenly set to 2160, then all scales are multiply by 2.
 	 * 
-	 * \note A default font is loaded when the first instance is called
-	 * \warning The program assert if the window is not valid (nullptr or size 0)
+	 * \note A default font is loaded when the first instance is called (named __default).
+	 * \warning The program asserts if the window is not valid (nullptr or size 0).
+	 * \warning The program asserts if the relativeScaling is set to 0.
 	 *
 	 * \pre A font should be named defaultFont.ttf in the assets folder.
 	 * \post The font is loaded.
 	 * \throw LoadingGraphicalRessourceFailure Strong exception guarrantee, but no text can use the
 	 *		  default font and you'll have to load and use your own font.
 	 */
-	explicit BasicInterface(sf::RenderWindow* window, unsigned int relativeScaling = 1080);
+	explicit BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080);
 
 	BasicInterface() noexcept = delete;
 	BasicInterface(BasicInterface const&) noexcept = delete;
@@ -119,17 +120,17 @@ public:
 	 *
 	 * \note Some styles may not be available with your font.
 	 *
-	 * \pre   A texture should have been loaded with the name you gave.
+	 * \pre   A font should have been loaded with the name you gave.
 	 * \post  The correct font will be used.
 	 * \throw std::invalid_argument strong exception guarantee: nothing happens.
 	 * 
 	 * \see `TextWrapper`, `addSprite`.
 	 */
 	template<Ostreamable T>
-	inline void addText(const T& content, sf::Vector2f pos, sf::Color color = sf::Color::White, unsigned int characterSize = 30u, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
+	void addText(const T& content, sf::Vector2f pos, sf::Color color = sf::Color::White, unsigned int characterSize = 30u, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
 	{
 		ENSURE_SFML_WINDOW_VALIDITY(m_window);
-		float relativeScalingValue{ std::min(m_window->getSize().x / relativeScaling, m_window->getSize().y / relativeScaling) };
+		float relativeScalingValue{ std::min(m_window->getSize().x / m_relativeScalingDefinition, m_window->getSize().y / m_relativeScalingDefinition) };
 		
 		TextWrapper newText{ content, fontName, characterSize, pos, scale * relativeScalingValue, color, alignment, style, rot };
 		m_texts.push_back(std::move(newText));
@@ -184,15 +185,72 @@ public:
 
 
 	/**
-	 * \brief Refreshes the transformables after the window is resized.
-	 * Resizes only interfaces displayed on the resized window.
-	 * \complexity O(N), where N is the number of graphical elements within all interfaces associated with the resized window.
+	 * \brief Updates the window, views, and the window' interfaces drawables after resizement.
+	 * The max size for the window is the screen size. Everything is scaled without 
+	 * \complexity O(N), where N is the number of graphical elements within all interfaces associated to the resized window.
 	 *
-	 * \param[in] window: The window which was resized, and for which the interfaces will be resized.
+	 * \param[in, out] window: The window which was resized, and for which the interfaces will be resized.
+	 * \param[in, out] previousSize: The window' size before resizement.
+	 * \param[out] views: All views for that window you want to resized accordingly.
+	 * 
+	 * \note The current view of the window is resized and applied back. However it is copy, therefore
+	 *		 you need to give all views in the parameter even the one that is currently applied at the
+	 *		 moment of the call. If you have no views, leave that parameter empty.
+	 * \note You don't need to call this function if you want to keep the same window'size througout the
+	 *		 program. Just apply the previous size back to the window.
+	 * \warning The program asserts if the window is not valid (nullptr or size 0).
+	 * \warning The program asserts if previous size is set to 0.
 	 */
-	static void windowResized(sf::RenderWindow* window) noexcept;
+	template<typename... Ts> requires (std::same_as<Ts, sf::View*> && ...)
+	inline static void windowResized(sf::RenderWindow* resizedWindow, sf::Vector2u& previousSize, Ts... views) noexcept
+	{
+		ENSURE_SFML_WINDOW_VALIDITY(resizedWindow);
+		ENSURE_NOT_ZERO(previousSize.x);
+		ENSURE_NOT_ZERO(previousSize.y);
+
+		const sf::Vector2u maxSize{ sf::VideoMode::getDesktopMode().size };
+		sf::Vector2u newSize{ resizedWindow->getSize() };
+
+		if (newSize.x > maxSize.x) // Not larger than the current window
+			newSize.x = maxSize.x;
+		if (newSize.y > maxSize.y)
+			newSize.y = maxSize.y;
+		
+		const sf::Vector2f scaleFactor{ newSize.x / static_cast<float>(previousSize.x), newSize.y / static_cast<float>(previousSize.y) };
+		const float relativeMinAxisScale{ static_cast<float>(std::min(newSize.x, newSize.y)) / std::min(previousSize.x, previousSize.y) };
+		previousSize = newSize; // Updates previous size.
+
+		// Updates views.
+		(views->setSize(sf::Vector2f{ views.getSize().x * scaleFactor.x, views.getSize().y * scaleFactor.y }), ...);
+		(views->setCenter(sf::Vector2f{ views.getCenter().x * scaleFactor.x, views.getCenter().y * scaleFactor.y }), ...);
+
+		// Updates window + current view.
+		sf::View view{ resizedWindow->getView() };
+		view.setSize(sf::Vector2f{ view.getSize().x * scaleFactor.x, view.getSize().y * scaleFactor.y});
+		resizedWindow->setView(view);
+		resizedWindow->setSize(newSize);
+
+		// Update drawables.
+		proportionKeeper(resizedWindow, scaleFactor, relativeMinAxisScale);
+	}
 
 protected:
+
+	/**
+	 * \brief Scales and repositions all window' interfaces drawables after resizement.
+	 * 
+	 * \param[in] window: The window which was resized, and for which the interfaces will be resized.
+	 * \param[in] windowScaleFactor The per-axis scaling factor (x and y) of the window size.
+	 * \param[in] relativeMinAxisScale The ratio between the new and old smallest window axis.
+	 *            For example, if the window was resized from (1000, 500) to (750, 1000),
+	 *            the scale factor is (0.75, 2), and the smallest axis ratio is 500 / 750 = 0.67
+	 *            This helps to scale elements uniformly based on the smaller dimension.
+	 * 
+	 * \warning The program asserts if the window is nullptr.
+	 * \warning The program asserts if previous size is set to 0.
+	 * \warning The program asserts if relativeMinAxisScale is set to 0.
+	 */
+	static void proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
 
 	/// Pointer to the window.
 	mutable sf::RenderWindow* m_window;
@@ -203,21 +261,13 @@ protected:
 
 	/// All scales are multiply by a factor one if the min axis definition is this value. 
 	/// Otherwise larger factor for larger window, and vice-versa.
-	unsigned int m_relativeScaling;
+	unsigned int m_relativeScalingDefinition;
 
 private:
 
 	/// Collection of all interfaces to perform resizing. Stored by window.
 	static std::unordered_multimap<sf::RenderWindow*, BasicInterface*> s_allInterfaces;
 };
-
-
-/**
- * @brief Handles the changes due to a resize of the window with its GUIs.
- *
- * @param[in,out] window: the window.
- */
-void handleEventResize(sf::RenderWindow* window) noexcept;
 
 } // gui namespace
 
