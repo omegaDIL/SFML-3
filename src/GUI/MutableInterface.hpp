@@ -219,7 +219,7 @@ public:
 	 *
 	 * \see `TextWrapper`.
 	 */
-	[[nodiscard]] TextWrapper* const getDynamicText(const std::string& identifier) const noexcept;
+	[[nodiscard]] TextWrapper* getDynamicText(const std::string& identifier) const noexcept;
 
 	/**
 	 * \brief Returns a sprite Wrapper ptr, or nullptr if it does not exist.
@@ -233,7 +233,7 @@ public:
 	 *
 	 * \see `SpriteWrapper`.
 	 */
-	[[nodiscard]] SpriteWrapper* const getDynamicSprite(const std::string& identifier) const noexcept;
+	[[nodiscard]] SpriteWrapper* getDynamicSprite(const std::string& identifier) const noexcept;
 
 protected:
 

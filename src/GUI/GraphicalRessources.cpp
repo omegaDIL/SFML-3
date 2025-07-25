@@ -194,14 +194,14 @@ void TextWrapper::removeFont(const std::string& name) noexcept
 	s_accessToFonts.erase(mapIterator); // Then, the accessing item within the map.
 }
 
-sf::Font* const TextWrapper::getFont(const std::string& name) noexcept
+sf::Font* TextWrapper::getFont(const std::string& name) noexcept
 {
 	auto mapIterator{ s_accessToFonts.find(name) };
 
 	if (mapIterator != s_accessToFonts.end()) [[unlikely]]
 		return nullptr;
 
-		return &*mapIterator->second;
+	return &*mapIterator->second;
 }
 
 
@@ -370,7 +370,7 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 	s_accessToTextures.erase(mapIterator); // Then, the accessing item within the map.
 }
 
-TextureHolder* const SpriteWrapper::getTexture(const std::string& name) noexcept
+TextureHolder* SpriteWrapper::getTexture(const std::string& name) noexcept
 {
 	auto mapIterator{ s_accessToTextures.find(name) };
 

@@ -100,7 +100,7 @@ public:
 	 * \brief Adds a button to the interface by turning a drawable into a button. Can also replace it.
 	 * If no text nor sprite has that identifier, the button will nervertheless be added, at which point 
 	 * it will have an effect and become active. If both a sprite and a text have the same identifier,
-	 * the button is added to both of them, and will be deleted when the first of them is.
+	 * the button is added to both of them, and will be deleted when both of them are.
 	 * \complexity O(1).
 	 *
 	 * \param[in] identifier: The id of the text you want to turn into a button
@@ -110,7 +110,7 @@ public:
 	 *		 of arguments. 
 	 * \warning Asserts if the identifier is empty.
 	 */
-	void addButton(std::string const& identifier, InteractiveFunction function = [](InteractiveInterface*){}) noexcept;
+	void addButton(const std::string& identifier, InteractiveFunction function = [](InteractiveInterface*){}) noexcept;
 
 	/**
 	 * \brief Returns a ptr to the button's function, or nullptr if it does not exist.
@@ -122,13 +122,19 @@ public:
 	 *
 	 * \warning Asserts if the identifier is empty.
 	 */
-	[[nodiscard]] InteractiveFunction* const getButton(std::string const& identifier) noexcept;
+	[[nodiscard]] InteractiveFunction* getButton(const std::string& identifier) const noexcept;
 
 	void setWritingText(const std::string& identifier, WritableFunction function = [](InteractiveInterface*, char32_t&, std::string&){}) noexcept;
 
-	[[nodiscard]] TextWrapper* const getWritingText() const noexcept;
+	[[nodiscard]] inline TextWrapper* getWritingText() const noexcept
+	{
+		return m_writingText;
+	}
 
-	[[nodiscard]] WritableFunction* const getWritingFunction() const noexcept;
+	[[nodiscard]] inline WritableFunction* getWritingFunction() const noexcept
+	{
+		return &m_writingFunction;
+	}
 
 
 	static void textEntered(BasicInterface* activeGUI, char32_t unicodeValue) noexcept;

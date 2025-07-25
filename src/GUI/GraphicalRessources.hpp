@@ -480,7 +480,7 @@ public:
 	 *
 	 * \return The address of the font.
 	 */
-	[[nodiscard]] static sf::Font* const getFont(const std::string& name) noexcept;
+	[[nodiscard]] static sf::Font* getFont(const std::string& name) noexcept;
 
 private:
 
@@ -892,7 +892,7 @@ public:
 	 *
 	 * \see `TextureHolder`.
 	 */
-	[[nodiscard]] static TextureHolder* const getTexture(const std::string& name) noexcept;
+	[[nodiscard]] static TextureHolder* getTexture(const std::string& name) noexcept;
 
 	/**
 	 * \brief Loads an existing texture from a file into the graphical ram. 

@@ -47,7 +47,7 @@ void MutableInterface::removeDynamicSprite(const std::string& identifier) noexce
 	removeDynamicElement(identifier, m_sprites, m_dynamicSprites, m_indexesForEachDynamicSprites); // Removes the text with the given identifier.
 }
 
-TextWrapper* const MutableInterface::getDynamicText(const std::string& identifier) const noexcept
+TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) const noexcept
 {
 	ENSURE_STRING_NOT_EMPTY(identifier);
 
@@ -59,7 +59,7 @@ TextWrapper* const MutableInterface::getDynamicText(const std::string& identifie
 	return &m_texts[mapIterator->second];
 }
 
-SpriteWrapper* const MutableInterface::getDynamicSprite(const std::string& identifier) const noexcept
+SpriteWrapper* MutableInterface::getDynamicSprite(const std::string& identifier) const noexcept
 {
 	ENSURE_STRING_NOT_EMPTY(identifier);
 
@@ -68,7 +68,7 @@ SpriteWrapper* const MutableInterface::getDynamicSprite(const std::string& ident
 	if (mapIterator == m_dynamicSprites.end())
 		return nullptr;
 
-	return &m_sprites[mapIterator->second];
+	return &(m_sprites[mapIterator->second]);
 }
 
 } // gui namespace

@@ -236,22 +236,6 @@ public:
 
 protected:
 
-	/**
-	 * \brief Scales and repositions all window' interfaces drawables after resizement.
-	 * 
-	 * \param[in] window: The window which was resized, and for which the interfaces will be resized.
-	 * \param[in] windowScaleFactor The per-axis scaling factor (x and y) of the window size.
-	 * \param[in] relativeMinAxisScale The ratio between the new and old smallest window axis.
-	 *            For example, if the window was resized from (1000, 500) to (750, 1000),
-	 *            the scale factor is (0.75, 2), and the smallest axis ratio is 500 / 750 = 0.67
-	 *            This helps to scale elements uniformly based on the smaller dimension.
-	 * 
-	 * \warning The program asserts if the window is nullptr.
-	 * \warning The program asserts if previous size is set to 0.
-	 * \warning The program asserts if relativeMinAxisScale is set to 0.
-	 */
-	static void proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
-
 	/// Pointer to the window.
 	mutable sf::RenderWindow* m_window;
 	/// Collection of texts in the interface.
@@ -264,6 +248,23 @@ protected:
 	unsigned int m_relativeScalingDefinition;
 
 private:
+
+	/**
+	 * \brief Scales and repositions all window' interfaces drawables after resizement.
+	 *
+	 * \param[in] window: The window which was resized, and for which the interfaces will be resized.
+	 * \param[in] windowScaleFactor The per-axis scaling factor (x and y) of the window size.
+	 * \param[in] relativeMinAxisScale The ratio between the new and old smallest window axis.
+	 *            For example, if the window was resized from (1000, 500) to (750, 1000),
+	 *            the scale factor is (0.75, 2), and the smallest axis ratio is 500 / 750 = 0.67
+	 *            This helps to scale elements uniformly based on the smaller dimension.
+	 *
+	 * \warning The program asserts if the window is nullptr.
+	 * \warning The program asserts if previous size is set to 0.
+	 * \warning The program asserts if relativeMinAxisScale is set to 0.
+	 */
+	static void proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
+
 
 	/// Collection of all interfaces to perform resizing. Stored by window.
 	static std::unordered_multimap<sf::RenderWindow*, BasicInterface*> s_allInterfaces;
