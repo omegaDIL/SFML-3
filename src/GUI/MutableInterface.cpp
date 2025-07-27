@@ -68,7 +68,7 @@ SpriteWrapper* MutableInterface::getDynamicSprite(const std::string& identifier)
 	if (mapIterator == m_dynamicSprites.end())
 		return nullptr;
 
-	return &(m_sprites[mapIterator->second]);
+	return &m_sprites[mapIterator->second];
 }
 
 } // gui namespace
