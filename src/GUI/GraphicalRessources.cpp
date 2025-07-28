@@ -3,12 +3,6 @@
 namespace gui
 {
 
-std::list<sf::Font> TextWrapper::s_allFonts{};
-std::unordered_map<std::string, std::list<sf::Font>::iterator> TextWrapper::s_accessToFonts{};
-std::list<TextureHolder> SpriteWrapper::s_allTextures{};
-std::unordered_map<std::string, std::list<TextureHolder>::iterator> SpriteWrapper::s_accessToTextures;
-std::unordered_map<std::list<TextureHolder>::iterator, bool> SpriteWrapper::s_allUniqueTextures;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Transformable` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +234,7 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
 	: TransformableWrapper{}, m_wrappedSprite{ nullptr }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
 {
-	sf::Texture* usedTexture{ getTexture(textureName)->actualTexture.get() };
+	sf::Texture* usedTexture{ getTexture(textureName) };
 
 	if (usedTexture == nullptr) [[unlikely]]
 		throw std::invalid_argument{ "This name is not affiliate with any texture" };
@@ -370,21 +364,26 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 	s_accessToTextures.erase(mapIterator); // Then, the accessing item within the map.
 }
 
-TextureHolder* SpriteWrapper::getTexture(const std::string& name) noexcept
+sf::Texture* SpriteWrapper::getTexture(const std::string& name) noexcept
 {
 	auto mapIterator{ s_accessToTextures.find(name) };
 
 	if (mapIterator == s_accessToTextures.end())
 		return nullptr;
 
-	return &*mapIterator->second;
+	return mapIterator->second->actualTexture.get();
 }
 
 bool SpriteWrapper::loadTexture(const std::string& name, bool failingImpliesRemoval)
 {
-	TextureHolder* textureHolder{ getTexture(name) };
+	auto mapIterator{ s_accessToTextures.find(name) };
+
+	if (mapIterator == s_accessToTextures.end())
+		return false;
+
+	TextureHolder* textureHolder{ &*mapIterator->second };
 	
-	if (textureHolder == nullptr || textureHolder->fileName == "")
+	if (textureHolder->fileName == "")
 		return false; // TextureHolder was not found or no file name provided: loading impossible.
 	if (textureHolder->actualTexture != nullptr)
 		return true; // Already loaded.
@@ -405,9 +404,14 @@ bool SpriteWrapper::loadTexture(const std::string& name, bool failingImpliesRemo
 
 bool SpriteWrapper::unloadTexture(const std::string& name) noexcept
 {
-	TextureHolder* textureHolder{ getTexture(name) };
+	auto mapIterator{ s_accessToTextures.find(name) };
+
+	if (mapIterator == s_accessToTextures.end())
+		return false;
+
+	TextureHolder* textureHolder{ &*mapIterator->second };
 	
-	if (textureHolder == nullptr || textureHolder->fileName == "")
+	if (textureHolder->fileName == "")
 		return false; // TextureHolder was not found or no file name provided: loading would be impossible afterwards.
 	if (textureHolder->actualTexture == nullptr)
 		return true; // Already unloaded.

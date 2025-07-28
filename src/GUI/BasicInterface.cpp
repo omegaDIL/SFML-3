@@ -4,8 +4,6 @@
 namespace gui
 {
 
-std::unordered_multimap<sf::RenderWindow*, BasicInterface*> BasicInterface::s_allInterfaces{};
-
 BasicInterface::BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition)
 	: m_window{ window }, m_texts{}, m_sprites{}, m_relativeScalingDefinition{ relativeScalingDefinition }
 {

@@ -16,13 +16,6 @@
 #include <string>
 #include <unordered_map>
 
-#ifndef NDEBUG 
-#define ENSURE_STRING_NOT_EMPTY(string) \
-	assert(!(string).empty() && "ENSURE_STRING_NOT_EMPTY failed: string is empty.")
-#else
-#define ENSURE_STRING_NOT_EMPTY()
-#endif
-
 namespace gui
 {
 	
@@ -109,7 +102,6 @@ public:
 	 *       for the class.
 	 * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
 	 *		 a similar identifier.
-	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \pre   A font should have been loaded with the name you gave.
 	 * \post  The correct font will be used.
@@ -120,8 +112,6 @@ public:
 	template<Ostreamable T>
 	void addDynamicText(const std::string& identifier, const T& content, sf::Vector2f pos, sf::Color color = sf::Color::White, unsigned int characterSize = 30u, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
 	{
-		ENSURE_STRING_NOT_EMPTY(identifier);
-
 		if (m_dynamicTexts.find(identifier) != m_dynamicTexts.end())
 			removeDynamicText(identifier);
 
@@ -148,7 +138,6 @@ public:
 	 *       for the class.
 	 * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
 	 *		 a similar identifier.
-	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \pre   A texture should have loaded with the name you gave.
 	 * \pre   It should not be already reserved.
@@ -177,7 +166,6 @@ public:
 	 *       for the class.
 	 * \note Ids must be unique between texts, and between sprites. But one text and one sprite can have
 	 *		 a similar identifier.
-	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \see `SpriteWrapper`, `addSprite`.
 	 */
@@ -189,8 +177,6 @@ public:
 	 *
 	 * \param[in] name: The identifier of the text.
 	 *
-	 * \warning Asserts if the identifier is empty.
-	 *
 	 * \see `removeDynamicSprite`.
 	 */
 	virtual void removeDynamicText(const std::string& identifier) noexcept;
@@ -200,8 +186,6 @@ public:
 	 * \complexity O(1).
 	 *
 	 * \param[in] name: The identifier of the sprite.
-	 *
-	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \see `removeDynamicText`.
 	 */
@@ -214,12 +198,10 @@ public:
 	 * \param[in] identifier: The identifier of the text.
 	 *
 	 * \return The address of the text.
-	 * 
-	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \see `TextWrapper`.
 	 */
-	[[nodiscard]] TextWrapper* getDynamicText(const std::string& identifier) const noexcept;
+	[[nodiscard]] TextWrapper* getDynamicText(const std::string& identifier) noexcept;
 
 	/**
 	 * \brief Returns a sprite Wrapper ptr, or nullptr if it does not exist.
@@ -228,12 +210,10 @@ public:
 	 * \param[in] identifier: The identifier of the sprite.
 	 *
 	 * \return The address of the sprite.
-	 * 
-	 * \warning Asserts if the identifier is empty.
 	 *
 	 * \see `SpriteWrapper`.
 	 */
-	[[nodiscard]] SpriteWrapper* getDynamicSprite(const std::string& identifier) const noexcept;
+	[[nodiscard]] SpriteWrapper* getDynamicSprite(const std::string& identifier) noexcept;
 
 protected:
 

@@ -5,8 +5,6 @@ namespace gui
 
 void MutableInterface::addDynamicSprite(const std::string& identifier, const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
 {
-	ENSURE_STRING_NOT_EMPTY(identifier);
-
 	if (m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
 		removeDynamicText(identifier);
 
@@ -17,8 +15,6 @@ void MutableInterface::addDynamicSprite(const std::string& identifier, const std
 
 void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White)
 {
-	ENSURE_STRING_NOT_EMPTY(identifier);
-
 	if (m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
 		removeDynamicText(identifier);
 
@@ -29,8 +25,6 @@ void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Textu
 
 void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
 {
-	ENSURE_STRING_NOT_EMPTY(identifier);
-
 	if (getDynamicText(identifier) == nullptr)
 		return;
 
@@ -39,18 +33,14 @@ void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
 
 void MutableInterface::removeDynamicSprite(const std::string& identifier) noexcept
 {
-	ENSURE_STRING_NOT_EMPTY(identifier);
-
 	if (getDynamicSprite(identifier) == nullptr)
 		return;
 
 	removeDynamicElement(identifier, m_sprites, m_dynamicSprites, m_indexesForEachDynamicSprites); // Removes the text with the given identifier.
 }
 
-TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) const noexcept
+TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) noexcept
 {
-	ENSURE_STRING_NOT_EMPTY(identifier);
-
 	auto mapIterator{ m_dynamicTexts.find(identifier) };
 
 	if (mapIterator == m_dynamicTexts.end())
@@ -59,10 +49,8 @@ TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) con
 	return &m_texts[mapIterator->second];
 }
 
-SpriteWrapper* MutableInterface::getDynamicSprite(const std::string& identifier) const noexcept
+SpriteWrapper* MutableInterface::getDynamicSprite(const std::string& identifier) noexcept
 {
-	ENSURE_STRING_NOT_EMPTY(identifier);
-
 	auto mapIterator{ m_dynamicSprites.find(identifier) };
 
 	if (mapIterator == m_dynamicSprites.end())

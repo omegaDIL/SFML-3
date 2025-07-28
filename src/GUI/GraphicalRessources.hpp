@@ -489,9 +489,9 @@ private:
 
 
 	/// Contains all loaded fonts
-	static std::list<sf::Font> s_allFonts; 
+	inline static std::list<sf::Font> s_allFonts{};
 	/// Allows to find fonts with a name in O(1) time complexity.
-	static std::unordered_map<std::string, std::list<sf::Font>::iterator> s_accessToFonts;
+	inline static std::unordered_map<std::string, std::list<sf::Font>::iterator> s_accessToFonts{};
 };
 
 
@@ -520,35 +520,6 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * \brief Used within the sprite wrapper to represent a texture.
- * The pointer to the texture allows the user to have it set to nullptr to free memory whenever he
- * wants to reduce memory usage. The file name contains the name of the file where the texture is
- * stored, within the assets folder.
- * 
- * \note You should not unload a texture that has no file name attached to it, as it might be not
- *		 loadable after.
- * 
- * \see `SpriteWrapper`, `sf::Texture`. 
- */
-struct TextureHolder
-{
-	std::unique_ptr<sf::Texture> actualTexture;
-	std::string fileName;
-};
-
-/**
- * \brief Represents a ressource for a sprite to use, with a texture and a rectangle. 
- * Does not own the texture.
- * 
- * \see `SpriteWrapper`, `TextureHolder`.
- */
-struct TextureInfo
-{
-	TextureHolder* texture;
-	sf::IntRect displayedTexturePart;
-};
 
 /**
  * \brief A wrapper for `sf::Sprite` that simplifies its use.
@@ -841,7 +812,8 @@ public:
 	 *
 	 * \note If you replace a texture, the reserved state is not updated. A reserved texture belongs to
 	 *		 its sprite instance and you can't "take it away" once specified, only replace it.
-	 * \warning Do not replace a texture which is currently set to a `sf::Sprite`.
+	 * \warning Do not replace a texture which is currently set to a `sf::Sprite`, but it could be contained
+	 *			within a texture vector.
 	 *
 	 * \pre The file name should be a correct path to a texture within the assets folder.
 	 * \post The texture will be loaded.
@@ -863,7 +835,8 @@ public:
 	 * \note Because only a `sf::Texture` was given without a file name, the texture can't be unloaded.
 	 * \note If you replace a texture, the reserved state is not updated. A reserved texture belongs to
 	 *		 its sprite instance and you can't "take it away" once specified, only replace it.
-	 * \warning Do not replace a texture which is currently set to a `sf::Sprite`.
+	 * \warning Do not replace a texture which is currently set to a `sf::Sprite`, but it could be contained
+	 *			within a texture vector.
 	 *
 	 * \see `loadTextureFromFile`, `addTexture`.
 	 */
@@ -892,7 +865,7 @@ public:
 	 *
 	 * \see `TextureHolder`.
 	 */
-	[[nodiscard]] static TextureHolder* getTexture(const std::string& name) noexcept;
+	[[nodiscard]] static sf::Texture* getTexture(const std::string& name) noexcept;
 
 	/**
 	 * \brief Loads an existing texture from a file into the graphical ram. 
@@ -939,6 +912,36 @@ public:
 
 private:
 
+	/**
+	 * \brief Used within the sprite wrapper to represent a texture.
+	 * The pointer to the texture allows the user to have it set to nullptr to free memory whenever he
+	 * wants to reduce memory usage. The file name contains the name of the file where the texture is
+	 * stored, within the assets folder.
+	 *
+	 * \note You should not unload a texture that has no file name attached to it, as it might be not
+	 *		 loadable after.
+	 *
+	 * \see `SpriteWrapper`, `sf::Texture`.
+	 */
+	struct TextureHolder
+	{
+		std::unique_ptr<sf::Texture> actualTexture;
+		std::string fileName;
+	};
+
+	/**
+	 * \brief Represents a ressource for a sprite to use, with a texture and a rectangle.
+	 * Does not own the texture.
+	 *
+	 * \see `SpriteWrapper`, `TextureHolder`.
+	 */
+	struct TextureInfo
+	{
+		TextureHolder* texture;
+		sf::IntRect displayedTexturePart;
+	};
+
+
 	/// What `sf::Sprite` the wrapper is being used for.
 	std::unique_ptr<sf::Sprite> m_wrappedSprite;
 
@@ -950,11 +953,11 @@ private:
 	std::vector<std::string> m_uniqueTextures;
 
 	/// Contains all textures, whether they are used or not/loaded or not.
-	static std::list<TextureHolder> s_allTextures;
+	inline static std::list<TextureHolder> s_allTextures{};
 	/// Maps identifiers to textures for quick access.
-	static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures; 
+	inline static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures{};
 	/// Textures that can be used just once by a single instance.
-	static std::unordered_map<std::list<TextureHolder>::iterator, bool> s_allUniqueTextures;
+	inline static std::unordered_map<std::list<TextureHolder>::iterator, bool> s_allUniqueTextures{};
 };
 
 

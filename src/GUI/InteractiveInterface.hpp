@@ -14,6 +14,7 @@
 #include "MutableInterface.hpp"
 #include <SFML/Graphics.hpp>
 #include <functional>
+#include <unordered_map>
 #include <string>
 #include <cstdint>
 
@@ -24,9 +25,6 @@ namespace gui
  * \brief Manages an interface in which the user can add texts/sprites buttons or write.
  * 
  * 
- * \note Whereas `MutableInterface` adds new possibilities like modifing items, this class adds common and
- *		 pre-made features on top on `MutableInterface`. Everything added by this class could be rebuilt
- *		 from that base class.
  * \note This class stores UI componenents; it will use a considerable amount of memory.
  * \warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *			The progam will assert otherwise. 
@@ -41,17 +39,17 @@ class InteractiveInterface : public MutableInterface
 {
 public:  
 
-	struct InteractiveType
+	struct Item
 	{
-		inline static const uint8_t None{ 0 };
-		inline static const uint8_t Button{ 1 };
-	};
+		struct Type 
+		{
+			inline static const uint8_t none{ 0 };
+			inline static const uint8_t button{ 1 };
+		};
 
-	struct InteractiveItem
-	{
 		InteractiveInterface* gui;
 		uint8_t type;
-		std::string* identfier;
+		std::string const* identfier;
 	};
 
 	using InteractiveFunction = std::function<void(InteractiveInterface*)>;
@@ -80,9 +78,7 @@ public:
 	 * \throw LoadingGraphicalRessourceFailure Strong exception guarrantee, but no text can use the
 	 *		  default font and you'll have to load and use your own font.
 	 */
-	inline explicit InteractiveInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080)
-		: MutableInterface{ window, m_relativeScalingDefinition }
-	{}
+	explicit InteractiveInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080);
 
 	InteractiveInterface() noexcept = delete;
 	InteractiveInterface(InteractiveInterface const&) noexcept = delete;
@@ -92,15 +88,30 @@ public:
 	virtual ~InteractiveInterface() noexcept = default;
 
 
+	/**
+	 * \brief Removes a text from the GUI. No effet if not there.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The identifier of the text.
+	 *
+	 * \see `removeDynamicSprite`.
+	 */
 	virtual void removeDynamicText(const std::string& identifier) noexcept override;
 	
+	/**
+	 * \brief Removes a sprite from the GUI. No effet if not there.
+	 * \complexity O(1).
+	 *
+	 * \param[in] name: The identifier of the sprite.
+	 *
+	 * \see `removeDynamicText`.
+	 */
 	virtual void removeDynamicSprite(const std::string& identifier) noexcept override;
 
 	/**
-	 * \brief Adds a button to the interface by turning a drawable into a button. Can also replace it.
-	 * If no text nor sprite has that identifier, the button will nervertheless be added, at which point 
-	 * it will have an effect and become active. If both a sprite and a text have the same identifier,
-	 * the button is added to both of them, and will be deleted when both of them are.
+	 * \brief Adds a button to the interface by turning a transformables into a button. 
+	 * It can also replace an existing button. Can be added to both a sprite and a text if the identifiers
+	 * match. Will each be removed independently when their according transformables are deleted.
 	 * \complexity O(1).
 	 *
 	 * \param[in] identifier: The id of the text you want to turn into a button
@@ -108,7 +119,8 @@ public:
 	 * 
 	 * \note Not very suitable for perfomance critical code, nor complex functions that require a lot
 	 *		 of arguments. 
-	 * \warning Asserts if the identifier is empty.
+	 * 
+	 *  \see `InteractiveFunction`.
 	 */
 	void addButton(const std::string& identifier, InteractiveFunction function = [](InteractiveInterface*){}) noexcept;
 
@@ -119,82 +131,110 @@ public:
 	 * \param[in] identifier: The identifier of the button.
 	 *
 	 * \return The function ptr.
-	 *
-	 * \warning Asserts if the identifier is empty.
+	 * 
+	 * \see `addButton`.
 	 */
-	[[nodiscard]] InteractiveFunction* getButton(const std::string& identifier) const noexcept;
+	[[nodiscard]] InteractiveFunction* getButton(const std::string& identifier) noexcept;
 
+	/**
+	 * \brief Sets the text that will be edited once the user types a character.
+	 * \complexity O(1).
+	 * 
+	 * \param[in] identifier: The dynamic text that will be the writable text.
+	 * \param[in] function: A function that can modify the entry, and/or what was already set. The
+	 *			  function takes the current interactive interface as a ptr, the new character (char32_t), and
+	 *			  the whole string (std::string) before adding that character to that string. The string and
+	 *			  the character are taken by reference (not const) so you are able to edit them. Once the
+	 *			  function is called, the character is added.
+	 *
+	 * \see `WritableFunction`.
+	 */
 	void setWritingText(const std::string& identifier, WritableFunction function = [](InteractiveInterface*, char32_t&, std::string&){}) noexcept;
 
-	[[nodiscard]] inline TextWrapper* getWritingText() const noexcept
+	inline void noWriting() noexcept
+	{
+		updateWritingText(exitWritingCharacter);
+	}
+
+	/**
+	 * \brief Returns the text that is being written on.
+	 * \complexity O(1).
+	 *
+	 * \return a pointer to that text, or nullptr.
+	 */
+	[[nodiscard]] inline TextWrapper* getWritingText() noexcept
 	{
 		return m_writingText;
 	}
 
-	[[nodiscard]] inline WritableFunction* getWritingFunction() const noexcept
-	{
-		return &m_writingFunction;
-	}
-
-
-	static void textEntered(BasicInterface* activeGUI, char32_t unicodeValue) noexcept;
 
 	/**
-	 * \brief Updates the hovered element when the mouse mouve if the gui is interactive.
+	 * \brief Updates the hovered element when the mouse mouve, if the gui is interactive.
 	 * \details You might not want to call this function every time the mouse moved. You should
 	 * 			only call it when you want to update the hovered element. For example you could want to keep
 	 *			the same hovered element as long as the mouse is pressed.
 	 * \complexity O(1), if the interactive element is the same as previously.
-	 * \complexity O(N), where N is the number of interactable elements in your active interface.
+	 * \complexity O(N), otherwise; where N is the number of interactable elements in your active interface.
 	 *
-	 * \param[out] activeGUI: The GUI tu update.
+	 * \param[out] activeGUI: The GUI to update. No effect if not interactive
 	 *
-	 * \return The type + the id of the element that is currently hovered.
+	 * \return The gui address + id + type of the element that is currently hovered.
+	 * 
+	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem updateHovered(BasicInterface* activeGUI) noexcept;
-
-	/**
-	 * \brief Tells the GUI that the mouse is pressed.
-	 * \complexity O(1).
-	 *
-	 * \param[out] activeGUI: The GUI to update.
-	 *
-	 * \return The type + the id of the element that is currently hovered. Empty
-	 *
-	 * \note No effect if the active GUI is not an interactable GUI or nothing is hovered.
-	 * \note You should not call this function when the mouse pressed EVENT is triggered. Instead, you
-	 * 		 should call it as long as the mouse is pressed and if there's an event (the first frame it/
-	 *		 is pressed/the mouse moved).
-	 */
-	static InteractiveItem mousePressed(BasicInterface* activeGUI) noexcept;
+	static Item updateHovered(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the mouse is released.
 	 * \complexity O(1).
 	 *
-	 * \param[out] activeGUI: The active GUI to update.
+	 * \param[out] activeGUI: The GUI to update. No effect if not interactive
 	 *
-	 * \return The type + the id of the element that is currently hovered.
-	 *
-	 * \note No effect if the active GUI is not an interactable GUI or nothing is hovered.
-	 * \note You should call this function when the mouse released event is triggered.
+	 * \return The gui address + id + type of the element that is currently hovered.
+	 * 
+	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem mouseUnpressed(BasicInterface* activeGUI) noexcept;
+	static Item mouseUnpressed(BasicInterface* activeGUI) noexcept;
+
+	/**
+	 * \brief Enters a character into the writing text. Can remove last character if backspace is entered,
+	 *		  reset the writing text if the exit character is entered.
+	 * \complexity O(1).
+	 * 
+	 * \param[out] activeGUI: The current interface that might be interactive.
+	 * \param[in]  unicodeValue: The unicode value of the character entered.
+	 * 
+	 * \warning Asserts if activeGUI is nullptr.
+	 */
+	static void textEntered(BasicInterface* activeGUI, char32_t unicodeValue) noexcept;
+
+	inline static char32_t exitWritingCharacter{ 0x001B }; // Set by default on escape character
+	inline static std::string emptinessWritingCharacters{ "0" }; // Set by default on escape character
 
 protected:
-
-	std::vector<TextWrapper*> m_frequentInteractiveTexts; // Collection of texts ptr that are usually searched.
-	std::vector<SpriteWrapper*> m_frequentInteractiveSprites; // Collection of sprites ptr that are usually searched.
-
-
-	static InteractiveItem s_hoveredItem;
+	
+	inline static Item s_hoveredItem{};
 
 private:
+	
+	/**
+	 * \brief Enters a character into the writing text. Can remove last character if backspace is entered,
+	 *		  reset the writing text if the exit character is entered.
+	 * \complexity O(1).
+	 *
+	 * \param[in] character: The unicode value of the character entered.
+	 */
+	void updateWritingText(char32_t character) noexcept;
 
-	std::unordered_map<std::string, InteractiveFunction> m_buttons; // Collection of buttons in the interface.
+
+	std::unordered_map<std::string, InteractiveFunction> m_interactivesTexts; // Collection of buttons in the interface.
+	std::unordered_map<std::string, InteractiveFunction> m_interactivesSprites; // Collection of buttons in the interface.
 
 	TextWrapper* m_writingText;
 	WritableFunction m_writingFunction;
+
+
+	inline static const std::string writingCursorIdentifier{ "__wc" };
 };
 
 } // gui namespace
