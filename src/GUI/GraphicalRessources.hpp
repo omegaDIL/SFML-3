@@ -37,7 +37,7 @@
 #endif
 
  /**
-  * \brief An exception thrown for graphical errors when loading ressources.
+  * \brief An exception for graphical errors when the loading fails.
   *
   * \see `std::runtime_error`.
   */
@@ -73,22 +73,23 @@ namespace gui
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * \brief An enum that represents the alignment of a `sf::Transformable`.
- * For each axis, horizontal and vertical, there are three different positions: Top/Left, Center,
- * Bottom/Right. The "y axis" takes the first two bits, and the "x axis" takes the next two bits.
- * The Center value is 0b0000, which tells that both x and y is at the center since both of the two
- * pair of bits are set to 0. If you specify a "x axis" alignment, the "y axis" is set to be the
- * center. You can use the operator | to combine a "x axis" alignment with a "y axis" alignment. 
- * 
- * \note With 2 bits you have 4 possibilities, however this enum only uses 3 per pair. Therefore one
- *		 per pair has to use one more "possibility" in terms of binary representation. In this case, it
- *		 is left and top.
- *  
- * \see `operator|`, `computeNewOrigin`.
+ * \brief Enum representing the alignment of a `sf::Transformable` object.
+ * The alignment is defined separately for each axis—horizontal (x-axis) and vertical (y-axis)—with
+ * three possible positions for each: Top/Left/Center, and Bottom/Right/Center. The alignment encoding
+ * uses two bits per axis: the lower two bits for the y-axis, and the next two bits for the x-axis
+ * The default value `Center` is encoded as `0b0000`, meaning both axes are centered (both bit pairs are 0).
+ * If you specify an alignment for only one axis (e.g., Left or Top), the other axis defaults to Center.
+ * You can combine horizontal and vertical alignments using the bitwise OR operator (`|`).
+ *
+ * \note While 2 bits provide 4 possible values, this enum only uses 3 per axis. As a result, one position
+ *       per axis (Top and Left) uses the remaining binary pattern not shared with the others, and 
+ *		 therefore are prefered if imcompatible alignment are set.
+ *
+ * \see `operator|`, `computeNewOrigin`
  */
 enum class Alignment : uint8_t
 {
-	Center = 0, // Center is the default value for both x and y axis.
+	Center = 0,
 
 	Bottom = 1 << 0,
 	Top = 1 << 1,
@@ -130,9 +131,8 @@ sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept
  * inheritance) to remove/add functions. First, it redefines the basic functions of `sf::Transformable`
  * like `move`, `scale`, `rotate`, `setPosition`... Except for `setOrigin`, because the wrapper
  * replaces it with `setAlignment` (as a pure virtual function) which should act as a `setOrigin`
- * function and should take into account the alignment. The wrapper also adds the function `resize`
- * that can be called each time the event window resize was triggered. Finally, a boolean that tells
- * whether or not the transformable should be drawn (as they are usually coupled with a `sf::Drawable`)
+ * function and should take into account the alignment. Finally, a boolean that tells whether or not
+ * the transformable should be drawn (as they are usually coupled with a `sf::Drawable`)
  * 
  * \note    This class is pure virtual. The functions are `setAlignment` and `setColor`.
  * \note    You should implement the getter functions for the `sf::Transformable`.
@@ -232,19 +232,6 @@ public:
 	 */
 	virtual void setColor(sf::Color color) noexcept = 0;
 
-	/**
-	 * \brief Resizes and repositions the `sf::Transformable`, e.g., when the window is resized.
-	 * Avoid distortion. If you actually want distortion, you can't use this function.
-	 *
-	 * \param[in] windowScaleFactor The per-axis scaling factor (x and y) of the window size.
-	 * \param[in] relativeMinAxisScale The ratio between the new and old smallest window axis.
-	 *            For example, if the window was resized from (1000, 500) to (750, 1000),
-	 *            the scale factor is (0.75, 2), and the smallest axis ratio is 500 / 750 = 0.67
-	 *            This helps to scale elements uniformly based on the smaller dimension.
-	 */
-	void resized(sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
-
-
 	/// Tells if the element should be drawn.
 	bool hide; 
 
@@ -330,7 +317,7 @@ public:
 	 * \see `createFont`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
-	inline TextWrapper(const T& content, const std::string& fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Angle rot = sf::degrees(0))
+	inline TextWrapper(const T& content, const std::string& fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Angle rot = sf::degrees(0))
 		: TransformableWrapper{}, m_wrappedText{ nullptr }
 	{
 		sf::Font* usedFont{ getFont(fontName) };
@@ -402,7 +389,7 @@ public:
 	 * 
 	 * \note Some styles may not be available with your font.
 	 */
-	void setStyle(sf::Text::Style style) noexcept;
+	void setStyle(std::uint32_t style) noexcept;
 
 	/**
 	 * \brief Sets the `sf::Text`'s origin given alignment.
@@ -757,13 +744,13 @@ public:
 	 * \see `createTexture`, `loadTexture`, `unloadTexture`, `switchToNextTexture`.
 	 */
 	template<typename... Ts> requires (std::same_as<Ts, sf::IntRect> && ...)
-	bool addTexture(std::string name, Ts... rects)
+	bool addTexture(const std::string& name, Ts... rects)
 	{
 		auto mapAccessIterator{ s_accessToTextures.find(name) };
 		if (mapAccessIterator == s_accessToTextures.end()) [[unlikely]]
 			return false; // Texture not there.
 
-		auto mapUniqueIterator{ s_allUniqueTextures.find(mapAccessIterator->second) };
+		auto mapUniqueIterator{ s_allUniqueTextures.find(&*mapAccessIterator->second) };
 		if (mapUniqueIterator != s_allUniqueTextures.end() // is reserved.
 		&&  mapUniqueIterator->second == true // has already been claimed by an instance...
 		&&  std::find(m_uniqueTextures.begin(), m_uniqueTextures.end(), name) == m_uniqueTextures.end()) [[unlikely]] // ...but not by this one.
@@ -786,7 +773,7 @@ public:
 	 * \see Similar to the `addTexture` template overloaded function, with an IntRect that covers the
 	 *		whole texture since it has a size 0.
 	 */
-	inline bool addTexture(std::string name)
+	inline bool addTexture(const std::string& name)
 	{
 		return addTexture(name, sf::IntRect{});
 	}
@@ -957,7 +944,7 @@ private:
 	/// Maps identifiers to textures for quick access.
 	inline static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures{};
 	/// Textures that can be used just once by a single instance.
-	inline static std::unordered_map<std::list<TextureHolder>::iterator, bool> s_allUniqueTextures{};
+	inline static std::unordered_map<TextureHolder*, bool> s_allUniqueTextures{};
 };
 
 

@@ -3,7 +3,6 @@
 #include <optional>
 #include "GUI.hpp"
 #include "Save.hpp"
-#include "Utils.hpp"
 
 using SafeSaves::Save;
 
@@ -14,7 +13,9 @@ int main()
 	BGUI mainInterface{ &window };
 	BGUI* curInterface{ &mainInterface };
 
-	mainInterface.addText("Hello, World", window.getView().getCenter());
+	mainInterface.addText("World", window.getView().getCenter(), sf::Color::Red, 45U, "__default", gui::Alignment::Left | gui::Alignment::Bottom, sf::Text::Style::Italic | sf::Text::Style::Bold);
+	mainInterface.addText("uh", {300, 200}, sf::Color::Blue, 45U, "__default", gui::Alignment::Center, sf::Text::Style::Bold | sf::Text::Style::StrikeThrough, { 1.f, 3.5f }, sf::degrees(30));
+	mainInterface.addText("Hello,", window.getView().getCenter(), sf::Color::White, 30, "__default", gui::Alignment::Right | gui::Alignment::Top, sf::Text::Style::Italic | sf::Text::Style::Bold);
 
 	while (window.isOpen())
 	{

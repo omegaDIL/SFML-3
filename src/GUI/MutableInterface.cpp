@@ -13,7 +13,7 @@ void MutableInterface::addDynamicSprite(const std::string& identifier, const std
 	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = m_dynamicSprites.find(identifier); // Add the index to the vector of indexes for dynamic sprites.
 }
 
-void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White)
+void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
 {
 	if (m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
 		removeDynamicText(identifier);

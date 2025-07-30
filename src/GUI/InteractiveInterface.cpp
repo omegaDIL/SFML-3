@@ -4,7 +4,7 @@ namespace gui
 {
 
 InteractiveInterface::InteractiveInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition)
-	: MutableInterface{ window, m_relativeScalingDefinition }
+	: MutableInterface{ window, m_relativeScalingDefinition }, m_interactivesTexts{}, m_interactivesSprites{}, m_writingText{ nullptr }, m_writingFunction{ nullptr }
 {
 	std::string textureName{ "__plainGrey" }; 
 	if (SpriteWrapper::getTexture(textureName) == nullptr) [[unlikely]]
@@ -42,7 +42,7 @@ void InteractiveInterface::removeDynamicSprite(const std::string& identifier) no
 	MutableInterface::removeDynamicSprite(identifier);
 }
 
-void InteractiveInterface::addButton(const std::string& identifier, InteractiveFunction function) noexcept
+void InteractiveInterface::addButton(const std::string& identifier, ButtonFunction function) noexcept
 {
 	if (getDynamicSprite(identifier) != nullptr)
 		m_interactivesSprites[identifier] = function;
@@ -51,7 +51,7 @@ void InteractiveInterface::addButton(const std::string& identifier, InteractiveF
 		m_interactivesTexts[identifier] = std::move(function);
 }
 	
-InteractiveInterface::InteractiveFunction* InteractiveInterface::getButton(const std::string& identifier) noexcept
+InteractiveInterface::ButtonFunction* InteractiveInterface::getButton(const std::string& identifier) noexcept
 {
 	auto mapIteratorTexts{ m_interactivesTexts.find(identifier) };
 	if (mapIteratorTexts != m_interactivesTexts.end())
@@ -81,7 +81,7 @@ void InteractiveInterface::setWritingText(const std::string& identifier, Writabl
 	cursor->hide = false;
 }
 
-InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* activeGUI) noexcept
+InteractiveItem InteractiveInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2u cursorPos) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI);
 
@@ -92,22 +92,22 @@ InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* a
 		s_hoveredItem.type = 0;
 	};
 
-	setHovered(nullptr, nullptr, Item::Type::none);
+	setHovered(nullptr, nullptr, ItemType::none);
 
 	InteractiveInterface* gui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
 
 	if (gui == nullptr)
 		return s_hoveredItem;
 
-	sf::Vector2f mousePos{ static_cast<sf::Vector2f>(sf::Mouse::getPosition(*(gui->m_window))) };
+	sf::Vector2f cursorPosCasted{ static_cast<sf::Vector2f>(cursorPos) };
 	
 	for (auto& button : gui->m_interactivesSprites)
 	{
 		const std::string identifier{ button.first };
 
-		if (gui->getDynamicSprite(identifier)->getSprite().getGlobalBounds().contains(mousePos))
+		if (gui->getDynamicSprite(identifier)->getSprite().getGlobalBounds().contains(cursorPosCasted))
 		{
-			setHovered(gui, &button.first, Item::Type::button);
+			setHovered(gui, &button.first, ItemType::button);
 			return s_hoveredItem;
 		}
 	}
@@ -116,15 +116,17 @@ InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* a
 	{
 		const std::string identifier{ button.first };
 
-		if (gui->getDynamicText(identifier)->getText().getGlobalBounds().contains(mousePos))
+		if (gui->getDynamicText(identifier)->getText().getGlobalBounds().contains(cursorPosCasted))
 		{
-			setHovered(gui, &button.first, Item::Type::button);
+			setHovered(gui, &button.first, ItemType::button);
 			return s_hoveredItem;
 		}
 	}
+
+	return s_hoveredItem;
 }
 
-InteractiveInterface::Item InteractiveInterface::mouseUnpressed(BasicInterface* activeGUI) noexcept
+InteractiveItem InteractiveInterface::unpressed(BasicInterface* activeGUI) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI);
 
@@ -135,8 +137,12 @@ InteractiveInterface::Item InteractiveInterface::mouseUnpressed(BasicInterface* 
 	if (gui == nullptr || s_hoveredItem.gui != gui)
 		return s_hoveredItem;
 	
-	if (s_hoveredItem.type == Item::Type::button)
-		(*gui->getButton(*s_hoveredItem.identfier))(gui);
+	if (s_hoveredItem.type == ItemType::button)
+	{
+		auto function{ (*gui->getButton(*s_hoveredItem.identfier)) };
+		if (function != nullptr)
+			function(gui);
+	}
 
 	return s_hoveredItem;
 }

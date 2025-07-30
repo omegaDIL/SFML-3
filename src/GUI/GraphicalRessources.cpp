@@ -82,23 +82,14 @@ void TransformableWrapper::setRotation(sf::Angle pos) noexcept
 	m_transformable->setRotation(pos);
 }
 
-void TransformableWrapper::resized(sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept
-{
-	ENSURE_VALID_PTR(m_transformable);
-	m_transformable->scale(sf::Vector2f{ relativeMinAxisScale, relativeMinAxisScale });
-
-	sf::Vector2f previousPos{ m_transformable->getPosition() };
-	m_transformable->setPosition(sf::Vector2f{ windowScaleFactor.x * previousPos.x, windowScaleFactor.x * previousPos.x });
-}
-
 void TransformableWrapper::create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment)
 {
-	if (m_transformable == nullptr) [[unlikely]]
+	if (transformable == nullptr) [[unlikely]]
 		throw std::invalid_argument{ "Wrapped sf::Transformable was nullptr when passed as argument\n" };
 
 	m_transformable = transformable;
 	m_alignment = alignment;
-	hide = true;
+	hide = false;
 
 	setPosition(pos);
 	setScale(scale);
@@ -135,7 +126,7 @@ void TextWrapper::setColor(sf::Color color) noexcept
 	m_wrappedText->setFillColor(color);
 }
 
-void TextWrapper::setStyle(sf::Text::Style style) noexcept
+void TextWrapper::setStyle(std::uint32_t style) noexcept
 {
 	m_wrappedText->setStyle(style);
 }
@@ -192,7 +183,7 @@ sf::Font* TextWrapper::getFont(const std::string& name) noexcept
 {
 	auto mapIterator{ s_accessToFonts.find(name) };
 
-	if (mapIterator != s_accessToFonts.end()) [[unlikely]]
+	if (mapIterator == s_accessToFonts.end()) [[unlikely]]
 		return nullptr;
 
 	return &*mapIterator->second;
@@ -256,7 +247,7 @@ SpriteWrapper::~SpriteWrapper() noexcept
 	{
 		auto mapAccessIterator{ s_accessToTextures.find(reservedTexture) };
 		s_allTextures.erase(mapAccessIterator->second); // Remove the actual texture from the list.
-		s_allUniqueTextures.erase(mapAccessIterator->second); // Remove the texture from the reserved map.
+		s_allUniqueTextures.erase(&*mapAccessIterator->second); // Remove the texture from the reserved map.
 		s_accessToTextures.erase(mapAccessIterator); // Remove the access toward the texture from the access map.
 	}
 
@@ -337,7 +328,7 @@ void SpriteWrapper::createTexture(const std::string& name, const std::string& fi
 	s_accessToTextures[name] = s_allTextures.begin();
 
 	if (shared == Reserved::Yes)
-		s_allUniqueTextures[s_allTextures.begin()] = false;
+		s_allUniqueTextures[&*s_allTextures.begin()] = false;
 
 	if (loadImmediately)
 		loadTexture(name, true); // True means we delete the texture if the loading fails.
@@ -357,7 +348,7 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 	auto mapIterator{ s_accessToTextures.find(name) };
 
 	if (mapIterator == s_accessToTextures.end() 
-	|| s_allUniqueTextures.find(mapIterator->second) != s_allUniqueTextures.end()) // If it is a unique texture.
+	|| s_allUniqueTextures.find(&*mapIterator->second) != s_allUniqueTextures.end()) // If it is a unique texture.
 		return;
 
 	s_allTextures.erase(mapIterator->second); // First, removing the actual texture.

@@ -8,8 +8,8 @@
  * \note These files depend on the SFML library.
  *********************************************************************/
 
-#ifndef InteractiveInterface_HPP
-#define InteractiveInterface_HPP
+#ifndef INTERACTIVEINTERFACE_HPP
+#define INTERACTIVEINTERFACE_HPP
 
 #include "MutableInterface.hpp"
 #include <SFML/Graphics.hpp>
@@ -20,6 +20,15 @@
 
 namespace gui
 {
+
+class InteractiveInterface;
+
+struct InteractiveItem
+{
+	InteractiveInterface* gui;
+	uint8_t type;
+	std::string const* identfier;
+};
 
 /**
  * \brief Manages an interface in which the user can add texts/sprites buttons or write.
@@ -39,20 +48,14 @@ class InteractiveInterface : public MutableInterface
 {
 public:  
 
-	struct Item
+	struct ItemType
 	{
-		struct Type 
-		{
-			inline static const uint8_t none{ 0 };
-			inline static const uint8_t button{ 1 };
-		};
-
-		InteractiveInterface* gui;
-		uint8_t type;
-		std::string const* identfier;
+		inline static const uint8_t none{ 0 };
+		inline static const uint8_t button{ 1 };
+		inline static const uint8_t other{ 2 };
 	};
 
-	using InteractiveFunction = std::function<void(InteractiveInterface*)>;
+	using ButtonFunction = std::function<void(InteractiveInterface*)>;
 	using WritableFunction = std::function<void(InteractiveInterface*, char32_t&, std::string&)>;
 
 
@@ -122,7 +125,7 @@ public:
 	 * 
 	 *  \see `InteractiveFunction`.
 	 */
-	void addButton(const std::string& identifier, InteractiveFunction function = [](InteractiveInterface*){}) noexcept;
+	void addButton(const std::string& identifier, ButtonFunction function = nullptr) noexcept;
 
 	/**
 	 * \brief Returns a ptr to the button's function, or nullptr if it does not exist.
@@ -134,7 +137,7 @@ public:
 	 * 
 	 * \see `addButton`.
 	 */
-	[[nodiscard]] InteractiveFunction* getButton(const std::string& identifier) noexcept;
+	[[nodiscard]] ButtonFunction* getButton(const std::string& identifier) noexcept;
 
 	/**
 	 * \brief Sets the text that will be edited once the user types a character.
@@ -149,7 +152,7 @@ public:
 	 *
 	 * \see `WritableFunction`.
 	 */
-	void setWritingText(const std::string& identifier, WritableFunction function = [](InteractiveInterface*, char32_t&, std::string&){}) noexcept;
+	void setWritingText(const std::string& identifier, WritableFunction function = nullptr) noexcept;
 
 	inline void noWriting() noexcept
 	{
@@ -177,15 +180,16 @@ public:
 	 * \complexity O(N), otherwise; where N is the number of interactable elements in your active interface.
 	 *
 	 * \param[out] activeGUI: The GUI to update. No effect if not interactive
+	 * \param[in]  cursorPos: The position of the mouse/cursor/touch event WITHIN the window.
 	 *
 	 * \return The gui address + id + type of the element that is currently hovered.
 	 * 
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static Item updateHovered(BasicInterface* activeGUI) noexcept;
+	static InteractiveItem updateHovered(BasicInterface* activeGUI, sf::Vector2u cursorPos) noexcept;
 
 	/**
-	 * \brief Tells the active GUI that the mouse is released.
+	 * \brief Tells the active GUI that the cursor is released.
 	 * \complexity O(1).
 	 *
 	 * \param[out] activeGUI: The GUI to update. No effect if not interactive
@@ -194,7 +198,7 @@ public:
 	 * 
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static Item mouseUnpressed(BasicInterface* activeGUI) noexcept;
+	static InteractiveItem unpressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Enters a character into the writing text. Can remove last character if backspace is entered,
@@ -213,7 +217,7 @@ public:
 
 protected:
 	
-	inline static Item s_hoveredItem{};
+	inline static InteractiveItem s_hoveredItem{};
 
 private:
 	
@@ -227,8 +231,8 @@ private:
 	void updateWritingText(char32_t character) noexcept;
 
 
-	std::unordered_map<std::string, InteractiveFunction> m_interactivesTexts; // Collection of buttons in the interface.
-	std::unordered_map<std::string, InteractiveFunction> m_interactivesSprites; // Collection of buttons in the interface.
+	std::unordered_map<std::string, ButtonFunction> m_interactivesTexts; // Collection of buttons in the interface.
+	std::unordered_map<std::string, ButtonFunction> m_interactivesSprites; // Collection of buttons in the interface.
 
 	TextWrapper* m_writingText;
 	WritableFunction m_writingFunction;
@@ -239,4 +243,4 @@ private:
 
 } // gui namespace
 
-#endif //InteractiveInterface_HPP
+#endif //INTERACTIVEINTERFACE_HPP

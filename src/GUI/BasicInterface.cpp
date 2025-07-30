@@ -126,30 +126,33 @@ void BasicInterface::draw() const noexcept
 			m_window->draw(sprite.getSprite());
 	for (auto const& text : m_texts)
 		if (!text.hide)
-			m_window->draw(text.getText());
+		{
+			sf::Text const& texte{ text.getText() };
+			m_window->draw(texte);
+		}
 }
 
-void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept
+void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, float relativeMinAxisScale) noexcept
 {	
 	ENSURE_VALID_PTR(resizedWindow);
-	ENSURE_NOT_ZERO(windowScaleFactor.x);
-	ENSURE_NOT_ZERO(windowScaleFactor.y);
 	ENSURE_NOT_ZERO(relativeMinAxisScale);
+
+	sf::Vector2f minScaling2f{ relativeMinAxisScale, relativeMinAxisScale };
 
 	auto interfaceRange{ s_allInterfaces.equal_range(resizedWindow) }; // All interfaces associated with the resized window.
 	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
 	{
 		auto* curInterface{ elem->second };
 
-		curInterface->m_relativeScalingDefinition *= relativeMinAxisScale;
-
 		// Updating texts.
 		for (auto& text : curInterface->m_texts)
-			text.resized(windowScaleFactor, relativeMinAxisScale);
+			text.scale(minScaling2f);
 
 		// Updating sprites.
 		for (auto& sprite : curInterface->m_sprites)
-			sprite.resized(windowScaleFactor, relativeMinAxisScale);
+			sprite.scale(minScaling2f);
+
+		curInterface->m_relativeScalingDefinition *= relativeMinAxisScale;
 	}
 }
 

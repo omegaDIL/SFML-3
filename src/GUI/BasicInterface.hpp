@@ -127,10 +127,11 @@ public:
 	 * \see `TextWrapper`, `addSprite`.
 	 */
 	template<Ostreamable T>
-	void addText(const T& content, sf::Vector2f pos, sf::Color color = sf::Color::White, unsigned int characterSize = 30u, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, sf::Text::Style style = sf::Text::Style::Regular, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
+	void addText(const T& content, sf::Vector2f pos, sf::Color color = sf::Color::White, unsigned int characterSize = 30u, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
 	{
 		ENSURE_SFML_WINDOW_VALIDITY(m_window);
-		float relativeScalingValue{ std::min(m_window->getSize().x / m_relativeScalingDefinition, m_window->getSize().y / m_relativeScalingDefinition) };
+
+		float relativeScalingValue{ static_cast<float>(std::min(m_window->getSize().x, m_window->getSize().y)) / m_relativeScalingDefinition };
 		
 		TextWrapper newText{ content, fontName, characterSize, pos, scale * relativeScalingValue, color, alignment, style, rot };
 		m_texts.push_back(std::move(newText));
@@ -186,12 +187,12 @@ public:
 
 	/**
 	 * \brief Updates the window, views, and the window' interfaces drawables after resizement.
-	 * The max size for the window is the screen size. Everything is scaled without 
+	 * The max size for the window is the screen size. Everything is scaled without distortion.
 	 * \complexity O(N), where N is the number of graphical elements within all interfaces associated to the resized window.
 	 *
-	 * \param[in, out] window: The window which was resized, and for which the interfaces will be resized.
-	 * \param[in, out] previousSize: The window' size before resizement.
-	 * \param[out] views: All views for that window you want to resized accordingly.
+	 * \param[in,out] window: The window which was resized, and for which the interfaces will be resized.
+	 * \param[in,out] previousSize: The window's size before resizement.
+	 * \param[out] views: All views for that window you want to resize accordingly.
 	 * 
 	 * \note The current view of the window is resized and applied back. However it is copy, therefore
 	 *		 you need to give all views in the parameter even the one that is currently applied at the
@@ -216,22 +217,20 @@ public:
 		if (newSize.y > maxSize.y)
 			newSize.y = maxSize.y;
 		
+		// Updates current view and the others.
 		const sf::Vector2f scaleFactor{ newSize.x / static_cast<float>(previousSize.x), newSize.y / static_cast<float>(previousSize.y) };
-		const float relativeMinAxisScale{ static_cast<float>(std::min(newSize.x, newSize.y)) / std::min(previousSize.x, previousSize.y) };
-		previousSize = newSize; // Updates previous size.
-
-		// Updates views.
-		(views->setSize(sf::Vector2f{ views.getSize().x * scaleFactor.x, views.getSize().y * scaleFactor.y }), ...);
-		(views->setCenter(sf::Vector2f{ views.getCenter().x * scaleFactor.x, views.getCenter().y * scaleFactor.y }), ...);
-
-		// Updates window + current view.
 		sf::View view{ resizedWindow->getView() };
 		view.setSize(sf::Vector2f{ view.getSize().x * scaleFactor.x, view.getSize().y * scaleFactor.y});
-		resizedWindow->setView(view);
-		resizedWindow->setSize(newSize);
+		(views->setSize(sf::Vector2f{ views.getSize().x * scaleFactor.x, views.getSize().y * scaleFactor.y }), ...);
 
 		// Update drawables.
-		proportionKeeper(resizedWindow, scaleFactor, relativeMinAxisScale);
+		const float relativeMinAxisScale{ static_cast<float>(std::min(newSize.x, newSize.y)) / std::min(previousSize.x, previousSize.y) };
+		proportionKeeper(resizedWindow, relativeMinAxisScale);
+
+		// Update window.
+		previousSize = newSize; // Updates previous size.
+		resizedWindow->setView(view);
+		resizedWindow->setSize(newSize);
 	}
 
 protected:
@@ -253,17 +252,15 @@ private:
 	 * \brief Scales and repositions all window' interfaces drawables after resizement.
 	 *
 	 * \param[in] window: The window which was resized, and for which the interfaces will be resized.
-	 * \param[in] windowScaleFactor The per-axis scaling factor (x and y) of the window size.
 	 * \param[in] relativeMinAxisScale The ratio between the new and old smallest window axis.
 	 *            For example, if the window was resized from (1000, 500) to (750, 1000),
 	 *            the scale factor is (0.75, 2), and the smallest axis ratio is 500 / 750 = 0.67
 	 *            This helps to scale elements uniformly based on the smaller dimension.
 	 *
 	 * \warning The program asserts if the window is nullptr.
-	 * \warning The program asserts if previous size is set to 0.
 	 * \warning The program asserts if relativeMinAxisScale is set to 0.
 	 */
-	static void proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f windowScaleFactor, float relativeMinAxisScale) noexcept;
+	static void proportionKeeper(sf::RenderWindow* resizedWindow, float relativeMinAxisScale) noexcept;
 
 
 	/// Collection of all interfaces to perform resizing. Stored by window.
