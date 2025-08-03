@@ -6,15 +6,16 @@
  * \date   July 2025.
  *
  * \note These files depend on the SFML library.
+ * \note All assertions are disabled in release mode. If broken, undefined behavior will occur.
  *********************************************************************/
 
 #ifndef GRAPHICALRESOURCES_HPP
 #define GRAPHICALRESOURCES_HPP
 
 #include <SFML/Graphics.hpp>
-#include <vector>
 #include <list>
 #include <unordered_map>
+#include <vector>
 #include <memory>
 #include <stdexcept>
 #include <optional>
@@ -30,10 +31,14 @@
 
 #define ENSURE_NOT_OUT_OF_RANGE(index, size, errorMessage) \
 	assert(((index) >= 0 && static_cast<size_t>((index)) < static_cast<size_t>((size))) && (errorMessage))
+
 #else
 #define ENSURE_VALID_PTR(ptr, errorMessage)
 #define ENSURE_NOT_OUT_OF_RANGE(index, size, errorMessage)
 #endif
+
+namespace gui
+{
 
  /**
   * \brief An exception for graphical errors when the loading fails.
@@ -64,8 +69,6 @@ public:
 	}
 };
 
-namespace gui
-{
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Transformable` wrapper.
@@ -572,7 +575,7 @@ public:
 	 * 
 	 * \pre `fileName` must refer to a valid texture file in the assets directory.
 	 * \post The texture is available for use via the alias `name`.
-	 * \throw LoadingGraphicalResourceFailure Basic exception guarantee: the instance is not usable.
+	 * \throw invalid_argument Basic exception guarantee: the instance is not usable.
 	 *
 	 * \see `createTexture`.
 	 */
@@ -676,9 +679,7 @@ public:
 
 	/**
 	 * \brief Adds a texture (with one or more sub-rectangles) to this instance's texture vector.
-	 * \complexity Amortized O(1) for shared textures and unclaimed reserved textures.
-	 * \complexity O(N) for already claimed reserved textures, where N is the number of unique reserved
-	 *                 textures already owned by this instance.
+	 * \complexity Amortized O(1).
 	 * 
 	 * For each `sf::IntRect` provided, a pair of (`sf::Texture*`, `sf::IntRect`) is added to the internal
 	 * texture vector. This allows switching between different sub-regions (e.g., animation frames) or entirely
@@ -688,6 +689,9 @@ public:
 	 * - **Shared textures** may be reused across multiple instances.
 	 * - **Reserved textures** are exclusive to a single instance and may only be added here if the current
 	 *   instance is the owner.
+	 * 
+	 * The first added pair (texture + rect) will be at index 0, the next at index 1, and so on.
+	 * You must manually track texture indices if needed.
 	 *
 	 * \param name The alias of the texture (must have been registered via `createTexture`).
 	 * \param rects One or more `sf::IntRect`s to define which sub-regions of the texture to add. If any
@@ -697,8 +701,6 @@ public:
 	 * \return `true` if the texture(s) were successfully added to the texture vector, `false` if the texture
 	 *         could not be found or used.
 	 *
-	 * \note The first added pair (texture + rect) will be at index 0, the next at index 1, and so on.
-	 *       You must manually track texture indices if needed.
 	 * \note Once added, the order and content of the texture vector cannot be modified.
 	 * \note This function is designed not to throw if the texture was not found, to support scenarios
 	 *		 where the user tries multiple textures names until one is successfully found and set. This is
@@ -717,14 +719,15 @@ public:
 		if (mapAccessIterator == s_accessToTextures.end()) [[unlikely]]
 			return false; // Texture not there.
 
+#ifndef NDEBUG
 		auto mapUniqueIterator{ s_allUniqueTextures.find(&*mapAccessIterator->second) };
 		if (mapUniqueIterator != s_allUniqueTextures.end() // is reserved.
 		&&  mapUniqueIterator->second == true // has already been claimed by an instance...
 		&&  std::find(m_uniqueTextures.begin(), m_uniqueTextures.end(), name) == m_uniqueTextures.end()) [[unlikely]] // ...but not by this one.
-			throw std::invalid_argument{ "The reserved texture was not available anymore for this sprite instance" };
+			assert(!"Precondition violated; The reserved texture was not available anymore for this sprite instance when addTexture was called in SpriteWrapper");
+#endif // NDEBUG
 
 		TextureHolder* texture{ &*mapAccessIterator->second };
-
 		(m_textures.push_back(TextureInfo{ texture, rects }), ...);
 
 		if (mapUniqueIterator != s_allUniqueTextures.end() && mapUniqueIterator->second == false) // For reserved texture.
@@ -763,8 +766,8 @@ public:
 	 * If a textrue with the same name already exists, the function does nothing—allowing safe repeated 
 	 * calls.
 	 *
-     * \param[in] name The alias under which the texture will be stored.
-     * \param[in] fileName The path to the texture file within the assets folder.
+	 * \param[in] name The alias under which the texture will be stored.
+	 * \param[in] fileName The path to the texture file within the assets folder.
 	 * \param[in] shared: `No` if the texture is reserved.
 	 * \param[in] loadImmediately: `true` if you want the texture to be loaded from the file when the
 	 *							   function is called. if so, may throw an exception if failed.
@@ -793,8 +796,8 @@ public:
 	 * \param[in] fileName The path to the texture file within the assets folder.
 	 * \param[in] shared: `No` if the texture is reserved.
 	 *
-     * \note Since no file is given, unloading the `sf::Texture` is not possible. Nothing happens it
-     * is tried.
+	 * \note Since no file is given, unloading the `sf::Texture` is not possible. Nothing happens it
+	 * is tried.
 	 *
 	 * \see `loadTextureFromFile`, `addTexture`.
 	 */
@@ -853,7 +856,7 @@ public:
 	 * \note This function is designed not to throw if the texture was not found, to support scenarios
 	 *		 where the user tries multiple textures names until one is successfully found and set. This is
 	 *		 useful when texture loading may have failed earlier, and fallback attempts are expected behavior.
- 	 * 
+	 * 
 	 * \pre The texture alias must exist and refer to a valid file path within the assets folder.
 	 * \post The texture will be loaded into memory if not already loaded.
 	 * \throw LoadingGraphicalResourceFailure (strong exception guarantee) only if the file path is valid but the texture fails to load.

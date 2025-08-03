@@ -1,6 +1,7 @@
 ﻿#include <SFML/Graphics.hpp> 
 #include <string>
 #include <optional>
+#include <iostream>
 #include "GUI.hpp"
 #include "Save.hpp"
 
@@ -11,34 +12,6 @@ int main()
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
 	
-	sf::RectangleShape s1{ sf::Vector2f{50, 50} };
-	s1.setFillColor(sf::Color::Magenta);
-	sf::RectangleShape s2{ sf::Vector2f{100, 50} };
-	s2.setPosition(sf::Vector2f{ 0, 50 });
-	s2.setFillColor(sf::Color::Red);
-	sf::RectangleShape s3{ sf::Vector2f{ 50, 50 } };
-	s3.setPosition(sf::Vector2f{ 50, 0 });
-	sf::Texture texture{ gui::createTextureFromDrawables(s1, s2, s3) };
-
-	gui::SpriteWrapper::createTexture("tesgft", texture, gui::SpriteWrapper::Reserved::Yes);
-	gui::SpriteWrapper::createTexture("test", std::move(texture), gui::SpriteWrapper::Reserved::No);
-	gui::SpriteWrapper at{ "test", sf::Vector2f{100, 400}, sf::Vector2f{1.f, 1.f}, sf::IntRect{ sf::Vector2i{}, sf::Vector2i{50,50}}, sf::degrees(0), gui::Alignment::Top | gui::Alignment::Left };
-	at.addTexture("test", sf::IntRect{ sf::Vector2i{0, 50}, sf::Vector2i{100, 50} }, sf::IntRect{ sf::Vector2i{50, 0}, sf::Vector2i{50, 50} });
-	at.addTexture("test", sf::IntRect{}, sf::IntRect{ sf::Vector2i{50, 0}, sf::Vector2i{50, 50}});
-	
-
-
-	gui::SpriteWrapper::removeTexture("trfdcest");
-
-	auto a = gui::SpriteWrapper::getTexture("ertygh");
-	auto d = gui::SpriteWrapper::getTexture("tesgft");
-	auto b = gui::SpriteWrapper::getTexture("test");
-
-
-	gui::SpriteWrapper ab{ "tesgft", {600, 800}, {1.f, 1.f} };
-	ab.addTexture("test");
-
-
 
 	while (window.isOpen())
 	{
@@ -49,14 +22,9 @@ int main()
 			
 			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 				window.close();
-
-			if (event->is<sf::Event::KeyPressed>())
-				ab.switchToNextTexture(1);
 		}
 
 		window.clear();
-		window.draw(at.getSprite());
-		window.draw(ab.getSprite());
 		window.display();
 	}
 

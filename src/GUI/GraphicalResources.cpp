@@ -84,7 +84,7 @@ void TransformableWrapper::setRotation(sf::Angle pos) noexcept
 
 void TransformableWrapper::create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment) noexcept
 {
-	ENSURE_VALID_PTR(transformable, "Precondition not respected; sf::Transformable pointer in TransformableWrapper is nullptr when function create is called");
+	ENSURE_VALID_PTR(transformable, "Precondition violated; sf::Transformable pointer in TransformableWrapper is nullptr when function create is called");
 
 	m_transformable = transformable;
 	m_alignment = alignment;
@@ -266,12 +266,12 @@ void SpriteWrapper::switchToNextTexture(long long indexOffset)
 	m_curTextureIndex = ((totalIndex % textureSize) + textureSize) % textureSize;
 	
 	TextureInfo& textureInfo{ m_textures[m_curTextureIndex] };
-	ENSURE_VALID_PTR(textureInfo.texture, "A textureHolder within a TextureInfo was nullptr when switchToNextTexture funcion was called in SpriteWrapper");
+	ENSURE_VALID_PTR(textureInfo.texture, "A textureHolder within a TextureInfo was nullptr somehow when switchToNextTexture funcion was called in SpriteWrapper");
 	std::unique_ptr<sf::Texture>& newTexture{ textureInfo.texture->actualTexture }; // From texture holder
 
 	if (newTexture == nullptr) [[unlikely]]
 	{	// Not loaded yet, so we need to load it first.
-		std::ostringstream errorMessage{};
+  		std::ostringstream errorMessage{};
 		auto optTexture{ loadTextureFromFile(errorMessage, textureInfo.texture->fileName) };
 		
 		if (!optTexture.has_value()) [[unlikely]]
@@ -282,15 +282,14 @@ void SpriteWrapper::switchToNextTexture(long long indexOffset)
 	
 	if (textureInfo.displayedTexturePart == sf::IntRect{}) [[unlikely]] // If rect is 0,0 then the rect should cover the whole texture.
 		textureInfo.displayedTexturePart.size = static_cast<sf::Vector2i>(newTexture->getSize());
-	m_wrappedSprite->setTextureRect(textureInfo.displayedTexturePart);
 
-	if (newTexture.get() != &m_wrappedSprite->getTexture())
-		m_wrappedSprite->setTexture(*newTexture);
+	m_wrappedSprite->setTextureRect(textureInfo.displayedTexturePart);
+	m_wrappedSprite->setTexture(*newTexture);
 }
 
 void SpriteWrapper::switchToTexture(size_t index)
 {
-	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size(), "Precondition not respected; index is out of range for the texture vector in switchToTexture in SpriteWrapper");
+	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size(), "Precondition violated; index is out of range for the texture vector in switchToTexture in SpriteWrapper");
 
 	if (index == m_curTextureIndex) [[unlikely]]
 		return;
@@ -343,7 +342,7 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 	if (mapIterator == s_accessToTextures.end())
 		return;
 	
-	assert(s_allUniqueTextures.find(&*mapIterator->second) == s_allUniqueTextures.end() && "Precondition not respected: a reserved texture cannot be removed using the removeTexture function in SpriteWrapper");
+	assert(s_allUniqueTextures.find(&*mapIterator->second) == s_allUniqueTextures.end() && "Precondition violated: a reserved texture cannot be removed using the removeTexture function in SpriteWrapper");
 
 	s_allTextures.erase(mapIterator->second); // First, removing the actual texture.
 	s_accessToTextures.erase(mapIterator); // Then, the accessing item within the map.
@@ -370,8 +369,7 @@ bool SpriteWrapper::loadTexture(const std::string& name, bool failingImpliesRemo
 	
 	if (textureHolder->actualTexture != nullptr)
 		return true; // Already loaded.
-	if (textureHolder->fileName == "")
-		return false; // No file provided.
+	// Texture with no path are always loaded.
 
 	std::ostringstream errorMessage{};
 	auto optTexture{ loadTextureFromFile(errorMessage, textureHolder->fileName) };
