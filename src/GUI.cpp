@@ -1,49 +1,53 @@
 #include "GUI.hpp"
 
-void showErrorsUsingWindow(std::string const& errorTitle, std::string const& errorMessage) noexcept
+void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstream& errorMessage) noexcept
 {
-	//sf::RenderWindow errorWindow{ sf::VideoMode{ sf::Vector2u{ 720, 720 } }, errorTitle };
-	//IGInterface gui{ &errorWindow }; // Create the interface to use the GUI.
+	sf::Vector2u windowSize{ sf::Vector2u{ 720, 720 } };
+	sf::RenderWindow window{ sf::VideoMode{ windowSize }, errorTitle };
+	IGUI gui{ &window }; // Create the interface to use the GUI.
 
-	//gui.addDynamicText("message", errorMessage, sf::Vector2f{ 360, 260 }, 16, 1.f);
-	//gui.addDynamicText("close", "ok I understand - close this window", sf::Vector2f{ 360, 600 }, 12, 1.f);
-	//gui.addButton("close", []() {}); // Add a button to close the window.
+	gui::TextWrapper textWr{ errorMessage.str(), "__default", 16, sf::Vector2f{560, 260}, {1.f, 1.f} };
 
-	//auto& text{ gui.getDText("message") };
-	//auto rectSize{ text.getText().getGlobalBounds() };
-	//do
-	//{
-	//	text.scale(sf::Vector2f{ 0.9f, 0.9f });
-	//	rectSize = text.getText().getGlobalBounds();
-	//} while (rectSize.position.x < 0 || rectSize.size.x > errorWindow.getSize().x);
+	gui.addDynamicText("message", errorMessage.str(), sf::Vector2f{360, 260});
+	gui.addDynamicText("close", "ok I understand - close this window", sf::Vector2f{ 360, 600 });
+	gui.addButton("close", nullptr); // Add a button to close the window.
 
-	//while (errorWindow.isOpen())
-	//{	// The function is blocking.
-	//	while (const std::optional event = errorWindow.pollEvent())
-	//	{
-	//		if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
-	//			errorWindow.close();
+	auto* text{ gui.getDynamicText("message") };
+	auto rectSize{ text->getText().getGlobalBounds() };
 
-	//		if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-	//			IGInterface::mouseMoved(&gui);
+	while (rectSize.position.x < 0 || rectSize.size.x > window.getSize().x)	{
+		text->scale(sf::Vector2f{ 0.9f, 0.9f });
+		rectSize = text->getText().getGlobalBounds();
+	} 
 
-	//		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-	//			if (IGInterface::mousePressed(&gui).first == IGInterface::InteractableItem::Button)
-	//				errorWindow.close();
+	while (window.isOpen())
+	{	// The function is blocking.
+		while (const std::optional event = window.pollEvent())
+		{
+			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+				window.close();
 
-	//		if (event->is<sf::Event::Resized>())
-	//			handleEventResize(&errorWindow);
-	//	}
+			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+				IGUI::updateHovered(&gui, sf::Mouse::getPosition(window));
 
-	//	errorWindow.clear();
-	//	gui.draw();
-	//	errorWindow.display();
-	//}
+			if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+				if (IGUI::unpressed(&gui).type == IGUI::ItemType::button)
+					window.close();
+
+			if (event->is<sf::Event::Resized>())
+				BGUI::windowResized(&window, windowSize);
+		}
+
+		window.clear();
+		gui.draw();
+		window.draw(textWr.getText());
+		window.display();
+	}
 }
 
 void populateGUI(IGUI* gui) noexcept
 {
-	ENSURE_VALID_PTR(gui);
+	ENSURE_VALID_PTR(gui, "gui was nullptr when populateGUI was called");
 
 	//TODO: Populate and initialize your own gui.
 

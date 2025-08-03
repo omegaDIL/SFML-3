@@ -148,7 +148,7 @@ public:
 	 *
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem updateHovered(BasicInterface* activeGUI, sf::Vector2u cursorPos) noexcept;
+	static InteractiveItem updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the cursor is pressed.

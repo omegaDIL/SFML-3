@@ -23,7 +23,7 @@ BasicInterface::BasicInterface(BasicInterface&& other) noexcept
 {
 	// Update the static collection of interfaces to point to the new object.
 	auto interfaceRange = s_allInterfaces.equal_range(m_window);
-	for (auto it = interfaceRange.first; it != interfaceRange.second; ++it)
+	for (auto& it = interfaceRange.first; it != interfaceRange.second; ++it)
 	{
 		if (it->second == &other)
 		{
@@ -97,7 +97,7 @@ void BasicInterface::addSprite(const std::string& textureName, sf::Vector2f pos,
 	ENSURE_SFML_WINDOW_VALIDITY(m_window);
 	float relativeScalingValue{ std::min(m_window->getSize().x, m_window->getSize().y) / static_cast<float>(m_relativeScalingDefinition) };
 
-	m_sprites.push_back(SpriteWrapper{ textureName, rect, pos, scale * relativeScalingValue, rot, alignment, color });
+	m_sprites.push_back(SpriteWrapper{ textureName, pos, scale * relativeScalingValue, rect, rot, alignment, color });
 }
 
 void BasicInterface::addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
@@ -126,15 +126,12 @@ void BasicInterface::draw() const noexcept
 			m_window->draw(sprite.getSprite());
 	for (auto const& text : m_texts)
 		if (!text.hide)
-		{
-			sf::Text const& texte{ text.getText() };
-			m_window->draw(texte);
-		}
+			m_window->draw(text.getText());
 }
 
 void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, float relativeMinAxisScale) noexcept
 {	
-	ENSURE_VALID_PTR(resizedWindow);
+	ENSURE_VALID_PTR(resizedWindow, "The resized window was nullptr when proportionKeeper was called in BasicInterface");
 	ENSURE_NOT_ZERO(relativeMinAxisScale);
 
 	sf::Vector2f minScaling2f{ relativeMinAxisScale, relativeMinAxisScale };

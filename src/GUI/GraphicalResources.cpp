@@ -1,4 +1,4 @@
-#include "GraphicalRessources.hpp"
+#include "GraphicalResources.hpp"
 
 namespace gui
 {
@@ -40,7 +40,7 @@ sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept
 }
 
 
-TransformableWrapper::TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment)
+TransformableWrapper::TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment) noexcept
 	: m_transformable{ transformable }, m_alignment{ alignment }, hide{ false }
 {
 	create(transformable, pos, scale, rot, alignment);
@@ -48,44 +48,43 @@ TransformableWrapper::TransformableWrapper(sf::Transformable* transformable, sf:
 
 void TransformableWrapper::move(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable);
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function move is called");
 	m_transformable->move(pos);
 }
 
 void TransformableWrapper::scale(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable);
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function scale is called");
 	m_transformable->scale(pos);
 }
 
 void TransformableWrapper::rotate(sf::Angle pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable);
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function rotate is called");
 	m_transformable->rotate(pos);
 }
 
 void TransformableWrapper::setPosition(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable);
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function setPosition is called");
 	m_transformable->setPosition(pos);
 }
 
 void TransformableWrapper::setScale(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable);
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function setScale is called");
 	m_transformable->setScale(pos);
 }
 
 void TransformableWrapper::setRotation(sf::Angle pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable);
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function setRotation is called");
 	m_transformable->setRotation(pos);
 }
 
-void TransformableWrapper::create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment)
+void TransformableWrapper::create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment) noexcept
 {
-	if (transformable == nullptr) [[unlikely]]
-		throw std::invalid_argument{ "Wrapped sf::Transformable was nullptr when passed as argument\n" };
+	ENSURE_VALID_PTR(transformable, "Precondition not respected; sf::Transformable pointer in TransformableWrapper is nullptr when function create is called");
 
 	m_transformable = transformable;
 	m_alignment = alignment;
@@ -139,28 +138,21 @@ void TextWrapper::setAlignment(Alignment alignment) noexcept
 
 void TextWrapper::createFont(const std::string& name, const std::string& fileName)
 {
+	if (getFont(name) != nullptr)
+		return;
+
 	std::ostringstream errorMessage{};
 	auto optFont{ loadFontFromFile(errorMessage, fileName) };
 	if (!optFont.has_value()) [[unlikely]]
-		throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
-
+		throw LoadingGraphicalResourceFailure{ errorMessage.str() };
+	
 	createFont(name, std::move(optFont.value()));
 }
 
 void TextWrapper::createFont(const std::string& name, sf::Font font) noexcept
 {
-	auto mapIterator{ s_accessToFonts.find(name) };
-
-	if (mapIterator != s_accessToFonts.end())
-	{	
-		// This name is already affiliated with a font so we replace it.
-		// We dereference the iterator to reach the right position in the list
-		// Then we replace it with the new font to this pos.
-		// The move assignment operator will deallocate the previous font.
-
-		*mapIterator->second = std::move(font);
+	if (getFont(name) != nullptr)
 		return;
-	}
 
 	// We add the font using push_front so we know that it is at the beginning.
 	// Therefore, using the function begin() we have a direct iterator pointing to it.
@@ -172,7 +164,7 @@ void TextWrapper::removeFont(const std::string& name) noexcept
 {
 	auto mapIterator{ s_accessToFonts.find(name) };
 
-	if (mapIterator != s_accessToFonts.end()) [[unlikely]]
+	if (mapIterator == s_accessToFonts.end())
 		return;
 
 	s_allFonts.erase(mapIterator->second); // First, removing the actual font.
@@ -198,15 +190,15 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
 
 		if (!std::filesystem::exists(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Font file does not exist: " + completePath.string() + '\n' };
+			throw LoadingGraphicalResourceFailure{ "Font file does not exist: " + completePath.string() + '\n' };
 
 		if (!font.openFromFile(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Failed to load font from file " + completePath.string() + '\n' };
+			throw LoadingGraphicalResourceFailure{ "Failed to load font from file " + completePath.string() + '\n' };
 
 		font.setSmooth(true);
 		return font;
 	}
-	catch (LoadingGraphicalRessourceFailure const& error)
+	catch (LoadingGraphicalResourceFailure const& error)
 	{
 		errorMessage << error.what();
 		errorMessage << "This font cannot be displayed\n";
@@ -222,7 +214,7 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 /// A `sf::Sprite` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::IntRect rect, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
+SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
 	: TransformableWrapper{}, m_wrappedSprite{ nullptr }, m_curTextureIndex{ 0 }, m_textures{}, m_uniqueTextures{}
 {
 	sf::Texture* usedTexture{ getTexture(textureName) };
@@ -230,24 +222,24 @@ SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::IntRect rect, s
 	if (usedTexture == nullptr) [[unlikely]]
 		throw std::invalid_argument{ "This name is not affiliate with any texture" };
 
+	if (rect == sf::IntRect{})
+		rect.size = static_cast<sf::Vector2i>(usedTexture->getSize());
+
 	m_wrappedSprite = std::make_unique<sf::Sprite>(*usedTexture, rect);
-	this->create(m_wrappedSprite.get(), pos, scale, rot, alignment);
+	create(m_wrappedSprite.get(), pos, scale, rot, alignment);
 
 	addTexture(textureName, rect);
 	setColor(color);
+	setAlignment(alignment);
 }
-
-SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment, sf::Color color)
-	: SpriteWrapper{ textureName, sf::IntRect{}, pos, scale, rot, alignment, color }
-{}
 
 SpriteWrapper::~SpriteWrapper() noexcept
 {
 	for (auto& reservedTexture : m_uniqueTextures)
 	{
 		auto mapAccessIterator{ s_accessToTextures.find(reservedTexture) };
-		s_allTextures.erase(mapAccessIterator->second); // Remove the actual texture from the list.
 		s_allUniqueTextures.erase(&*mapAccessIterator->second); // Remove the texture from the reserved map.
+		s_allTextures.erase(mapAccessIterator->second); // Remove the actual texture from the list.
 		s_accessToTextures.erase(mapAccessIterator); // Remove the access toward the texture from the access map.
 	}
 
@@ -267,11 +259,14 @@ void SpriteWrapper::setAlignment(Alignment alignment) noexcept
 	m_wrappedSprite->setOrigin(computeNewOrigin(m_wrappedSprite->getLocalBounds(), m_alignment));
 }
 
-inline void SpriteWrapper::switchToNextTexture(long long indexOffset)
+void SpriteWrapper::switchToNextTexture(long long indexOffset)
 {
-	m_curTextureIndex = static_cast<size_t>(m_curTextureIndex + indexOffset) % m_textures.size();
+	const long long totalIndex{ static_cast<long long>(m_curTextureIndex) + indexOffset };
+	const size_t textureSize{ m_textures.size() };
+	m_curTextureIndex = ((totalIndex % textureSize) + textureSize) % textureSize;
+	
 	TextureInfo& textureInfo{ m_textures[m_curTextureIndex] };
-	ENSURE_VALID_PTR(textureInfo.texture);
+	ENSURE_VALID_PTR(textureInfo.texture, "A textureHolder within a TextureInfo was nullptr when switchToNextTexture funcion was called in SpriteWrapper");
 	std::unique_ptr<sf::Texture>& newTexture{ textureInfo.texture->actualTexture }; // From texture holder
 
 	if (newTexture == nullptr) [[unlikely]]
@@ -280,12 +275,12 @@ inline void SpriteWrapper::switchToNextTexture(long long indexOffset)
 		auto optTexture{ loadTextureFromFile(errorMessage, textureInfo.texture->fileName) };
 		
 		if (!optTexture.has_value()) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
+			throw LoadingGraphicalResourceFailure{ errorMessage.str() };
 
 		newTexture = std::make_unique<sf::Texture>(std::move(optTexture.value()));
 	}	
 	
-	if (textureInfo.displayedTexturePart.size == sf::Vector2i{}) [[unlikely]] // If rect is 0,0 then the rect should cover the whole texture.
+	if (textureInfo.displayedTexturePart == sf::IntRect{}) [[unlikely]] // If rect is 0,0 then the rect should cover the whole texture.
 		textureInfo.displayedTexturePart.size = static_cast<sf::Vector2i>(newTexture->getSize());
 	m_wrappedSprite->setTextureRect(textureInfo.displayedTexturePart);
 
@@ -293,33 +288,34 @@ inline void SpriteWrapper::switchToNextTexture(long long indexOffset)
 		m_wrappedSprite->setTexture(*newTexture);
 }
 
-inline void SpriteWrapper::switchToTexture(size_t index)
+void SpriteWrapper::switchToTexture(size_t index)
 {
-	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size());
+	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size(), "Precondition not respected; index is out of range for the texture vector in switchToTexture in SpriteWrapper");
 
-	if (index == m_curTextureIndex)
+	if (index == m_curTextureIndex) [[unlikely]]
 		return;
 
-	m_curTextureIndex = --index; // The call to switchToNextTexture will add one.
-	switchToNextTexture(1);
+	m_curTextureIndex = index; 
+	switchToNextTexture(0);
 }
 
 void SpriteWrapper::createTexture(const std::string& name, const std::string& fileName, Reserved shared, bool loadImmediately)
 {
+	if (getTexture(name) != nullptr)
+		return;
+
 	TextureHolder newTexture{ .fileName = fileName };
 	newTexture.actualTexture = nullptr;
 
-	auto mapIterator{ s_accessToTextures.find(name) };
-
-	if (mapIterator != s_accessToTextures.end())
+	if (loadImmediately)
 	{
-		// This name is already affiliated with a texture so we replace it.
-		// We dereference the iterator to reach the right position in the list
-		// Then we replace it with the new texture to this pos.
-		// The move assignment operator will deallocate the previous texture.
+		std::ostringstream errorMessage{};
+		auto optTexture{ loadTextureFromFile(errorMessage, newTexture.fileName) };
 
-		*mapIterator->second = std::move(newTexture);
-		return;
+		if (!optTexture.has_value())
+			throw LoadingGraphicalResourceFailure{ errorMessage.str() };
+		else
+			newTexture.actualTexture = std::make_unique<sf::Texture>(std::move(optTexture.value()));
 	}
 
 	// We add the font using push_front so we know that it is at the beginning.
@@ -329,27 +325,25 @@ void SpriteWrapper::createTexture(const std::string& name, const std::string& fi
 
 	if (shared == Reserved::Yes)
 		s_allUniqueTextures[&*s_allTextures.begin()] = false;
-
-	if (loadImmediately)
-		loadTexture(name, true); // True means we delete the texture if the loading fails.
 }
 
 void SpriteWrapper::createTexture(const std::string& name, sf::Texture texture, Reserved shared) noexcept
 {
-	createTexture(name, "", shared, false);
-	// false means it will not load immediately the texture, which is needed since there's no given
-	// path. We want to set the texture ourselves.
+	if (getTexture(name) != nullptr)
+		return;
 
-	s_accessToTextures.at(name)->actualTexture = std::make_unique<sf::Texture>(texture);
+	createTexture(name, "", shared, false); // No file name provided so do not load it. 
+	s_accessToTextures.at(name)->actualTexture = std::make_unique<sf::Texture>(std::move(texture)); // The texture is added.
 }
 
 void SpriteWrapper::removeTexture(const std::string& name) noexcept
 {
 	auto mapIterator{ s_accessToTextures.find(name) };
 
-	if (mapIterator == s_accessToTextures.end() 
-	|| s_allUniqueTextures.find(&*mapIterator->second) != s_allUniqueTextures.end()) // If it is a unique texture.
+	if (mapIterator == s_accessToTextures.end())
 		return;
+	
+	assert(s_allUniqueTextures.find(&*mapIterator->second) == s_allUniqueTextures.end() && "Precondition not respected: a reserved texture cannot be removed using the removeTexture function in SpriteWrapper");
 
 	s_allTextures.erase(mapIterator->second); // First, removing the actual texture.
 	s_accessToTextures.erase(mapIterator); // Then, the accessing item within the map.
@@ -374,19 +368,19 @@ bool SpriteWrapper::loadTexture(const std::string& name, bool failingImpliesRemo
 
 	TextureHolder* textureHolder{ &*mapIterator->second };
 	
-	if (textureHolder->fileName == "")
-		return false; // TextureHolder was not found or no file name provided: loading impossible.
 	if (textureHolder->actualTexture != nullptr)
 		return true; // Already loaded.
+	if (textureHolder->fileName == "")
+		return false; // No file provided.
 
 	std::ostringstream errorMessage{};
 	auto optTexture{ loadTextureFromFile(errorMessage, textureHolder->fileName) };
 	if (!optTexture.has_value())
 	{
-		if (failingImpliesRemoval)
+		if (failingImpliesRemoval && s_allUniqueTextures.find(&*mapIterator->second) == s_allUniqueTextures.end())
 			removeTexture(name);
 
-		throw LoadingGraphicalRessourceFailure{ errorMessage.str() };
+		throw LoadingGraphicalResourceFailure{ errorMessage.str() };
 	}
 
 	textureHolder->actualTexture = std::make_unique<sf::Texture>(std::move(optTexture.value()));
@@ -421,14 +415,14 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 		std::filesystem::path completePath{ std::filesystem::path(path) / fileName };
 
 		if (!std::filesystem::exists(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
+			throw LoadingGraphicalResourceFailure{ "Texture file does not exist: " + completePath.string() + '\n' };
 
 		if (!texture.loadFromFile(completePath)) [[unlikely]]
-			throw LoadingGraphicalRessourceFailure{ "Failed to load texture from file " + completePath.string() + '\n' };
+			throw LoadingGraphicalResourceFailure{ "Failed to load texture from file " + completePath.string() + '\n' };
 
 		texture.setSmooth(true); // Enable smooth rendering for the font.
 	}
-	catch (LoadingGraphicalRessourceFailure const& error)
+	catch (LoadingGraphicalResourceFailure const& error)
 	{
 		errorMessage << error.what();
 		errorMessage << "This texture cannot be displayed\n";

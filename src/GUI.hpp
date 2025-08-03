@@ -11,7 +11,7 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include "GUI/GraphicalRessources.hpp"
+#include "GUI/GraphicalResources.hpp"
 #include "GUI/BasicInterface.hpp"
 #include "GUI/MutableInterface.hpp"
 #include "GUI/InteractiveInterface.hpp"
@@ -23,20 +23,23 @@ using IGUI = gui::InteractiveInterface; // Often enough for most apps
 using AGUI = gui::AdvancedInterface;
 
 
+#include <string>
+#include <sstream>
+
 /**
  * @brief Creates a new instance of a window to display an error message.
  * @complexity constant O(1).
  *
- * @param[in] errorMessage: The message to be displayed.
  * @param[in] errorTitle: The title of the window.
+ * @param[in] errorMessage: The message to be displayed.
  *
  * @note This function is blocking and will terminate once the user closes the new window.
  * @note Don't forget to put the character \n to avoid the text to not be seen entirely when you
  *       have a long line.
  *
- * @see sf::RenderWindow.
+ * @see `sf::RenderWindow`, `IGUI`.
  */
-void showErrorsUsingWindow(std::string const& errorTitle, std::string const& errorMessage) noexcept;
+void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstream& errorMessage) noexcept;
 
 /**
  * \brief Initializes the interface

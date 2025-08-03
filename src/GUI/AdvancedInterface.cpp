@@ -29,7 +29,7 @@ void AdvancedInterface::addSlider(const std::string& identifier, sf::Vector2f po
 	newSlider.growthSliderFunction = growthSliderFunction;
 	m_sliders[identifier] = std::move(newSlider);
 
-	scale.y *= size / 200;
+	scale.y *= size / 200.f;
 	addDynamicSprite("_sb_" + identifier, sliderBackgroundTextureName, pos, scale);
 	addDynamicSprite("_sc_" + identifier, sliderCursorTextureName, pos, sf::Vector2f{ scale.x, scale.x });
 	addButton("_sb_" + identifier);
@@ -43,7 +43,7 @@ void AdvancedInterface::addSlider(const std::string& identifier, sf::Vector2f po
 
 void AdvancedInterface::removeSlider(const std::string& identifier) noexcept
 {
-	ENSURE_VALID_PTR(getSlider(identifier));
+	ENSURE_VALID_PTR(getSlider(identifier), "Slider was nullptr when removeSlider function was called in AdvancedInterface");
 
 	m_sliders.erase(identifier);
 	removeDynamicSprite("_sb_" + identifier);
@@ -88,7 +88,7 @@ void AdvancedInterface::removeMQB(const std::string& identifier) noexcept
 {
 	auto mqbToRemove{ getMQB(identifier) };
 
-	ENSURE_VALID_PTR(mqbToRemove);
+	ENSURE_VALID_PTR(mqbToRemove, "MQB was nullptr when removeMQB function was called in AdvancedInterface");
 
 	for (unsigned int i{ 0 }; i < mqbToRemove->numberOfBoxes; ++i)
 	{
@@ -109,7 +109,7 @@ AdvancedInterface::MQB* AdvancedInterface::getMQB(const std::string& identifier)
 	return &mapIterator->second;
 }
 
-InteractiveItem AdvancedInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2u cursorPos) noexcept
+InteractiveItem AdvancedInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
 {
 	InteractiveInterface::updateHovered(activeGUI, cursorPos);
 

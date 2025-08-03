@@ -10,12 +10,35 @@ int main()
 {
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
-	BGUI mainInterface{ &window };
-	BGUI* curInterface{ &mainInterface };
+	
+	sf::RectangleShape s1{ sf::Vector2f{50, 50} };
+	s1.setFillColor(sf::Color::Magenta);
+	sf::RectangleShape s2{ sf::Vector2f{100, 50} };
+	s2.setPosition(sf::Vector2f{ 0, 50 });
+	s2.setFillColor(sf::Color::Red);
+	sf::RectangleShape s3{ sf::Vector2f{ 50, 50 } };
+	s3.setPosition(sf::Vector2f{ 50, 0 });
+	sf::Texture texture{ gui::createTextureFromDrawables(s1, s2, s3) };
 
-	mainInterface.addText("World", window.getView().getCenter(), sf::Color::Red, 45U, "__default", gui::Alignment::Left | gui::Alignment::Bottom, sf::Text::Style::Italic | sf::Text::Style::Bold);
-	mainInterface.addText("uh", {300, 200}, sf::Color::Blue, 45U, "__default", gui::Alignment::Center, sf::Text::Style::Bold | sf::Text::Style::StrikeThrough, { 1.f, 3.5f }, sf::degrees(30));
-	mainInterface.addText("Hello,", window.getView().getCenter(), sf::Color::White, 30, "__default", gui::Alignment::Right | gui::Alignment::Top, sf::Text::Style::Italic | sf::Text::Style::Bold);
+	gui::SpriteWrapper::createTexture("tesgft", texture, gui::SpriteWrapper::Reserved::Yes);
+	gui::SpriteWrapper::createTexture("test", std::move(texture), gui::SpriteWrapper::Reserved::No);
+	gui::SpriteWrapper at{ "test", sf::Vector2f{100, 400}, sf::Vector2f{1.f, 1.f}, sf::IntRect{ sf::Vector2i{}, sf::Vector2i{50,50}}, sf::degrees(0), gui::Alignment::Top | gui::Alignment::Left };
+	at.addTexture("test", sf::IntRect{ sf::Vector2i{0, 50}, sf::Vector2i{100, 50} }, sf::IntRect{ sf::Vector2i{50, 0}, sf::Vector2i{50, 50} });
+	at.addTexture("test", sf::IntRect{}, sf::IntRect{ sf::Vector2i{50, 0}, sf::Vector2i{50, 50}});
+	
+
+
+	gui::SpriteWrapper::removeTexture("trfdcest");
+
+	auto a = gui::SpriteWrapper::getTexture("ertygh");
+	auto d = gui::SpriteWrapper::getTexture("tesgft");
+	auto b = gui::SpriteWrapper::getTexture("test");
+
+
+	gui::SpriteWrapper ab{ "tesgft", {600, 800}, {1.f, 1.f} };
+	ab.addTexture("test");
+
+
 
 	while (window.isOpen())
 	{
@@ -23,13 +46,17 @@ int main()
 		{ 
 			if (event->is<sf::Event::Resized>())
 				BGUI::windowResized(&window, windowSize);
-
+			
 			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 				window.close();
+
+			if (event->is<sf::Event::KeyPressed>())
+				ab.switchToNextTexture(1);
 		}
 
 		window.clear();
-		curInterface->draw();
+		window.draw(at.getSprite());
+		window.draw(ab.getSprite());
 		window.display();
 	}
 

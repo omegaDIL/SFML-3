@@ -72,7 +72,7 @@ void InteractiveInterface::setWritingText(const std::string& identifier, Writabl
 	// Actually updates the writing text.
 	m_writingText = getDynamicText(identifier);
 	m_writingFunction = function;
-	ENSURE_VALID_PTR(m_writingText);
+	ENSURE_VALID_PTR(m_writingText, "The identifier was not found resulting in writingText being nullptr when setWritingText was called in InteractiveInterface");
 
 	// Updates the cursor.
 	SpriteWrapper* cursor{ getDynamicSprite(writingCursorIdentifier) };
@@ -81,9 +81,9 @@ void InteractiveInterface::setWritingText(const std::string& identifier, Writabl
 	cursor->hide = false;
 }
 
-InteractiveItem InteractiveInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2u cursorPos) noexcept
+InteractiveItem InteractiveInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
 {
-	ENSURE_VALID_PTR(activeGUI);
+	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when updateHovered was called in InteractiveInterface");
 
 	auto setHovered = [](InteractiveInterface* gui, std::string const* id, uint8_t type) -> void
 	{
@@ -128,7 +128,7 @@ InteractiveItem InteractiveInterface::updateHovered(BasicInterface* activeGUI, s
 
 InteractiveItem InteractiveInterface::unpressed(BasicInterface* activeGUI) noexcept
 {
-	ENSURE_VALID_PTR(activeGUI);
+	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when unpressed was called in InteractiveInterface");
 
 	InteractiveInterface* gui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
 
@@ -149,7 +149,7 @@ InteractiveItem InteractiveInterface::unpressed(BasicInterface* activeGUI) noexc
 
 void InteractiveInterface::textEntered(BasicInterface* activeGUI, char32_t unicodeValue) noexcept
 {
-	ENSURE_VALID_PTR(activeGUI);
+	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when textEntered was called in InteractiveInterface");
 
 	InteractiveInterface* gui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
 

@@ -11,7 +11,7 @@
 #ifndef BASICINTERFACE_HPP
 #define BASICINTERFACE_HPP
 
-#include "GraphicalRessources.hpp"
+#include "GraphicalResources.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -22,7 +22,7 @@
 #define ENSURE_NOT_ZERO(value) \
 	assert((value) != 0 && "ENSURE_NOT_ZERO failed: value equals 0.")
 #define ENSURE_SFML_WINDOW_VALIDITY(window) \
-	ENSURE_VALID_PTR((window)); \
+	ENSURE_VALID_PTR((window), ""); \
 	ENSURE_NOT_ZERO((window->getSize().x)); \
 	ENSURE_NOT_ZERO((window->getSize().y))
 #else
@@ -324,9 +324,9 @@ sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept
 	(std::forward<Ts>(drawables).move(-offset), ...); // Move all drawables so they align with (0,0) in the new texture space
 
 	// Calculate the true size of the texture based on the maximum extent and offset.
-	sf::Vector2u trueSize{ maxSize - offset };
-	trueSize.x = ceil(trueSize.x); // Round to prevent artifacts due to subpixels
-	trueSize.y = ceil(trueSize.y);
+	sf::Vector2f trueSize{ maxSize - offset };
+	trueSize.x = ceilf(trueSize.x); // Round to prevent artifacts due to subpixels
+	trueSize.y = ceilf(trueSize.y);
 
 	sf::RenderTexture renderTexture{ static_cast<sf::Vector2u>(trueSize) };
 	renderTexture.clear(sf::Color::Transparent);
@@ -334,6 +334,7 @@ sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept
 	renderTexture.display();
 
 	sf::Texture texture{ renderTexture.getTexture() };
+	texture.setSmooth(true);
 	return texture;
 }
 
