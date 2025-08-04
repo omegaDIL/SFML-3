@@ -48,43 +48,43 @@ TransformableWrapper::TransformableWrapper(sf::Transformable* transformable, sf:
 
 void TransformableWrapper::move(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function move is called");
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when the function move is called");
 	m_transformable->move(pos);
 }
 
 void TransformableWrapper::scale(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function scale is called");
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when the function scale is called");
 	m_transformable->scale(pos);
 }
 
 void TransformableWrapper::rotate(sf::Angle pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function rotate is called");
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when the function rotate is called");
 	m_transformable->rotate(pos);
 }
 
 void TransformableWrapper::setPosition(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function setPosition is called");
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when the function setPosition is called");
 	m_transformable->setPosition(pos);
 }
 
 void TransformableWrapper::setScale(sf::Vector2f pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function setScale is called");
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when the function setScale is called");
 	m_transformable->setScale(pos);
 }
 
 void TransformableWrapper::setRotation(sf::Angle pos) noexcept
 {
-	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when function setRotation is called");
+	ENSURE_VALID_PTR(m_transformable, "Pointer to sf::Transformable in TransformableWrapper is nullptr when the function setRotation is called");
 	m_transformable->setRotation(pos);
 }
 
 void TransformableWrapper::create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot, Alignment alignment) noexcept
 {
-	ENSURE_VALID_PTR(transformable, "Precondition violated; sf::Transformable pointer in TransformableWrapper is nullptr when function create is called");
+	ENSURE_VALID_PTR(transformable, "Precondition violated; sf::Transformable pointer in TransformableWrapper is nullptr when the function create is called");
 
 	m_transformable = transformable;
 	m_alignment = alignment;
@@ -222,7 +222,7 @@ SpriteWrapper::SpriteWrapper(const std::string& textureName, sf::Vector2f pos, s
 	if (usedTexture == nullptr) [[unlikely]]
 		throw std::invalid_argument{ "This name is not affiliate with any texture" };
 
-	if (rect == sf::IntRect{})
+	if (rect == sf::IntRect{}) // If rect is 0,0 then the rect should cover the whole texture.
 		rect.size = static_cast<sf::Vector2i>(usedTexture->getSize());
 
 	m_wrappedSprite = std::make_unique<sf::Sprite>(*usedTexture, rect);
@@ -263,15 +263,15 @@ void SpriteWrapper::switchToNextTexture(long long indexOffset)
 {
 	const long long totalIndex{ static_cast<long long>(m_curTextureIndex) + indexOffset };
 	const size_t textureSize{ m_textures.size() };
-	m_curTextureIndex = ((totalIndex % textureSize) + textureSize) % textureSize;
+	m_curTextureIndex = ((totalIndex % textureSize) + textureSize) % textureSize; // Correctly handle negative indices and wrap around.
 	
 	TextureInfo& textureInfo{ m_textures[m_curTextureIndex] };
-	ENSURE_VALID_PTR(textureInfo.texture, "A textureHolder within a TextureInfo was nullptr somehow when switchToNextTexture funcion was called in SpriteWrapper");
+	ENSURE_VALID_PTR(textureInfo.texture, "A textureHolder within a TextureInfo was nullptr somehow when the switchToNextTexture funcion was called in SpriteWrapper");
 	std::unique_ptr<sf::Texture>& newTexture{ textureInfo.texture->actualTexture }; // From texture holder
 
 	if (newTexture == nullptr) [[unlikely]]
 	{	// Not loaded yet, so we need to load it first.
-  		std::ostringstream errorMessage{};
+		std::ostringstream errorMessage{};
 		auto optTexture{ loadTextureFromFile(errorMessage, textureInfo.texture->fileName) };
 		
 		if (!optTexture.has_value()) [[unlikely]]
@@ -289,7 +289,7 @@ void SpriteWrapper::switchToNextTexture(long long indexOffset)
 
 void SpriteWrapper::switchToTexture(size_t index)
 {
-	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size(), "Precondition violated; index is out of range for the texture vector in switchToTexture in SpriteWrapper");
+	ENSURE_NOT_OUT_OF_RANGE(index, m_textures.size(), "Precondition violated; index is out of range for the texture vector in the function switchToTexture of SpriteWrapper");
 
 	if (index == m_curTextureIndex) [[unlikely]]
 		return;
@@ -342,7 +342,7 @@ void SpriteWrapper::removeTexture(const std::string& name) noexcept
 	if (mapIterator == s_accessToTextures.end())
 		return;
 	
-	assert(s_allUniqueTextures.find(&*mapIterator->second) == s_allUniqueTextures.end() && "Precondition violated: a reserved texture cannot be removed using the removeTexture function in SpriteWrapper");
+	assert(s_allUniqueTextures.find(&*mapIterator->second) == s_allUniqueTextures.end() && "Precondition violated: a reserved texture cannot be removed using the removeTexture function of SpriteWrapper");
 
 	s_allTextures.erase(mapIterator->second); // First, removing the actual texture.
 	s_accessToTextures.erase(mapIterator); // Then, the accessing item within the map.

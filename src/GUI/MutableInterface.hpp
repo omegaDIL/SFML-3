@@ -115,7 +115,7 @@ public:
 		if (m_dynamicTexts.find(identifier) != m_dynamicTexts.end())
 			removeDynamicText(identifier);
 
-		addText(content, pos, color, characterSize, fontName, alignment, style, scale, rot);
+		addText(content, pos, characterSize, color, fontName, alignment, style, scale, rot);
 		m_dynamicTexts[identifier] = m_texts.size() - 1;
 		m_indexesForEachDynamicTexts[m_texts.size() - 1] = m_dynamicTexts.find(identifier); // Add the index to the vector of indexes for dynamic sprites.
 	}

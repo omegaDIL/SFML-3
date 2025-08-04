@@ -237,12 +237,7 @@ public:
 
 protected:
 	
-	/**
-	 * \see The `create` function that initializes properly the instance. Do not use any other functions
-	 *		before calling it.
-	 */
-	TransformableWrapper() noexcept : hide{ true }, m_alignment{ Alignment::Center }, m_transformable{ nullptr } 
-	{}
+	inline TransformableWrapper() noexcept : hide{ true }, m_alignment{ Alignment::Center }, m_transformable{ nullptr } {}
 	
 	/**
 	 * \brief Initializes the wrapper.

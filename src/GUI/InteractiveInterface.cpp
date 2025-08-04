@@ -99,8 +99,8 @@ InteractiveItem InteractiveInterface::updateHovered(BasicInterface* activeGUI, s
 	if (gui == nullptr)
 		return s_hoveredItem;
 
-	sf::Vector2f cursorPosCasted{ static_cast<sf::Vector2f>(cursorPos) };
-	
+	sf::Vector2f cursorPosCasted{ gui->m_window->mapPixelToCoords(cursorPos) };
+
 	for (auto& button : gui->m_interactivesSprites)
 	{
 		const std::string identifier{ button.first };

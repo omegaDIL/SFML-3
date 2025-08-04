@@ -7,8 +7,7 @@ namespace gui
 BasicInterface::BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition)
 	: m_window{ window }, m_texts{}, m_sprites{}, m_relativeScalingDefinition{ relativeScalingDefinition }
 {
-	ENSURE_SFML_WINDOW_VALIDITY(m_window);
-	ENSURE_NOT_ZERO(relativeScalingDefinition);
+	ENSURE_SFML_WINDOW_VALIDITY(m_window, "Precondition violated; the window is invalid in the constructor of BasicInterface");
 
 	// Add this interface to the collection.
 	s_allInterfaces.emplace(std::make_pair(window, this));
@@ -21,56 +20,70 @@ BasicInterface::BasicInterface(sf::RenderWindow* window, unsigned int relativeSc
 BasicInterface::BasicInterface(BasicInterface&& other) noexcept
 	: m_window{ other.m_window }, m_texts{ std::move(other.m_texts) }, m_sprites{ std::move(other.m_sprites) }, m_relativeScalingDefinition{ other.m_relativeScalingDefinition }
 {
-	// Update the static collection of interfaces to point to the new object.
-	auto interfaceRange = s_allInterfaces.equal_range(m_window);
-	for (auto& it = interfaceRange.first; it != interfaceRange.second; ++it)
+	auto interfaceRange{ s_allInterfaces.equal_range(other.m_window) };
+	for (auto it{ interfaceRange.first }; it != interfaceRange.second; it++)
 	{
 		if (it->second == &other)
 		{
-			it->second = this;
+			it->second = this; // Update the pointer to point to this instance instead of the moved-from one.
 			break;
 		}
 	}
 
+	// The moved-from object should not be in the collection anymore.
+
 	// Leave the moved-from object in a valid state
 	other.m_window = nullptr;
-
-	ENSURE_SFML_WINDOW_VALIDITY(m_window);
 }
 
 BasicInterface& BasicInterface::operator=(BasicInterface&& other) noexcept
 {
+	// If the two interfaces are associated with different windows,
+	// we need to update the global static collection s_allInterfaces accordingly.
 	if (other.m_window != m_window)
 	{
-		// Updating the collection. 
-		auto interfaceRange{ s_allInterfaces.equal_range(other.m_window) }; 
-		for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
+		// 1. Reassign the mapping of `other` in s_allInterfaces:
+		//    - We're about to move `other` into `*this`, so the pointer to `other`
+		//      in s_allInterfaces should now point to `this`.
+		auto interfaceRange{ s_allInterfaces.equal_range(other.m_window) };
+		for (auto it{ interfaceRange.first }; it != interfaceRange.second; ++it)
 		{
-			if (elem->second == &other)
+			if (it->second == &other)
 			{
-				elem->second = this;
+				it->second = this;
 				break;
 			}
 		}
 
-		// Not the same window, therefore the iterators are completely different and no collision risk.
-		interfaceRange = s_allInterfaces.equal_range(m_window);
-		for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
+		// As they have different windows, we do not need to worry about collision between those two loops
+
+		// 2. Reassign the mapping of `this` in s_allInterfaces:
+		//    - After the move, `other` will hold the old state of `*this`.
+		//      So the entry in s_allInterfaces that previously pointed to `this`
+		//      under m_window should now point to `other`.
+		interfaceRange = s_allInterfaces.equal_range(this->m_window);
+		for (auto it{ interfaceRange.first }; it != interfaceRange.second; ++it)
 		{
-			if (elem->second == this)
+			if (it->second == this)
 			{
-				elem->second = &other; // Remove the interface from the collection.
+				it->second = &other;
 				break;
 			}
 		}
 	}
 
-	std::swap(m_window, other.m_window);
-	std::swap(m_texts, other.m_texts);
-	std::swap(m_sprites, other.m_sprites);
-	std::swap(m_relativeScalingDefinition, other.m_relativeScalingDefinition);
+	// Else: If both `this` and `other` share the same window, we don’t update s_allInterfaces.
+	// Why?
+	// - Each pointer (`this` and `other`) stays associated with the same window after the swap.
+	// - We’re just exchanging internal data; the identity (address) of the interface tied to the window doesn’t change.
+	// - No need to touch the mapping — it's still valid and consistent.
 
-	ENSURE_SFML_WINDOW_VALIDITY(m_window);
+	// Swap the internal state between *this and other.
+	// This includes all relevant members to fully transfer ownership.
+	std::swap(this->m_window, other.m_window);
+	std::swap(this->m_texts, other.m_texts);
+	std::swap(this->m_sprites, other.m_sprites);
+	std::swap(this->m_relativeScalingDefinition, other.m_relativeScalingDefinition);
 
 	return *this;
 }
@@ -94,10 +107,14 @@ BasicInterface::~BasicInterface() noexcept
 
 void BasicInterface::addSprite(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
 {
-	ENSURE_SFML_WINDOW_VALIDITY(m_window);
-	float relativeScalingValue{ std::min(m_window->getSize().x, m_window->getSize().y) / static_cast<float>(m_relativeScalingDefinition) };
+	ENSURE_SFML_WINDOW_VALIDITY(m_window, "The window is invalid in the function addSprite of BasicInterface");
 
-	m_sprites.push_back(SpriteWrapper{ textureName, pos, scale * relativeScalingValue, rect, rot, alignment, color });
+	float relativeScalingValue{ 1.f };
+	if (m_relativeScalingDefinition != 0)
+		relativeScalingValue *= std::min(m_window->getSize().x, m_window->getSize().y) / static_cast<float>(m_relativeScalingDefinition);
+
+	SpriteWrapper newSprite{ textureName, pos, scale * relativeScalingValue, rect, rot, alignment, color };
+	m_sprites.push_back(std::move(newSprite));
 }
 
 void BasicInterface::addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
@@ -119,7 +136,7 @@ void BasicInterface::addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector
 
 void BasicInterface::draw() const noexcept
 {
-	ENSURE_SFML_WINDOW_VALIDITY(m_window);
+	ENSURE_SFML_WINDOW_VALIDITY(m_window, "The window is invalid in the function draw of BasicInterface");
 
 	for (auto const& sprite : m_sprites)
 		if (!sprite.hide)
@@ -129,10 +146,10 @@ void BasicInterface::draw() const noexcept
 			m_window->draw(text.getText());
 }
 
-void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, float relativeMinAxisScale) noexcept
+void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f scaleFactor, float relativeMinAxisScale) noexcept
 {	
-	ENSURE_VALID_PTR(resizedWindow, "The resized window was nullptr when proportionKeeper was called in BasicInterface");
-	ENSURE_NOT_ZERO(relativeMinAxisScale);
+	ENSURE_SFML_WINDOW_VALIDITY(resizedWindow, "Precondition violated; The window is invalid in the function proportionKeeper of BasicInterface");
+	ENSURE_NOT_ZERO(relativeMinAxisScale, "Precondition violated; relativeMinAxisScale is equal to 0 in proportionKeeper of BasicInterface");
 
 	sf::Vector2f minScaling2f{ relativeMinAxisScale, relativeMinAxisScale };
 
@@ -141,15 +158,26 @@ void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, float rel
 	{
 		auto* curInterface{ elem->second };
 
+		if (curInterface->m_relativeScalingDefinition == 0)
+			continue; // No scaling definition, so no need to scale.
+
 		// Updating texts.
 		for (auto& text : curInterface->m_texts)
+		{
 			text.scale(minScaling2f);
+
+			const auto pos{ text.getText().getPosition() };
+			text.setPosition(sf::Vector2f{ pos.x * scaleFactor.x, pos.y * scaleFactor.y }); // Update position to match the new scale.
+		}
 
 		// Updating sprites.
 		for (auto& sprite : curInterface->m_sprites)
+		{
 			sprite.scale(minScaling2f);
 
-		curInterface->m_relativeScalingDefinition *= relativeMinAxisScale;
+			const auto pos{ sprite.getSprite().getPosition() };
+			sprite.setPosition(sf::Vector2f{ pos.x * scaleFactor.x, pos.y * scaleFactor.y }); // Update position to match the new scale.
+		}
 	}
 }
 
