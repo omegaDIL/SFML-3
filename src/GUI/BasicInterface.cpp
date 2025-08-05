@@ -141,6 +141,7 @@ void BasicInterface::draw() const noexcept
 	for (auto const& sprite : m_sprites)
 		if (!sprite.hide)
 			m_window->draw(sprite.getSprite());
+
 	for (auto const& text : m_texts)
 		if (!text.hide)
 			m_window->draw(text.getText());

@@ -123,7 +123,7 @@ public:
 
 	/**
 	 * \brief Adds a text.
-	 * \complexity O(1).
+	 * \complexity Amortized O(1).
 	 *
 	 * \param[in] content What the `sf::Text` will display.
 	 * \param[in] fontName The name of the font that'll be used.
@@ -157,7 +157,7 @@ public:
 
 	/**
 	 * \brief Adds a sprite.
-	 * \complexity O(1).
+	 * \complexity Amortized O(1).
 	 *
 	 * \param[in] textureName: The alias of the texture.
 	 * \param[in] pos: The position of the `sf::Sprite`.
@@ -177,7 +177,7 @@ public:
 	void addSprite(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 	
 	/**
-	 * \see Similar to `addSprite`, but also adds a reserved texture for it.
+	 * \see Similar to `addSprite`, but adds a reserved texture for it as well.
 	 */
 	void addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 

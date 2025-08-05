@@ -37,7 +37,7 @@ void AdvancedInterface::addSlider(const std::string& identifier, sf::Vector2f po
 	if (showValueWithText)
 	{
 		sf::Vector2f posText{ getDynamicSprite("_sb_" + identifier)->getSprite().getGlobalBounds().position };
-		addDynamicText("_ts_" + identifier, "", posText, sf::Color::White, 30u, "__default", Alignment::Right);
+		addDynamicText("_ts_" + identifier, "", posText, 30u, sf::Color::White, "__default", Alignment::Right);
 	}
 }
 

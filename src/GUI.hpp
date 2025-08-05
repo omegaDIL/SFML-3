@@ -55,7 +55,6 @@ void populateGUI(IGUI* gui) noexcept;
 // interfaces to populate. Feel free.
 
 // TODO: id -> IDENTIFIER
-// TODO: empecher le texte de slider de se superposer avec le slider
 // TODO: find().second -> at() + faire des reserves pour les maps et les vectors afin d'eviter les reallocations de memoire.
 // TODO: MouseMove d'abord verifier que le hovered actuel ne l 'est tjr pas avant de boucler sur le reste
 // TODO: _ + mqb + to_string -> _ + to_string + _ + mqb
@@ -68,6 +67,5 @@ void populateGUI(IGUI* gui) noexcept;
 // TODO: remove pointer from interactable element
 // TODO: module C++20
 // TODO: Ajouter une std::function pour les mqb
-// TODO: Mettre message custom dans assert
 
 #endif // GUI_HPP

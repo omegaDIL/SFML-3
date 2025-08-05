@@ -9,14 +9,9 @@ using SafeSaves::Save;
 
 int main()
 {
-	sf::Vector2u windowSize{ 1080, 1080 };
+	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
-	BGUI myInterface{ &window, 1080 }; // Create the interface with the window and the relative scaling definition.
-
-	myInterface.addText("Welcome to the GUI!", { 500, 100 }, 48, sf::Color{ 255, 255, 255 }, "__default", gui::Alignment::Center, sf::Text::Bold | sf::Text::Underlined);
-	myInterface.addText("test1", { 500, 500 }, 32, sf::Color{ 255, 0, 255 }, "__default", gui::Alignment::Center, sf::Text::Italic | sf::Text::Underlined);
-	sf::RectangleShape rect{ sf::Vector2f{ 200, 200 } };
-	myInterface.addSprite(gui::createTextureFromDrawables(rect), { 500, 500 }, { 1.f, 1.f }, sf::IntRect{}, sf::degrees(0), gui::Alignment::Center, sf::Color::White);
+	MGUI myInterface{ &window, 1080 };
 
 	while (window.isOpen())
 	{
@@ -30,7 +25,7 @@ int main()
 		}
 
 		window.clear();
-		myInterface.draw(); // Draw the interface again, but with the second view.
+		myInterface.draw();
 		window.display();
 	}
 
