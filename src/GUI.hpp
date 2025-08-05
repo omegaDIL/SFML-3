@@ -67,5 +67,6 @@ void populateGUI(IGUI* gui) noexcept;
 // TODO: remove pointer from interactable element
 // TODO: module C++20
 // TODO: Ajouter une std::function pour les mqb
+// TODO: string_view
 
 #endif // GUI_HPP

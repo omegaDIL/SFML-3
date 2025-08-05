@@ -222,7 +222,6 @@ public:
 
 protected:
 
-
 	std::unordered_map<std::string, size_t> m_dynamicTexts; // All indexes of dynamic texts in the interface.
 	std::unordered_map<std::string, size_t> m_dynamicSprites; // All indexes of dynamic sprites in the interface.
 

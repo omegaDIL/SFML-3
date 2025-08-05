@@ -32,7 +32,7 @@ void AdvancedInterface::addSlider(const std::string& identifier, sf::Vector2f po
 	scale.y *= size / 200.f;
 	addDynamicSprite("_sb_" + identifier, sliderBackgroundTextureName, pos, scale);
 	addDynamicSprite("_sc_" + identifier, sliderCursorTextureName, pos, sf::Vector2f{ scale.x, scale.x });
-	addButton("_sb_" + identifier);
+	addInteractive("_sb_" + identifier);
 
 	if (showValueWithText)
 	{
@@ -80,7 +80,7 @@ void AdvancedInterface::addMQB(const std::string& identifier, unsigned short num
 	
 		addDynamicSprite(identifier, mqbUncheckedTextureName, curPos, scale);
 		getDynamicSprite(identifier)->addTexture(mqbCheckedTextureName);
-		addButton(identifier);
+		addInteractive(identifier);
 	}
 }
 
@@ -109,24 +109,18 @@ AdvancedInterface::MQB* AdvancedInterface::getMQB(const std::string& identifier)
 	return &mapIterator->second;
 }
 
-InteractiveItem AdvancedInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
+InteractiveInterface::Item AdvancedInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
 {
-	InteractiveInterface::updateHovered(activeGUI, cursorPos);
-
-	if (s_hoveredItem.type != InteractiveInterface::ItemType::other)
-		return s_hoveredItem;
-
-
-
 	return s_hoveredItem;
+
 }
 
-InteractiveItem AdvancedInterface::pressed(BasicInterface* activeGUI) noexcept
+InteractiveInterface::Item AdvancedInterface::pressed(BasicInterface* activeGUI) noexcept
 {
 	return s_hoveredItem;
 }
 
-InteractiveItem AdvancedInterface::unpressed(BasicInterface* activeGUI) noexcept
+InteractiveInterface::Item AdvancedInterface::unpressed(BasicInterface* activeGUI) noexcept
 {
 	return s_hoveredItem;
 }
@@ -170,10 +164,9 @@ void AdvancedInterface::setCursorOfSlider(const std::string& identifier, unsigne
 	cursor->setPosition(sf::Vector2f{ cursor->getSprite().getPosition().x, yPos });
 	float value{ slider.growthSliderFunction(1 - (yPos - minPos) / (maxPos - minPos)) }; // Get the value of the slider.
 
-	if (m_dynamicTexts.find('_' + identifier) != m_dynamicTexts.end()) // If the slider has a text associated with it.
+	auto text{ getDynamicText("_ts_" + identifier) }; // Get the text associated with the slider, if it exists.
+	if (text != nullptr) // If the slider has a text associated with it.
 	{
-		TextWrapper* text{ getDynamicText("_ts_" + identifier) };
-
 		text->setPosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
 		text->setContent(value);
 	}

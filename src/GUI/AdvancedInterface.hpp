@@ -148,7 +148,7 @@ public:
 	 *
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept;
+	static Item updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the cursor is pressed.
@@ -160,7 +160,7 @@ public:
 	 *
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem pressed(BasicInterface* activeGUI) noexcept;
+	static Item pressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the cursor is released.
@@ -172,7 +172,7 @@ public:
 	 *
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem unpressed(BasicInterface* activeGUI) noexcept;
+	static Item unpressed(BasicInterface* activeGUI) noexcept;
 
 private:
 

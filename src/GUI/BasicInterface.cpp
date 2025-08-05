@@ -20,8 +20,8 @@ BasicInterface::BasicInterface(sf::RenderWindow* window, unsigned int relativeSc
 BasicInterface::BasicInterface(BasicInterface&& other) noexcept
 	: m_window{ other.m_window }, m_texts{ std::move(other.m_texts) }, m_sprites{ std::move(other.m_sprites) }, m_relativeScalingDefinition{ other.m_relativeScalingDefinition }
 {
-	auto interfaceRange{ s_allInterfaces.equal_range(other.m_window) };
-	for (auto it{ interfaceRange.first }; it != interfaceRange.second; it++)
+	const auto interfaceRange{ s_allInterfaces.equal_range(other.m_window) };
+	for (auto it{ interfaceRange.first }; it != interfaceRange.second; ++it)
 	{
 		if (it->second == &other)
 		{
@@ -90,12 +90,12 @@ BasicInterface& BasicInterface::operator=(BasicInterface&& other) noexcept
 
 BasicInterface::~BasicInterface() noexcept
 {
-	auto interfaceRange{ s_allInterfaces.equal_range(m_window) }; // All interfaces associated with the resized window.
-	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
+	const auto interfaceRange{ s_allInterfaces.equal_range(m_window) }; // All interfaces associated with the resized window.
+	for (auto it{ interfaceRange.first }; it != interfaceRange.second; ++it)
 	{
-		if (elem->second == this)
+		if (it->second == this)
 		{
-			s_allInterfaces.erase(elem); // Remove the interface from the collection.
+			s_allInterfaces.erase(it); // Remove the interface from the collection.
 			break;
 		}
 	}
@@ -138,11 +138,11 @@ void BasicInterface::draw() const noexcept
 {
 	ENSURE_SFML_WINDOW_VALIDITY(m_window, "The window is invalid in the function draw of BasicInterface");
 
-	for (auto const& sprite : m_sprites)
+	for (const auto& sprite : m_sprites)
 		if (!sprite.hide)
 			m_window->draw(sprite.getSprite());
 
-	for (auto const& text : m_texts)
+	for (const auto& text : m_texts)
 		if (!text.hide)
 			m_window->draw(text.getText());
 }
@@ -152,12 +152,12 @@ void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vecto
 	ENSURE_SFML_WINDOW_VALIDITY(resizedWindow, "Precondition violated; The window is invalid in the function proportionKeeper of BasicInterface");
 	ENSURE_NOT_ZERO(relativeMinAxisScale, "Precondition violated; relativeMinAxisScale is equal to 0 in proportionKeeper of BasicInterface");
 
-	sf::Vector2f minScaling2f{ relativeMinAxisScale, relativeMinAxisScale };
+	const sf::Vector2f minScaling2f{ relativeMinAxisScale, relativeMinAxisScale };
 
-	auto interfaceRange{ s_allInterfaces.equal_range(resizedWindow) }; // All interfaces associated with the resized window.
-	for (auto elem{ interfaceRange.first }; elem != interfaceRange.second; elem++)
+	const auto interfaceRange{ s_allInterfaces.equal_range(resizedWindow) }; // All interfaces associated with the resized window.
+	for (auto it{ interfaceRange.first }; it != interfaceRange.second; ++it)
 	{
-		auto* curInterface{ elem->second };
+		auto* curInterface{ it->second };
 
 		if (curInterface->m_relativeScalingDefinition == 0)
 			continue; // No scaling definition, so no need to scale.

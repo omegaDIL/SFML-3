@@ -10,7 +10,7 @@ void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstre
 
 	gui.addDynamicText("message", errorMessage.str(), sf::Vector2f{360, 260});
 	gui.addDynamicText("close", "ok I understand - close this window", sf::Vector2f{ 360, 600 });
-	gui.addButton("close", nullptr); // Add a button to close the window.
+	gui.addInteractive("close", [&window](IGUI*, std::string&) mutable {window.close(); }); // Add a button to close the window.
 
 	auto* text{ gui.getDynamicText("message") };
 	auto rectSize{ text->getText().getGlobalBounds() };
@@ -29,10 +29,6 @@ void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstre
 
 			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 				IGUI::updateHovered(&gui, sf::Mouse::getPosition(window));
-
-			if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				if (IGUI::unpressed(&gui).type == IGUI::ItemType::button)
-					window.close();
 
 			if (event->is<sf::Event::Resized>())
 				BGUI::windowResized(&window, windowSize);

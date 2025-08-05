@@ -4,7 +4,7 @@ namespace gui
 {
 
 InteractiveInterface::InteractiveInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition)
-	: MutableInterface{ window, m_relativeScalingDefinition }, m_interactivesTexts{}, m_interactivesSprites{}, m_writingText{ nullptr }, m_writingFunction{ nullptr }
+	: MutableInterface{ window, m_relativeScalingDefinition }, m_endTextInteractives{ 0 }, m_endSpriteInteractives{ 0 }, m_interactiveTexts{}, m_interactiveSprites{}, m_writingText{ nullptr }, m_writingFunction{ nullptr }
 {
 	std::string textureName{ "__plainGrey" }; 
 	if (SpriteWrapper::getTexture(textureName) == nullptr) [[unlikely]]
@@ -22,44 +22,89 @@ InteractiveInterface::InteractiveInterface(sf::RenderWindow* window, unsigned in
 
 void InteractiveInterface::removeDynamicText(const std::string& identifier) noexcept
 {
-	if (getDynamicText(identifier) == m_writingText)
+	const auto mapIterator{ m_dynamicTexts.find(identifier) };
+
+	if (mapIterator == m_dynamicTexts.end())
+		return; // No sprite with that identifier.
+
+	size_t index{ mapIterator->second };
+
+	if (&m_texts[index] == m_writingText)
 	{
 		m_writingText = nullptr;
 		getDynamicSprite(writingCursorIdentifier)->hide = true;
-	}
+	} 
 
-	if (m_interactivesTexts.find(identifier) != m_interactivesTexts.end())
-		m_interactivesTexts.erase(identifier);
-	 
-	MutableInterface::removeDynamicText(identifier);
+	MutableInterface::removeDynamicSprite(identifier);
+
+	if (index < m_endTextInteractives)
+	{
+		swapElement(index, m_endTextInteractives - 1, m_texts, m_dynamicTexts, m_indexesForEachDynamicTexts);
+
+		std::swap(m_interactiveTexts[index], m_interactiveTexts[m_endTextInteractives - 1]);
+		m_interactiveTexts.erase(m_endTextInteractives - 1); // Remove the last element as it is now empty.
+
+		--m_endTextInteractives;
+	}
 }
 
 void InteractiveInterface::removeDynamicSprite(const std::string& identifier) noexcept
 {
-	if (m_interactivesSprites.find(identifier) != m_interactivesSprites.end())
-		m_interactivesSprites.erase(identifier);
+	const auto mapIterator{ m_dynamicSprites.find(identifier) };
+
+	if (mapIterator == m_dynamicSprites.end())
+		return; // No sprite with that identifier.
+
+	size_t index{ mapIterator->second };
 
 	MutableInterface::removeDynamicSprite(identifier);
+
+	if (index < m_endSpriteInteractives)
+	{
+		swapElement(index, m_endSpriteInteractives - 1, m_sprites, m_dynamicSprites, m_indexesForEachDynamicSprites);
+
+		std::swap(m_interactiveSprites[index], m_interactiveSprites[m_endSpriteInteractives - 1]);
+		m_interactiveSprites.erase(m_endSpriteInteractives - 1); // Remove the last element as it is now empty.
+
+		--m_endSpriteInteractives;
+	}
 }
-
-void InteractiveInterface::addButton(const std::string& identifier, ButtonFunction function) noexcept
+ 
+void InteractiveInterface::addInteractive(const std::string& identifier, ButtonFunction function, Button::When when) noexcept
 {
-	if (getDynamicSprite(identifier) != nullptr)
-		m_interactivesSprites[identifier] = function;
+	const auto sprite{ getDynamicSprite(identifier) };
+	const auto text{ getDynamicText(identifier) };
 
-	if (getDynamicText(identifier) != nullptr)
-		m_interactivesTexts[identifier] = std::move(function);
+	if (text != nullptr)
+	{
+		swapElement(m_dynamicTexts[identifier], m_endTextInteractives++, m_texts, m_dynamicTexts, m_indexesForEachDynamicTexts);
+		m_interactiveTexts[m_endTextInteractives] = Button{ (sprite == nullptr) ? std::move(function) : function, when };
+	}
+
+	if (sprite != nullptr)
+	{
+		swapElement(m_dynamicSprites[identifier], m_endSpriteInteractives++, m_sprites, m_dynamicSprites, m_indexesForEachDynamicSprites);
+		m_interactiveSprites[m_endSpriteInteractives] = Button{ std::move(function), when };
+	}
 }
 	
 InteractiveInterface::ButtonFunction* InteractiveInterface::getButton(const std::string& identifier) noexcept
 {
-	auto mapIteratorTexts{ m_interactivesTexts.find(identifier) };
-	if (mapIteratorTexts != m_interactivesTexts.end())
-		return &mapIteratorTexts->second;
+	const auto mapIteratorTextIndexes{ m_dynamicTexts.find(identifier) };
+	if  (mapIteratorTextIndexes != m_dynamicTexts.end())
+	{
+		const auto mapIteratorTextButton{ m_interactiveTexts.find(mapIteratorTextIndexes->second) };
+		if (mapIteratorTextButton != m_interactiveTexts.end())
+			return &mapIteratorTextButton->second.function;
+	}
 
-	auto mapIteratorSprites{ m_interactivesSprites.find(identifier) };
-	if (mapIteratorSprites != m_interactivesSprites.end())
-		return &mapIteratorSprites->second;
+	const auto mapIteratorSpriteIndexes{ m_dynamicSprites.find(identifier) };
+	if (mapIteratorSpriteIndexes != m_dynamicSprites.end())
+	{
+		auto mapIteratorSpriteButton{ m_interactiveSprites.find(mapIteratorSpriteIndexes->second) };
+		if (mapIteratorSpriteButton != m_interactiveSprites.end())
+			return &mapIteratorSpriteButton->second.function;
+	}
 
 	return nullptr;
 }
@@ -81,69 +126,80 @@ void InteractiveInterface::setWritingText(const std::string& identifier, Writabl
 	cursor->hide = false;
 }
 
-InteractiveItem InteractiveInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
+InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when updateHovered was called in InteractiveInterface");
 
-	auto setHovered = [](InteractiveInterface* gui, std::string const* id, uint8_t type) -> void
-	{
-		s_hoveredItem.gui = gui;
-		s_hoveredItem.identfier = id;
-		s_hoveredItem.type = 0;
-	};
+	InteractiveInterface* igui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
+	s_hoveredItem = Item{ nullptr, "", nullptr };
 
-	setHovered(nullptr, nullptr, ItemType::none);
-
-	InteractiveInterface* gui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
-
-	if (gui == nullptr)
+	if (igui == nullptr)
 		return s_hoveredItem;
 
-	sf::Vector2f cursorPosCasted{ gui->m_window->mapPixelToCoords(cursorPos) };
+	sf::Vector2f cursorPosCasted{ igui->m_window->mapPixelToCoords(cursorPos) };
 
-	for (auto& button : gui->m_interactivesSprites)
+	for (size_t i{ 0 }; i < igui->m_endSpriteInteractives; ++i) 
 	{
-		const std::string identifier{ button.first };
-
-		if (gui->getDynamicSprite(identifier)->getSprite().getGlobalBounds().contains(cursorPosCasted))
+		if (igui->m_sprites[i].getSprite().getGlobalBounds().contains(cursorPosCasted))
 		{
-			setHovered(gui, &button.first, ItemType::button);
-			return s_hoveredItem;
+			s_hoveredItem = Item{ igui, igui->m_indexesForEachDynamicSprites[i]->first, &igui->m_interactiveSprites[i] };
+
+			if (s_hoveredItem.m_button->when == InteractiveInterface::Button::When::hovered)
+				s_hoveredItem.m_button->function(igui, s_hoveredItem.identfier);
+			
+			break; // A text might be on top of the sprite, so we need to check it too.
 		}
 	}
 
-	for (auto& button : gui->m_interactivesTexts)
+	for (size_t i{ 0 }; i < igui->m_endTextInteractives; ++i)
 	{
-		const std::string identifier{ button.first };
-
-		if (gui->getDynamicText(identifier)->getText().getGlobalBounds().contains(cursorPosCasted))
+		if (igui->m_texts[i].getText().getGlobalBounds().contains(cursorPosCasted))
 		{
-			setHovered(gui, &button.first, ItemType::button);
-			return s_hoveredItem;
+			s_hoveredItem = Item{ igui, igui->m_indexesForEachDynamicSprites[i]->first, &igui->m_interactiveSprites[i] };
+
+			if (s_hoveredItem.m_button->when == InteractiveInterface::Button::When::hovered)
+				s_hoveredItem.m_button->function(igui, s_hoveredItem.identfier);
+
+			break; // A text might be on top of the sprite, so we need to check it too.
 		}
 	}
 
 	return s_hoveredItem;
 }
 
-InteractiveItem InteractiveInterface::unpressed(BasicInterface* activeGUI) noexcept
+InteractiveInterface::Item InteractiveInterface::pressed(BasicInterface* activeGUI) noexcept
+{
+	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when pressed was called in InteractiveInterface");
+
+	InteractiveInterface* igui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
+
+	// if active is not interactive 
+	// Or if there is no hovered item
+	// Or if the hovered item is not part of the active gui
+	if (igui == nullptr || s_hoveredItem.identfier == "" || s_hoveredItem.igui != igui)
+		return s_hoveredItem;
+
+	if (s_hoveredItem.m_button->when == Button::When::pressed)
+		s_hoveredItem.m_button->function(igui, s_hoveredItem.identfier); // Ensure the sprite is created.
+
+	return s_hoveredItem;
+}
+
+InteractiveInterface::Item InteractiveInterface::unpressed(BasicInterface* activeGUI) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when unpressed was called in InteractiveInterface");
 
-	InteractiveInterface* gui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
+	InteractiveInterface* igui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
 
 	// if active is not interactive 
+	// Or if there is no hovered item
 	// Or if the hovered item is not part of the active gui
-	if (gui == nullptr || s_hoveredItem.gui != gui)
+	if (igui == nullptr || s_hoveredItem.identfier == "" || s_hoveredItem.igui != igui)
 		return s_hoveredItem;
 	
-	if (s_hoveredItem.type == ItemType::button)
-	{
-		auto function{ (*gui->getButton(*s_hoveredItem.identfier)) };
-		if (function != nullptr)
-			function(gui);
-	}
-
+	if (s_hoveredItem.m_button->when == Button::When::unpressed)
+		s_hoveredItem.m_button->function(igui, s_hoveredItem.identfier); // Ensure the sprite is created.
+	
 	return s_hoveredItem;
 }
 

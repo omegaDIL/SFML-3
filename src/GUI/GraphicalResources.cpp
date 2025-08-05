@@ -162,7 +162,7 @@ void TextWrapper::createFont(const std::string& name, sf::Font font) noexcept
 
 void TextWrapper::removeFont(const std::string& name) noexcept
 {
-	auto mapIterator{ s_accessToFonts.find(name) };
+	const auto mapIterator{ s_accessToFonts.find(name) };
 
 	if (mapIterator == s_accessToFonts.end())
 		return;
@@ -173,7 +173,7 @@ void TextWrapper::removeFont(const std::string& name) noexcept
 
 sf::Font* TextWrapper::getFont(const std::string& name) noexcept
 {
-	auto mapIterator{ s_accessToFonts.find(name) };
+	const auto mapIterator{ s_accessToFonts.find(name) };
 
 	if (mapIterator == s_accessToFonts.end()) [[unlikely]]
 		return nullptr;

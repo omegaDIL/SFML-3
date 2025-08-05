@@ -21,14 +21,7 @@
 namespace gui
 {
 
-class InteractiveInterface;
 
-struct InteractiveItem
-{
-	InteractiveInterface* gui;
-	uint8_t type;
-	std::string const* identfier;
-};
 
 /**
  * \brief Manages an interface in which the user can add texts/sprites buttons or write.
@@ -48,15 +41,38 @@ class InteractiveInterface : public MutableInterface
 {
 public:  
 
-	struct ItemType
+	using ButtonFunction = std::function<void(InteractiveInterface*, std::string&)>;
+	using WritableFunction = std::function<void(InteractiveInterface*, char32_t&, std::string&)>;
+
+	struct Button
 	{
-		inline static const uint8_t none{ 0 };
-		inline static const uint8_t button{ 1 };
-		inline static const uint8_t other{ 2 };
+		enum class When : std::uint8_t
+		{
+			hovered,
+			pressed,
+			unpressed,
+			none
+		} when;
+
+		ButtonFunction function;		
+		
+		Button(ButtonFunction func = nullptr, When wh = When::none) noexcept
+			: function{ std::move(func) }, when{ wh } {}
 	};
 
-	using ButtonFunction = std::function<void(InteractiveInterface*)>;
-	using WritableFunction = std::function<void(InteractiveInterface*, char32_t&, std::string&)>;
+	struct Item
+	{		
+		Item(InteractiveInterface* ptr, std::string const& id, Button* button) noexcept
+			: identfier{ id }, igui{ ptr }, m_button{ button } {}
+
+		InteractiveInterface* igui;
+		std::string identfier;
+
+	private:
+		Button* m_button;
+
+	friend class InteractiveInterface;
+	};
 
 
 	/**
@@ -125,7 +141,7 @@ public:
 	 * 
 	 *  \see `InteractiveFunction`.
 	 */
-	void addButton(const std::string& identifier, ButtonFunction function = nullptr) noexcept;
+	void addInteractive(const std::string& identifier, ButtonFunction function = nullptr, Button::When when = Button::When::unpressed) noexcept;
 
 	/**
 	 * \brief Returns a ptr to the button's function, or nullptr if it does not exist.
@@ -186,7 +202,19 @@ public:
 	 * 
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept;
+	static Item updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept;
+
+	/**
+	 * \brief Tells the active GUI that the cursor is pressed.
+	 * \complexity O(1).
+	 *
+	 * \param[out] activeGUI: The GUI to update. No effect if not interactive
+	 *
+	 * \return The gui address + id + type of the element that is currently hovered.
+	 *
+	 * \warning Asserts if activeGUI is nullptr.
+	 */
+	static Item pressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the cursor is released.
@@ -198,7 +226,7 @@ public:
 	 * 
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static InteractiveItem unpressed(BasicInterface* activeGUI) noexcept;
+	static Item unpressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Enters a character into the writing text. Can remove last character if backspace is entered,
@@ -217,7 +245,7 @@ public:
 
 protected:
 	
-	inline static InteractiveItem s_hoveredItem{};
+	inline static Item s_hoveredItem{ nullptr, "", nullptr };
 
 private:
 	
@@ -231,14 +259,17 @@ private:
 	void updateWritingText(char32_t character) noexcept;
 
 
-	std::unordered_map<std::string, ButtonFunction> m_interactivesTexts; // Collection of buttons in the interface.
-	std::unordered_map<std::string, ButtonFunction> m_interactivesSprites; // Collection of buttons in the interface.
+	size_t m_endTextInteractives;
+	size_t m_endSpriteInteractives;
+
+	std::unordered_map<size_t, Button> m_interactiveTexts; 
+	std::unordered_map<size_t, Button> m_interactiveSprites; 
 
 	TextWrapper* m_writingText;
 	WritableFunction m_writingFunction;
 
 
-	inline static const std::string writingCursorIdentifier{ "__wc" };
+	inline static const std::string writingCursorIdentifier{ "__wc" }; // Use constexpr
 };
 
 } // gui namespace

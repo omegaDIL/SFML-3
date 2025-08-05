@@ -25,7 +25,7 @@ void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Textu
 
 void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
 {
-	auto mapIterator{ m_dynamicTexts.find(identifier) };
+	const auto mapIterator{ m_dynamicTexts.find(identifier) };
 
 	if (mapIterator == m_dynamicTexts.end())
 		return;
@@ -38,7 +38,7 @@ void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
 
 void MutableInterface::removeDynamicSprite(const std::string& identifier) noexcept
 {
-	auto mapIterator{ m_dynamicSprites.find(identifier) };
+	const auto mapIterator{ m_dynamicSprites.find(identifier) };
 
 	if (mapIterator == m_dynamicSprites.end())
 		return;
@@ -51,7 +51,7 @@ void MutableInterface::removeDynamicSprite(const std::string& identifier) noexce
 
 TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) noexcept
 {
-	auto mapIterator{ m_dynamicTexts.find(identifier) };
+	const auto mapIterator{ m_dynamicTexts.find(identifier) };
 
 	if (mapIterator == m_dynamicTexts.end())
 		return nullptr;
@@ -61,7 +61,7 @@ TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) noe
 
 SpriteWrapper* MutableInterface::getDynamicSprite(const std::string& identifier) noexcept
 {
-	auto mapIterator{ m_dynamicSprites.find(identifier) };
+	const auto mapIterator{ m_dynamicSprites.find(identifier) };
 
 	if (mapIterator == m_dynamicSprites.end())
 		return nullptr;

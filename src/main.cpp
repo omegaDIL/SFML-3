@@ -11,7 +11,7 @@ int main()
 {
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
-	MGUI myInterface{ &window, 1080 };
+	IGUI myInterface{ &window, 1080 };
 
 	while (window.isOpen())
 	{
