@@ -125,7 +125,7 @@ public:
 	 * \see `addText`.
 	 */
 	template<Ostreamable T>
-	void addDynamicText(std::string identifier, const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
+	inline void addDynamicText(std::string identifier, const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
 	{
 		if (m_dynamicTexts.find(identifier) != m_dynamicTexts.end())
 			return;
@@ -245,7 +245,7 @@ protected:
 	 * \warning Asserts if out of range.
 	 */
 	template<typename T> requires (std::same_as<T, TextWrapper> || std::same_as<T, SpriteWrapper>)
-	void swapElement(size_t index1, size_t index2, std::vector<T>& vector, MutableElementUmap& identifierMap, std::unordered_map<size_t, UmapMutablesIterator>& indexMap) noexcept
+	inline void swapElement(size_t index1, size_t index2, std::vector<T>& vector, MutableElementUmap& identifierMap, std::unordered_map<size_t, UmapMutablesIterator>& indexMap) noexcept
 	{
 		ENSURE_NOT_OUT_OF_RANGE(index1, vector.size(), "Precondition violated; the first  index to swap is out of range in the function swapElement of MutableInterface");
 		ENSURE_NOT_OUT_OF_RANGE(index2, vector.size(), "Precondition violated; the second index to swap is out of range in the function swapElement of MutableInterface");
