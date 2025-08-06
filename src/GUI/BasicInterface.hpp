@@ -98,20 +98,11 @@ public:
 	 *			  - A window of size 2160x3840 → factor = 2.0
 	 *		
 	 *			  If set to 0, no scaling is applied regardless of window size.
-	 * 
-	 * \note When the first instance of the interface is created, a default font named `defaultFont.ttf` is
-	 *       loaded from the `assets/` directory and registered under the name `__default`.
 	 *
 	 * \pre `window` must be a valid.
 	 * \warning The program will assert otherwise.
-	 *
-	 * \pre A font file named `defaultFont.ttf` must exist in the `assets/` folder.
-	 * \post The default font is loaded and available for use.
-	 * \throw LoadingGraphicalRessourceFailure If the default font cannot be loaded. This follows the strong
-	 *        exception guarantee: the interface remains in a valid state, but no text will be rendered using
-	 *        the default font. Users must manually load and assign a font to display text.
 	 */
-	explicit BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080);
+	explicit BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080) noexcept;
 
 	inline BasicInterface() noexcept : m_window{ nullptr }, m_texts{}, m_sprites{}, m_relativeScalingDefinition{ 1080 } {}
 	BasicInterface(BasicInterface const&) noexcept = delete;
@@ -135,10 +126,17 @@ public:
 	 * \param[in] style The style of the `sf::Text` (regular, italic, underlined...).
 	 * \param[in] rot The rotation of the `sf::Text`.
 	 *
+	 * \note When this function is called for the first time, and until it is loaded successfully, it
+	 *		 will try to load the default font under the name `__default` from the path `assets/defaultFont.ttf`.
+	 * 
+	 * \pre A font file named `defaultFont.ttf` must exist in the `assets/` folder.
+	 * \post The default font is loaded and available for use.
+	 * \throw LoadingGraphicalRessourceFailure Strong exception guarantee: nothing happens.
+	 * 
 	 * \pre   A font must have been loaded with the name you gave, either using the function `createFont`
 	 *		  or being the default font under the name __default. 
 	 * \post  A font will be used.
-	 * \throw std::invalid_argument Strong exception guarantee: nothing happens
+	 * \throw std::invalid_argument Strong exception guarantee: nothing happens.
 	 *
 	 * \see `createFont`, `Ostreamable`.
 	 */
@@ -147,8 +145,12 @@ public:
 	{
 		ENSURE_SFML_WINDOW_VALIDITY(m_window, "The window is invalid in the function addText of BasicInterface");
 
+		// Loads the default font.
+		if (TextWrapper::getFont("__default") == nullptr) [[unlikely]] // Does not exist yet.
+			TextWrapper::createFont("__default", "defaultFont.ttf"); // Throws an exception if loading fails.
+
 		float relativeScalingValue{ 1.f };
-		if (m_relativeScalingDefinition != 0)
+		if (m_relativeScalingDefinition != 0) [[likely]]
 			relativeScalingValue *= std::min(m_window->getSize().x, m_window->getSize().y) / static_cast<float>(m_relativeScalingDefinition);
 
 		TextWrapper newText{ content, fontName, characterSize, pos, scale * relativeScalingValue, color, alignment, style, rot };
@@ -177,7 +179,8 @@ public:
 	void addSprite(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 	
 	/**
-	 * \see Similar to `addSprite`, but adds a reserved texture for it as well.
+	 * \see Similar to `addSprite`, but adds a reserved texture as well, which allows the function to
+	 *		be noexcept.
 	 */
 	void addSprite(sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 
@@ -288,6 +291,7 @@ private:
 	 *
 	 * \pre `resizedWindow` must be a valid window.
 	 * \pre `relativeMinAxisScale` must represent a valid proportion (not 0).
+	 * \pre `scaleFactor` must not be equal to 0.
 	 * \warning The program will assert otherwise.
 	 */
 	static void proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vector2f scaleFactor, float relativeMinAxisScale) noexcept;

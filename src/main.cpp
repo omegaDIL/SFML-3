@@ -1,7 +1,6 @@
 ﻿#include <SFML/Graphics.hpp> 
 #include <string>
 #include <optional>
-#include <iostream>
 #include "GUI.hpp"
 #include "Save.hpp"
 
@@ -11,7 +10,7 @@ int main()
 {
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
-	IGUI myInterface{ &window, 1080 };
+	BGUI mainInterface{ &window, 1080 }; // Create the interface with the window and the relative scaling definition.
 
 	while (window.isOpen())
 	{
@@ -25,7 +24,7 @@ int main()
 		}
 
 		window.clear();
-		myInterface.draw();
+		mainInterface.draw();
 		window.display();
 	}
 

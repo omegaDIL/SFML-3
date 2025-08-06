@@ -182,7 +182,7 @@ sf::Font* TextWrapper::getFont(const std::string& name) noexcept
 }
 
 
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
+std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, const std::string& fileName, const std::string& path) noexcept
 {
 	try
 	{
@@ -198,7 +198,7 @@ std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::
 		font.setSmooth(true);
 		return font;
 	}
-	catch (LoadingGraphicalResourceFailure const& error)
+	catch (const LoadingGraphicalResourceFailure& error)
 	{
 		errorMessage << error.what();
 		errorMessage << "This font cannot be displayed\n";
@@ -404,7 +404,7 @@ bool SpriteWrapper::unloadTexture(const std::string& name) noexcept
 }
 
 
-std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path) noexcept
+std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, const std::string& fileName, const std::string& path) noexcept
 {
 	sf::Texture texture{};
 
@@ -420,7 +420,7 @@ std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage,
 
 		texture.setSmooth(true); // Enable smooth rendering for the font.
 	}
-	catch (LoadingGraphicalResourceFailure const& error)
+	catch (const LoadingGraphicalResourceFailure & error)
 	{
 		errorMessage << error.what();
 		errorMessage << "This texture cannot be displayed\n";

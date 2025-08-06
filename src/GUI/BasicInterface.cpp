@@ -4,17 +4,13 @@
 namespace gui
 {
 
-BasicInterface::BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition)
+BasicInterface::BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition) noexcept
 	: m_window{ window }, m_texts{}, m_sprites{}, m_relativeScalingDefinition{ relativeScalingDefinition }
 {
 	ENSURE_SFML_WINDOW_VALIDITY(m_window, "Precondition violated; the window is invalid in the constructor of BasicInterface");
 
 	// Add this interface to the collection.
 	s_allInterfaces.emplace(std::make_pair(window, this));
-
-	// Loads the default font.
-	if (TextWrapper::getFont("__default") == nullptr) // Does not exist yet.
-		TextWrapper::createFont("__default", "defaultFont.ttf"); // Throws an exception if loading fails.
 } 
 
 BasicInterface::BasicInterface(BasicInterface&& other) noexcept
@@ -151,6 +147,8 @@ void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vecto
 {	
 	ENSURE_SFML_WINDOW_VALIDITY(resizedWindow, "Precondition violated; The window is invalid in the function proportionKeeper of BasicInterface");
 	ENSURE_NOT_ZERO(relativeMinAxisScale, "Precondition violated; relativeMinAxisScale is equal to 0 in proportionKeeper of BasicInterface");
+	ENSURE_NOT_ZERO(scaleFactor.x, "Precondition violated; scale factor is equal to 0 in the function proportionKeeper of BasicInterface");
+	ENSURE_NOT_ZERO(scaleFactor.y, "Precondition violated; scale factor is equal to 0 in the function proportionKeeper of BasicInterface");
 
 	const sf::Vector2f minScaling2f{ relativeMinAxisScale, relativeMinAxisScale };
 

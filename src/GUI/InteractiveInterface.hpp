@@ -153,7 +153,7 @@ public:
 	 * 
 	 * \see `addButton`.
 	 */
-	[[nodiscard]] ButtonFunction* getButton(const std::string& identifier) noexcept;
+	[[nodiscard]] ButtonFunction* getInteractive(const std::string& identifier) noexcept;
 
 	/**
 	 * \brief Sets the text that will be edited once the user types a character.

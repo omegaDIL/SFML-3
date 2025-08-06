@@ -25,7 +25,7 @@ namespace gui
  * \brief  Manages an interface with changeable contents: texts and shapes.
  *
  * \note This class stores UI componenents; it will use a considerable amount of memory.
- * \note Each Mutable elements might consume a little more memory than their fixed counterparts.
+ * \note Each mutable elements might consume a little more memory than their fixed counterparts.
  * \warning Avoid deleting the `sf::RenderWindow` passed as an argument while this class is using it.
  *			The progam will assert otherwise. 
  * 
@@ -73,24 +73,15 @@ public:
 	 *			  - A window of size 2160x3840 → factor = 2.0
 	 *
 	 *			  If set to 0, no scaling is applied regardless of window size.
-	 *
-	 * \note When the first instance of the interface is created, a default font named `defaultFont.ttf` is
-	 *       loaded from the `assets/` directory and registered under the name `__default`.
-	 *
+	 * 
 	 * \pre `window` must be a valid.
 	 * \warning The program will assert otherwise.
-	 *
-	 * \pre A font file named `defaultFont.ttf` must exist in the `assets/` folder.
-	 * \post The default font is loaded and available for use.
-	 * \throw LoadingGraphicalRessourceFailure If the default font cannot be loaded. This follows the strong
-	 *        exception guarantee: the interface remains in a valid state, but no text will be rendered using
-	 *        the default font. Users must manually load and assign a font to display text.
 	 */
-	inline explicit MutableInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080)
+	inline explicit MutableInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080) noexcept
 		: BasicInterface{ window, relativeScalingDefinition }, m_dynamicTexts{}, m_dynamicSprites{}, m_indexesForEachDynamicTexts{}, m_indexesForEachDynamicSprites{}
 	{}
 
-	MutableInterface() noexcept = delete;
+	MutableInterface() noexcept = default;
 	MutableInterface(MutableInterface const&) noexcept = delete;
 	MutableInterface(MutableInterface&&) noexcept = default;
 	MutableInterface& operator=(MutableInterface const&) noexcept = delete;
@@ -118,11 +109,17 @@ public:
 	 * \note You should not put an underscore before identifiers, as they are reserved for the class.
 	 * \note Identifiers must be unique between texts and sprites. But one text and one sprite can have
 	 *		 a similar identifier.
-	 * 
+	 * \note When this function is called for the first time, and until it is loaded successfully, it
+	 *		 will try to load the default font under the name `__default` from the path `assets/defaultFont.ttf`.
+	 *
+	 * \pre A font file named `defaultFont.ttf` must exist in the `assets/` folder.
+	 * \post The default font is loaded and available for use.
+	 * \throw LoadingGraphicalRessourceFailure Strong exception guarantee: nothing happens.
+	 *
 	 * \pre   A font must have been loaded with the name you gave, either using the function `createFont`
-	 *		  or being the default font under the name __default. 
+	 *		  or being the default font under the name __default.
 	 * \post  A font will be used.
-	 * \throw std::invalid_argument Strong exception guarantee: nothing happens
+	 * \throw std::invalid_argument Strong exception guarantee: nothing happens.
 	 *
 	 * \see `addText`.
 	 */
@@ -166,7 +163,8 @@ public:
 	void addDynamicSprite(const std::string& identifier, const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	/**
-	 * \see Similar to `addDynamicSprite`, but adds a reserved texture for it as well.
+	 * \see Similar to `addSprite`, but adds a reserved texture as well, which allows the function to
+	 *		be noexcept.
 	 */
 	void addDynamicSprite(const std::string& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 

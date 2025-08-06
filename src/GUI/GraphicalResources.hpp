@@ -506,7 +506,7 @@ private:
  * 
  * \see `TextWrapper`, `sf::Font::openFromFile`.
  */
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
+std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, const std::string& fileName, const std::string& path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Text` wrapper.
@@ -1008,7 +1008,7 @@ private:
  * 
  * \see `SpriteWrapper`, `sf::Sprite::loadFromFile`.
  */
-std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string const& fileName, std::string const& path = "../assets/") noexcept;
+std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, const std::string& fileName, const std::string& path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` wrapper.

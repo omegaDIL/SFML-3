@@ -88,7 +88,7 @@ void InteractiveInterface::addInteractive(const std::string& identifier, ButtonF
 	}
 }
 	
-InteractiveInterface::ButtonFunction* InteractiveInterface::getButton(const std::string& identifier) noexcept
+InteractiveInterface::ButtonFunction* InteractiveInterface::getInteractive(const std::string& identifier) noexcept
 {
 	const auto mapIteratorTextIndexes{ m_dynamicTexts.find(identifier) };
 	if  (mapIteratorTextIndexes != m_dynamicTexts.end())
