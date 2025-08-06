@@ -15,6 +15,7 @@
 #include "BasicInterface.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
@@ -93,7 +94,7 @@ public:
 	 * \brief Adds a mutable text, that you can edit and remove later.
 	 * \complexity Amortized O(1).
 	 *
-	 * Replaces the text with the same identifier if it already exists.
+	 * Nothing happens if the text already exists. 
 	 *
 	 * \param[in] identifier The identifier, with which, you'll be able to access the text.
 	 * \param[in] content What the `sf::Text` will display.
@@ -124,22 +125,22 @@ public:
 	 * \see `addText`.
 	 */
 	template<Ostreamable T>
-	void addDynamicText(const std::string& identifier, const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
+	void addDynamicText(std::string identifier, const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
 	{
 		if (m_dynamicTexts.find(identifier) != m_dynamicTexts.end())
-			removeDynamicText(identifier);
+			return;
 
 		addText(content, pos, characterSize, color, fontName, alignment, style, scale, rot);
-		m_dynamicTexts[identifier] = m_texts.size() - 1;
-		m_indexesForEachDynamicTexts[m_texts.size() - 1] = m_dynamicTexts.find(identifier); // Add the index to the vector of indexes for dynamic sprites.
+		auto mapIterator{ m_dynamicTexts.insert(std::make_pair(std::move(identifier), m_texts.size() - 1)).first };
+		m_indexesForEachDynamicTexts[m_texts.size() - 1] = mapIterator; // Add the index to the vector of indexes for dynamic sprites.
 	}
 
 	/**
 	 * \brief Adds a sprite, that you can edit and remove later.
 	 * \complexity Amortized O(1).
 	 *
-	 * Replaces the sprite with the same identifier if it already exists.
-	 * 
+	 * Nothing happens if the text already exists.
+	 *
 	 * \param[in] identifier The identifier, with which, you'll be able to access the sprite.
 	 * \param[in] textureName: The alias of the texture.
 	 * \param[in] pos: The position of the `sf::Sprite`.
@@ -160,13 +161,13 @@ public:
 	 *
 	 * \see `addSprite`.
 	 */
-	void addDynamicSprite(const std::string& identifier, const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+	void addDynamicSprite(std::string identifier, std::string_view textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	/**
 	 * \see Similar to `addSprite`, but adds a reserved texture as well, which allows the function to
 	 *		be noexcept.
 	 */
-	void addDynamicSprite(const std::string& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
+	void addDynamicSprite(std::string identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White) noexcept;
 
 	/**
 	 * \brief Removes a text from the GUI. No effet if not there.
@@ -176,7 +177,7 @@ public:
 	 *
 	 * \see `removeDynamicSprite`.
 	 */
-	virtual void removeDynamicText(const std::string& identifier) noexcept;
+	virtual void removeDynamicText(std::string_view identifier) noexcept;
 
 	/**
 	 * \brief Removes a sprite from the GUI. No effet if not there.
@@ -186,7 +187,7 @@ public:
 	 *
 	 * \see `removeDynamicText`.
 	 */
-	virtual void removeDynamicSprite(const std::string& identifier) noexcept;
+	virtual void removeDynamicSprite(std::string_view identifier) noexcept;
 
 	/**
 	 * \brief Returns a text Wrapper ptr, or nullptr if it does not exist.
@@ -201,7 +202,7 @@ public:
 	 *
 	 * \see `TextWrapper`.
 	 */
-	[[nodiscard]] TextWrapper* getDynamicText(const std::string& identifier) noexcept;
+	[[nodiscard]] TextWrapper* getDynamicText(std::string_view identifier) noexcept;
 
 	/**
 	 * \brief Returns a sprite Wrapper ptr, or nullptr if it does not exist.
@@ -216,16 +217,17 @@ public:
 	 * 
 	 * \see `SpriteWrapper`.
 	 */
-	[[nodiscard]] SpriteWrapper* getDynamicSprite(const std::string& identifier) noexcept;
+	[[nodiscard]] SpriteWrapper* getDynamicSprite(std::string_view identifier) noexcept;
 
 protected:
 
-	std::unordered_map<std::string, size_t> m_dynamicTexts; // All indexes of dynamic texts in the interface.
-	std::unordered_map<std::string, size_t> m_dynamicSprites; // All indexes of dynamic sprites in the interface.
+	using MutableElementUmap = std::unordered_map<std::string, size_t, TransparentHash, TransparentEqual>;
+	MutableElementUmap m_dynamicTexts; // All indexes of dynamic texts in the interface.
+	MutableElementUmap m_dynamicSprites; // All indexes of dynamic sprites in the interface.
 
-	using UmapDynamicsIterator = std::unordered_map<std::string, size_t>::iterator;
-	std::unordered_map<size_t, UmapDynamicsIterator> m_indexesForEachDynamicTexts; // Allows removal of dynamic texts in O(1).
-	std::unordered_map<size_t, UmapDynamicsIterator> m_indexesForEachDynamicSprites; // Allows removal of dynamic sprites in O(1).
+	using UmapMutablesIterator = MutableElementUmap::iterator;
+	std::unordered_map<size_t, UmapMutablesIterator> m_indexesForEachDynamicTexts; // Allows removal of dynamic texts in O(1).
+	std::unordered_map<size_t, UmapMutablesIterator> m_indexesForEachDynamicSprites; // Allows removal of dynamic sprites in O(1).
 
 
 	/**
@@ -243,7 +245,7 @@ protected:
 	 * \warning Asserts if out of range.
 	 */
 	template<typename T> requires (std::same_as<T, TextWrapper> || std::same_as<T, SpriteWrapper>)
-	void swapElement(size_t index1, size_t index2, std::vector<T>& vector, std::unordered_map<std::string, size_t>& identifierMap, std::unordered_map<size_t, UmapDynamicsIterator>& indexMap) noexcept
+	void swapElement(size_t index1, size_t index2, std::vector<T>& vector, MutableElementUmap& identifierMap, std::unordered_map<size_t, UmapMutablesIterator>& indexMap) noexcept
 	{
 		ENSURE_NOT_OUT_OF_RANGE(index1, vector.size(), "Precondition violated; the first  index to swap is out of range in the function swapElement of MutableInterface");
 		ENSURE_NOT_OUT_OF_RANGE(index2, vector.size(), "Precondition violated; the second index to swap is out of range in the function swapElement of MutableInterface");

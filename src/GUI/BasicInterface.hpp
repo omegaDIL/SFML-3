@@ -15,6 +15,7 @@
 #include "GraphicalResources.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 #include <cassert>
@@ -141,13 +142,14 @@ public:
 	 * \see `createFont`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
-	void addText(const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
+	inline void addText(const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, std::string_view fontName = s_defaultFontName, Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{1, 1}, sf::Angle rot = sf::degrees(0))
 	{
 		ENSURE_SFML_WINDOW_VALIDITY(m_window, "The window is invalid in the function addText of BasicInterface");
 
 		// Loads the default font.
-		if (TextWrapper::getFont("__default") == nullptr) [[unlikely]] // Does not exist yet.
-			TextWrapper::createFont("__default", "defaultFont.ttf"); // Throws an exception if loading fails.
+		static constexpr std::string_view defaultFontPath{ "defaultFont.ttf" };
+		if (TextWrapper::getFont(s_defaultFontName) == nullptr) [[unlikely]] // Does not exist yet.
+			TextWrapper::createFont(std::string{ s_defaultFontName }, defaultFontPath); // Throws an exception if loading fails.
 
 		float relativeScalingValue{ 1.f };
 		if (m_relativeScalingDefinition != 0) [[likely]]
@@ -176,7 +178,7 @@ public:
 	 *
 	 * \see `createTexture`.
 	 */
-	void addSprite(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+	void addSprite(std::string_view textureName, sf::Vector2f pos, sf::Vector2f scale = sf::Vector2f{ 1.f, 1.f }, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 	
 	/**
 	 * \see Similar to `addSprite`, but adds a reserved texture as well, which allows the function to
@@ -299,6 +301,8 @@ private:
 
 	/// Collection of all interfaces to perform resizing. Stored by window.
 	inline static std::unordered_multimap<sf::RenderWindow*, BasicInterface*> s_allInterfaces{};
+
+	inline static constexpr std::string_view s_defaultFontName{ "__default" };
 };
 
 

@@ -101,7 +101,7 @@ BasicInterface::~BasicInterface() noexcept
 	m_texts.clear();
 }
 
-void BasicInterface::addSprite(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
+void BasicInterface::addSprite(std::string_view textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
 {
 	ENSURE_SFML_WINDOW_VALIDITY(m_window, "The window is invalid in the function addSprite of BasicInterface");
 

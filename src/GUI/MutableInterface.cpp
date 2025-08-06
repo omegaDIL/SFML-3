@@ -3,27 +3,27 @@
 namespace gui
 {
 
-void MutableInterface::addDynamicSprite(const std::string& identifier, const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
+void MutableInterface::addDynamicSprite(std::string identifier, std::string_view textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color)
 {
 	if (m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
-		removeDynamicText(identifier);
+		return;
 
 	addSprite(textureName, pos, scale, rect, rot, alignment, color);
-	m_dynamicSprites[identifier] = m_sprites.size() - 1;
-	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = m_dynamicSprites.find(identifier); 
+	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_texts.size() - 1)).first };
+	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = mapIterator;
 }
 
-void MutableInterface::addDynamicSprite(const std::string& identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
+void MutableInterface::addDynamicSprite(std::string identifier, sf::Texture texture, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect, sf::Angle rot, Alignment alignment, sf::Color color) noexcept
 {
 	if (m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
-		removeDynamicText(identifier);
+		return;
 
 	addSprite(texture, pos, scale, rect, rot, alignment, color);
-	m_dynamicSprites[identifier] = m_sprites.size() - 1;
-	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = m_dynamicSprites.find(identifier); 
+	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_texts.size() - 1)).first };
+	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = mapIterator;
 }
 
-void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
+void MutableInterface::removeDynamicText(std::string_view identifier) noexcept
 {
 	const auto mapIterator{ m_dynamicTexts.find(identifier) };
 
@@ -36,7 +36,7 @@ void MutableInterface::removeDynamicText(const std::string& identifier) noexcept
 	m_texts.pop_back();
 }
 
-void MutableInterface::removeDynamicSprite(const std::string& identifier) noexcept
+void MutableInterface::removeDynamicSprite(std::string_view identifier) noexcept
 {
 	const auto mapIterator{ m_dynamicSprites.find(identifier) };
 
@@ -49,7 +49,7 @@ void MutableInterface::removeDynamicSprite(const std::string& identifier) noexce
 	m_sprites.pop_back();
 }
 
-TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) noexcept
+TextWrapper* MutableInterface::getDynamicText(std::string_view identifier) noexcept
 {
 	const auto mapIterator{ m_dynamicTexts.find(identifier) };
 
@@ -59,7 +59,7 @@ TextWrapper* MutableInterface::getDynamicText(const std::string& identifier) noe
 	return &m_texts[mapIterator->second];
 }
 
-SpriteWrapper* MutableInterface::getDynamicSprite(const std::string& identifier) noexcept
+SpriteWrapper* MutableInterface::getDynamicSprite(std::string_view identifier) noexcept
 {
 	const auto mapIterator{ m_dynamicSprites.find(identifier) };
 

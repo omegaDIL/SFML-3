@@ -20,7 +20,7 @@ InteractiveInterface::InteractiveInterface(sf::RenderWindow* window, unsigned in
 	getDynamicSprite(writingCursorIdentifier)->hide = true;
 }
 
-void InteractiveInterface::removeDynamicText(const std::string& identifier) noexcept
+void InteractiveInterface::removeDynamicText(std::string_view identifier) noexcept
 {
 	const auto mapIterator{ m_dynamicTexts.find(identifier) };
 
@@ -48,7 +48,7 @@ void InteractiveInterface::removeDynamicText(const std::string& identifier) noex
 	}
 }
 
-void InteractiveInterface::removeDynamicSprite(const std::string& identifier) noexcept
+void InteractiveInterface::removeDynamicSprite(std::string_view identifier) noexcept
 {
 	const auto mapIterator{ m_dynamicSprites.find(identifier) };
 

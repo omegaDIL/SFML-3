@@ -115,7 +115,7 @@ public:
 	 *
 	 * \see `removeDynamicSprite`.
 	 */
-	virtual void removeDynamicText(const std::string& identifier) noexcept override;
+	virtual void removeDynamicText(std::string_view identifier) noexcept override;
 	
 	/**
 	 * \brief Removes a sprite from the GUI. No effet if not there.
@@ -125,7 +125,7 @@ public:
 	 *
 	 * \see `removeDynamicText`.
 	 */
-	virtual void removeDynamicSprite(const std::string& identifier) noexcept override;
+	virtual void removeDynamicSprite(std::string_view identifier) noexcept override;
 
 	/**
 	 * \brief Adds a button to the interface by turning a transformables into a button. 

@@ -13,6 +13,8 @@
 #define GRAPHICALRESOURCES_HPP
 
 #include <SFML/Graphics.hpp>
+#include <string>
+#include <string_view>
 #include <list>
 #include <unordered_map>
 #include <vector>
@@ -23,9 +25,12 @@
 #include <cstdint>
 #include <concepts>
 #include <type_traits>
-#include <cassert>
 
 #ifndef NDEBUG 
+
+#include <cassert>
+#include <algorithm>
+
 #define ENSURE_VALID_PTR(ptr, errorMessage) \
 	assert((ptr) && (errorMessage))
 
@@ -66,6 +71,49 @@ public:
 	inline virtual const char* what() const noexcept override
 	{
 		return std::runtime_error::what();
+	}
+};
+
+
+/**
+ * \brief Functor that allows hashing of `std::string` and `std::string_view` without ambiguity.
+ */
+struct TransparentHash
+{
+	using is_transparent = void; // marks as transparent
+
+	size_t operator()(std::string_view sv) const noexcept
+	{
+		return std::hash<std::string_view>{}(sv);
+	}
+	size_t operator()(const std::string& s) const noexcept
+	{
+		return std::hash<std::string_view>{}(s);
+	}
+};
+
+/**
+ * \brief Functor that allows equality comparison of `std::string` and `std::string_view` without ambiguity.
+ */
+struct TransparentEqual
+{
+	using is_transparent = void;
+
+	bool operator()(std::string_view lhs, std::string_view rhs) const noexcept
+	{
+		return lhs == rhs;
+	}
+	bool operator()(const std::string& lhs, const std::string& rhs) const noexcept
+	{
+		return lhs == rhs;
+	}
+	bool operator()(std::string_view lhs, const std::string& rhs) const noexcept
+	{
+		return lhs == rhs;
+	}
+	bool operator()(const std::string& lhs, std::string_view rhs) const noexcept
+	{
+		return lhs == rhs;
 	}
 };
 
@@ -317,7 +365,7 @@ public:
 	 * \see `createFont`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
-	inline TextWrapper(const T& content, const std::string& fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Angle rot = sf::degrees(0))
+	inline TextWrapper(const T& content, std::string_view fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Angle rot = sf::degrees(0))
 		: TransformableWrapper{}, m_wrappedText{ nullptr }
 	{
 		sf::Font* usedFont{ getFont(fontName) };
@@ -349,7 +397,7 @@ public:
 	 * \see `sf::Text::setString`, `Ostreamable`.
 	 */
 	template<Ostreamable T>
-	void setContent(const T& content) noexcept
+	inline void setContent(const T& content) noexcept
 	{
 		std::ostringstream oss{}; // Convert the content to a string.
 		oss << content; // Assigning the content to the variable.
@@ -372,7 +420,7 @@ public:
 	 *
 	 * \see `sf::Text::setFont`, `createFont`, `loadFontFromFile`.
 	 */
-	bool setFont(const std::string& name) noexcept;
+	bool setFont(std::string_view name) noexcept;
 
 	/**
 	 * \see `sf::Text::setCharacterSize`.
@@ -432,7 +480,7 @@ public:
 	 *
 	 * \see `loadFontFromFile`, `setFont`
 	 */
-	static void createFont(const std::string& name, const std::string& fileName);
+	static void createFont(std::string name, std::string_view fileName);
 
 	/**
 	 * \brief Loads a font and registers it under a given name for shared use across instances.
@@ -447,7 +495,7 @@ public:
 	 *
 	 * \see `loadFontFromFile`, `setFont`
 	 */
-	static void createFont(const std::string& name, sf::Font font) noexcept;
+	static void createFont(std::string name, sf::Font font) noexcept;
 	
 	/**
 	 * \brief Removes the font from the wrapper with the given name.
@@ -463,7 +511,7 @@ public:
 	 * 
 	 * \see `createFont`, `getFont`.
 	 */
-	static void removeFont(const std::string& name) noexcept;
+	static void removeFont(std::string_view name) noexcept;
 
 	/**
 	 * \brief Returns a font ptr, or nullptr if it does not exist.
@@ -475,7 +523,7 @@ public:
 	 * 
 	 * \see `createFont`.
 	 */
-	[[nodiscard]] static sf::Font* getFont(const std::string& name) noexcept;
+	[[nodiscard]] static sf::Font* getFont(std::string_view name) noexcept;
 
 private:
 
@@ -486,7 +534,7 @@ private:
 	/// Contains all loaded fonts
 	inline static std::list<sf::Font> s_allFonts{};
 	/// Allows to find fonts with a name in O(1) time complexity.
-	inline static std::unordered_map<std::string, std::list<sf::Font>::iterator> s_accessToFonts{};
+	inline static std::unordered_map<std::string, std::list<sf::Font>::iterator, TransparentHash, TransparentEqual> s_accessToFonts{};
 };
 
 
@@ -506,7 +554,7 @@ private:
  * 
  * \see `TextWrapper`, `sf::Font::openFromFile`.
  */
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, const std::string& fileName, const std::string& path = "../assets/") noexcept;
+std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string_view fileName, std::string_view path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Text` wrapper.
@@ -574,7 +622,7 @@ public:
 	 *
 	 * \see `createTexture`.
 	 */
-	SpriteWrapper(const std::string& textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
+	SpriteWrapper(std::string_view textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	SpriteWrapper() noexcept = delete;
 	SpriteWrapper(SpriteWrapper const&) noexcept = delete; // For reserved texture.
@@ -708,7 +756,7 @@ public:
 	 * \see `createTexture`, `loadTexture`, `unloadTexture`, `switchToNextTexture`
 	 */
 	template<typename... Ts> requires (std::same_as<Ts, sf::IntRect> && ...)
-	bool addTexture(const std::string& name, Ts... rects)
+	inline bool addTexture(std::string_view name, Ts... rects)
 	{
 		auto mapAccessIterator{ s_accessToTextures.find(name) };
 		if (mapAccessIterator == s_accessToTextures.end()) [[unlikely]]
@@ -728,7 +776,7 @@ public:
 		if (mapUniqueIterator != s_allUniqueTextures.end() && mapUniqueIterator->second == false) // For reserved texture.
 		{
 			mapUniqueIterator->second = true;  // Mark it as true, meaning the reserve state was claimed.
-			m_uniqueTextures.push_back(name);
+			m_uniqueTextures.push_back(std::string{ name });
 		}
 
 		return true;
@@ -738,7 +786,7 @@ public:
 	 * \see Similar to the `addTexture` template overloaded function, with an IntRect that covers the
 	 *		whole texture since it has a size 0.
 	 */
-	inline bool addTexture(const std::string& name)
+	inline bool addTexture(std::string_view name)
 	{
 		return addTexture(name, sf::IntRect{});
 	}
@@ -750,7 +798,6 @@ public:
 	 *  any other instances to use it.
 	 */
 	enum class Reserved : uint8_t { Yes, No };
-
 
 	/**
 	 * \brief Creates a texture from a file and registers it under a given name.
@@ -776,7 +823,7 @@ public:
 	 *
 	 * \see `loadTextureFromFile`, `addTexture`.
 	 */
-	static void createTexture(const std::string& name, const std::string& fileName, Reserved shared = Reserved::Yes, bool loadImmediately = false);
+	static void createTexture(std::string name, std::string fileName, Reserved shared = Reserved::Yes, bool loadImmediately = false);
 
 	/**
 	 * \brief Creates a texture from a file and registers it under a given name.
@@ -796,7 +843,7 @@ public:
 	 *
 	 * \see `loadTextureFromFile`, `addTexture`.
 	 */
-	static void createTexture(const std::string& name, sf::Texture texture, Reserved shared = Reserved::Yes) noexcept;
+	static void createTexture(std::string name, sf::Texture texture, Reserved shared = Reserved::Yes) noexcept;
 	
 	/**
 	 * \brief Removes a shared texture from the wrapper with the given name. 
@@ -817,7 +864,7 @@ public:
 	 * \post The removal of the texture is possible.
 	 * \warning Asserts if the texture is reserved.
 	 */
-	static void removeTexture(const std::string& name) noexcept;
+	static void removeTexture(std::string_view name) noexcept;
 
 	/**
 	 * \brief Returns a texture ptr, or nullptr if it does not exist.
@@ -827,7 +874,7 @@ public:
 	 *
 	 * \return The address of the texture.
 	 */
-	[[nodiscard]] static sf::Texture* getTexture(const std::string& name) noexcept;
+	[[nodiscard]] static sf::Texture* getTexture(std::string_view name) noexcept;
 
 	/**
 	 * \brief Loads a previously registered texture into the graphical memory (e.g., VRAM).
@@ -858,7 +905,7 @@ public:
 	 *
 	 * \see `unloadTexture`, `createTexture`, `addTexture`, `removeTexture`
 	 */
-	static bool loadTexture(const std::string& name, bool failingImpliesRemoval = false);
+	static bool loadTexture(std::string_view name, bool failingImpliesRemoval = false);
 	
 	/**
 	 * \brief Unloads (without removing) an existing texture from GPU memory (VRAM).
@@ -883,7 +930,7 @@ public:
 	 *
 	 * \see `loadTexture`, `removeTexture`
 	 */
-	static bool unloadTexture(const std::string& name) noexcept;
+	static bool unloadTexture(std::string_view name) noexcept;
 
 private:
 
@@ -931,7 +978,7 @@ private:
 	/// Contains all textures, whether they are used or not/loaded or not.
 	inline static std::list<TextureHolder> s_allTextures{};
 	/// Maps identifiers to textures for quick access.
-	inline static std::unordered_map<std::string, std::list<TextureHolder>::iterator> s_accessToTextures{};
+	inline static std::unordered_map < std::string, std::list<TextureHolder>::iterator, TransparentHash, TransparentEqual> s_accessToTextures{};
 	/// Textures that can be used just once by a single instance.
 	inline static std::unordered_map<TextureHolder*, bool> s_allUniqueTextures{};
 };
@@ -1008,7 +1055,7 @@ private:
  * 
  * \see `SpriteWrapper`, `sf::Sprite::loadFromFile`.
  */
-std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, const std::string& fileName, const std::string& path = "../assets/") noexcept;
+std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string_view fileName, std::string_view path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` wrapper.

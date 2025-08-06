@@ -10,7 +10,7 @@ int main()
 {
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
-	BGUI mainInterface{ &window, 1080 }; // Create the interface with the window and the relative scaling definition.
+	MGUI mainInterface{ &window, 1080 };
 
 	while (window.isOpen())
 	{
