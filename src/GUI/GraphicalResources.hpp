@@ -197,25 +197,10 @@ sf::Vector2f computeNewOrigin(sf::FloatRect bound, Alignment alignment) noexcept
 class TransformableWrapper
 {
 public:
-
-	/**
-	 * \brief Initializes the wrapper.
-	 * \complexity O(1).
-	 *
-	 * \param[out] transformable What `sf::Transformable` the wrapper is being used for.
-	 * \param[in]  pos The position of the `sf::Transformable`.
-	 * \param[in]  scale The scale of the `sf::Transformable`.
-	 * \param[in]  rot The rotation of the `sf::Transformable`.
-	 * \param[in]  alignment The alignment of the `sf::Transformable`.
-	 * 
-	 * \note The scale parameter should take into account the current size of the window. In a smaller
-	 * 		 window, the same `sf::Transformable` will appear larger, and vice-versa.
-	 */
-	TransformableWrapper(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center) noexcept;
 	
-	TransformableWrapper(TransformableWrapper const&) noexcept = default;
+	TransformableWrapper(const TransformableWrapper&) noexcept = default;
 	TransformableWrapper(TransformableWrapper&&) noexcept = default;
-	TransformableWrapper& operator=(TransformableWrapper const&) noexcept = default;
+	TransformableWrapper& operator=(const TransformableWrapper&) noexcept = default;
 	TransformableWrapper& operator=(TransformableWrapper&&) noexcept = default;
 	virtual ~TransformableWrapper() noexcept = default;
 
@@ -279,6 +264,7 @@ public:
 	 * \param[in] color The new color.
 	 */
 	virtual void setColor(sf::Color color) noexcept = 0;
+
 
 	/// Tells if the element should be drawn.
 	bool hide; 
@@ -366,14 +352,12 @@ public:
 	 */
 	template<Ostreamable T>
 	inline TextWrapper(const T& content, std::string_view fontName, unsigned int characterSize, sf::Vector2f pos, sf::Vector2f scale, sf::Color color = sf::Color::White, Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Angle rot = sf::degrees(0))
-		: TransformableWrapper{}, m_wrappedText{ nullptr }
+		: TransformableWrapper{}, m_wrappedText{ s_defaultFont, "", characterSize }
 	{
-		sf::Font* usedFont{ getFont(fontName) };
-		if (usedFont == nullptr)
-			throw std::invalid_argument{ "This name is not affiliate with any font" };
-		
-		m_wrappedText = std::make_unique<sf::Text>(*usedFont, "", characterSize);
-		create(m_wrappedText.get(), pos, scale, rot, alignment);
+		create(&m_wrappedText, pos, scale, rot, alignment);
+
+		if (!setFont(fontName))
+			throw std::invalid_argument{ "Preconditition violated; the font " + std::string{ fontName } + " was not found when the constructor of TextWrapper was called" };
 
 		setColor(color);
 		setStyle(style);
@@ -381,9 +365,9 @@ public:
 	}
 
 	TextWrapper() noexcept = delete;
-	TextWrapper(TextWrapper const&) noexcept = default;
+	TextWrapper(const TextWrapper&) noexcept = default;
 	TextWrapper(TextWrapper&&) noexcept = default;
-	TextWrapper& operator=(TextWrapper const&) noexcept = default;
+	TextWrapper& operator=(const TextWrapper&) noexcept = default;
 	TextWrapper& operator=(TextWrapper&&) noexcept = default;
 	virtual ~TextWrapper() noexcept = default;
 
@@ -402,8 +386,8 @@ public:
 		std::ostringstream oss{}; // Convert the content to a string.
 		oss << content; // Assigning the content to the variable.
 
-		m_wrappedText->setString(oss.str());
-		m_wrappedText->setOrigin(computeNewOrigin(m_wrappedText->getLocalBounds(), m_alignment));
+		m_wrappedText.setString(oss.str());
+		m_wrappedText.setOrigin(computeNewOrigin(m_wrappedText.getLocalBounds(), m_alignment));
 	}
 
 	/**
@@ -459,7 +443,7 @@ public:
 	 */
 	[[nodiscard]] inline const sf::Text& getText() const noexcept
 	{
-		return *m_wrappedText;
+		return m_wrappedText;
 	}
 
 
@@ -528,13 +512,15 @@ public:
 private:
 
 	/// What `sf::Text` the wrapper is being used for.
-	std::unique_ptr<sf::Text> m_wrappedText;
-
+	sf::Text m_wrappedText;
 
 	/// Contains all loaded fonts
 	inline static std::list<sf::Font> s_allFonts{};
 	/// Allows to find fonts with a name in O(1) time complexity.
 	inline static std::unordered_map<std::string, std::list<sf::Font>::iterator, TransparentHash, TransparentEqual> s_accessToFonts{};
+	
+	/// A default font that is used to initialize the `sf::Text` before setting its actual font.
+	inline static const sf::Font s_defaultFont{}; 
 };
 
 
@@ -625,9 +611,9 @@ public:
 	SpriteWrapper(std::string_view textureName, sf::Vector2f pos, sf::Vector2f scale, sf::IntRect rect = sf::IntRect{}, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center, sf::Color color = sf::Color::White);
 
 	SpriteWrapper() noexcept = delete;
-	SpriteWrapper(SpriteWrapper const&) noexcept = delete; // For reserved texture.
+	SpriteWrapper(const SpriteWrapper&) noexcept = delete; // For reserved texture.
 	SpriteWrapper(SpriteWrapper&&) noexcept = default;
-	SpriteWrapper& operator=(SpriteWrapper const&) noexcept = delete; // For reserved texture.
+	SpriteWrapper& operator=(const SpriteWrapper&) noexcept = delete; // For reserved texture.
 	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
 	virtual ~SpriteWrapper() noexcept; /// \complexity O(N) where N is the number of reserved texture to deallocate.
 
@@ -667,7 +653,7 @@ public:
 	 */
 	[[nodiscard]] inline const sf::Sprite& getSprite() const noexcept
 	{
-		return *m_wrappedSprite;
+		return m_wrappedSprite;
 	}
 
 	/**
@@ -965,7 +951,7 @@ private:
 
 
 	/// What `sf::Sprite` the wrapper is being used for.
-	std::unique_ptr<sf::Sprite> m_wrappedSprite;
+	sf::Sprite m_wrappedSprite;
 
 	/// The current index within the texture vector.
 	size_t m_curTextureIndex; 
@@ -981,6 +967,9 @@ private:
 	inline static std::unordered_map < std::string, std::list<TextureHolder>::iterator, TransparentHash, TransparentEqual> s_accessToTextures{};
 	/// Textures that can be used just once by a single instance.
 	inline static std::unordered_map<TextureHolder*, bool> s_allUniqueTextures{};
+
+	/// A default texture that is used to initialize the `sf::Sprite` before setting its actual texture.
+	inline static const sf::Texture s_defaultTexture{}; 
 };
 
 /**

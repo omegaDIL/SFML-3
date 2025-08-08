@@ -55,7 +55,7 @@ class MutableInterface : public BasicInterface
 public:
 
 	/**
-	 * \brief Constructs the mutable graphical interface.
+	 * \brief Constructs the basic graphical interface.
 	 * \complexity O(1)
 	 *
 	 * \param[in,out] window A valid pointer to the SFML window where interface elements will be rendered.
@@ -69,12 +69,13 @@ public:
 	 *			  - If the window is larger, the scaling factor becomes greater than 1.0, making elements appear larger.
 	 *
 	 *			  For example, if `relativeScalingDefinition` is set to 1080:
-	 *			  - A window of size 1080x1920 → factor = 1.0
-	 *			  - A window of size 540x960   → factor = 0.5
-	 *			  - A window of size 2160x3840 → factor = 2.0
+	 *			  - A window of size 1920x1080 (16/9) → factor = 1.0
+	 *			  - A window of size 540x960   (9/16) → factor = 0.5
+	 *			  - A window of size 3840x2160 (16/9) → factor = 2.0
+	 *			  - A window of size 7680x2160 (32/9) → factor = 2.0
 	 *
 	 *			  If set to 0, no scaling is applied regardless of window size.
-	 * 
+	 *
 	 * \pre `window` must be a valid.
 	 * \warning The program will assert otherwise.
 	 */
@@ -83,9 +84,9 @@ public:
 	{}
 
 	MutableInterface() noexcept = default;
-	MutableInterface(MutableInterface const&) noexcept = delete;
+	MutableInterface(const MutableInterface&) noexcept = delete;
 	MutableInterface(MutableInterface&&) noexcept = default;
-	MutableInterface& operator=(MutableInterface const&) noexcept = delete;
+	MutableInterface& operator=(const MutableInterface&) noexcept = delete;
 	MutableInterface& operator=(MutableInterface&&) noexcept = default;
 	virtual ~MutableInterface() noexcept = default;
 
@@ -125,7 +126,7 @@ public:
 	 * \see `addText`.
 	 */
 	template<Ostreamable T>
-	inline void addDynamicText(std::string identifier, const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, const std::string& fontName = "__default", Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
+	inline void addDynamicText(std::string identifier, const T& content, sf::Vector2f pos, unsigned int characterSize = 30u, sf::Color color = sf::Color::White, std::string_view fontName = s_defaultFontName, Alignment alignment = Alignment::Center, std::uint32_t style = 0, sf::Vector2f scale = sf::Vector2f{ 1, 1 }, sf::Angle rot = sf::degrees(0))
 	{
 		if (m_dynamicTexts.find(identifier) != m_dynamicTexts.end())
 			return;
@@ -202,7 +203,7 @@ public:
 	 *
 	 * \see `TextWrapper`.
 	 */
-	[[nodiscard]] TextWrapper* getDynamicText(std::string_view identifier) noexcept;
+	[[nodiscard]] TextWrapper* getDynamicText(const std::string_view identifier) noexcept;
 
 	/**
 	 * \brief Returns a sprite Wrapper ptr, or nullptr if it does not exist.

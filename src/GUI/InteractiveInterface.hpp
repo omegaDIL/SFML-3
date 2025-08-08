@@ -13,15 +13,15 @@
 
 #include "MutableInterface.hpp"
 #include <SFML/Graphics.hpp>
+#include <string>
+#include <string_view>
 #include <functional>
 #include <unordered_map>
-#include <string>
-#include <cstdint>
+#include <variant>
+#include <cstdint>	
 
 namespace gui
 {
-
-
 
 /**
  * \brief Manages an interface in which the user can add texts/sprites buttons or write.
@@ -41,7 +41,7 @@ class InteractiveInterface : public MutableInterface
 {
 public:  
 
-	using ButtonFunction = std::function<void(InteractiveInterface*, std::string&)>;
+	using ButtonFunction = std::function<void(InteractiveInterface*)>;
 	using WritableFunction = std::function<void(InteractiveInterface*, char32_t&, std::string&)>;
 
 	struct Button
@@ -61,15 +61,28 @@ public:
 	};
 
 	struct Item
-	{		
-		Item(InteractiveInterface* ptr, std::string const& id, Button* button) noexcept
-			: identfier{ id }, igui{ ptr }, m_button{ button } {}
-
-		InteractiveInterface* igui;
-		std::string identfier;
-
+	{			
 	private:
 		Button* m_button;
+
+	public:
+		InteractiveInterface* igui;
+
+		std::variant<TextWrapper*, SpriteWrapper*> item; // The item that is hovered, either a text or a sprite.
+		Item(InteractiveInterface* iguiPtr, TextWrapper* textPtr, Button* button) noexcept
+			: igui{ iguiPtr }, item{ textPtr }, m_button{ button } {}
+
+		Item(InteractiveInterface* iguiPtr, SpriteWrapper* spritePtr, Button* button) noexcept
+			: igui{ iguiPtr }, item{ spritePtr }, m_button{ button } {}
+
+		Item() noexcept 
+			: igui{ nullptr }, item{ static_cast<TextWrapper*>(nullptr) }, m_button{ nullptr } {}
+
+		Item(const Item& item) noexcept = default;
+		Item(Item&& item) noexcept = default;
+		Item& operator=(const Item& item) noexcept = default;
+		Item& operator=(Item&& item) noexcept = default;
+		~Item() noexcept = default;
 
 	friend class InteractiveInterface;
 	};
@@ -100,9 +113,9 @@ public:
 	explicit InteractiveInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080);
 
 	InteractiveInterface() noexcept = delete;
-	InteractiveInterface(InteractiveInterface const&) noexcept = delete;
+	InteractiveInterface(const InteractiveInterface&) noexcept = delete;
 	InteractiveInterface(InteractiveInterface&&) noexcept = default;
-	InteractiveInterface& operator=(InteractiveInterface const&) noexcept = delete;
+	InteractiveInterface& operator=(const InteractiveInterface&) noexcept = delete;
 	InteractiveInterface& operator=(InteractiveInterface&&) noexcept = default;
 	virtual ~InteractiveInterface() noexcept = default;
 
@@ -141,19 +154,7 @@ public:
 	 * 
 	 *  \see `InteractiveFunction`.
 	 */
-	void addInteractive(const std::string& identifier, ButtonFunction function = nullptr, Button::When when = Button::When::unpressed) noexcept;
-
-	/**
-	 * \brief Returns a ptr to the button's function, or nullptr if it does not exist.
-	 * \complexity O(1).
-	 *
-	 * \param[in] identifier: The identifier of the button.
-	 *
-	 * \return The function ptr.
-	 * 
-	 * \see `addButton`.
-	 */
-	[[nodiscard]] ButtonFunction* getInteractive(const std::string& identifier) noexcept;
+	void addInteractive(const std::string& identifier, ButtonFunction function = nullptr, Button::When when = Button::When::none) noexcept;
 
 	/**
 	 * \brief Sets the text that will be edited once the user types a character.
@@ -168,7 +169,7 @@ public:
 	 *
 	 * \see `WritableFunction`.
 	 */
-	void setWritingText(const std::string& identifier, WritableFunction function = nullptr) noexcept;
+	void setWritingText(std::string_view identifier, WritableFunction function = nullptr) noexcept;
 
 	inline void noWriting() noexcept
 	{
@@ -202,7 +203,7 @@ public:
 	 * 
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static Item updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept;
+	static Item updateHovered(BasicInterface* activeGUI, sf::Vector2f cursorPos) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the cursor is pressed.
@@ -245,7 +246,7 @@ public:
 
 protected:
 	
-	inline static Item s_hoveredItem{ nullptr, "", nullptr };
+	inline static Item s_hoveredItem{ };
 
 private:
 	
@@ -258,12 +259,8 @@ private:
 	 */
 	void updateWritingText(char32_t character) noexcept;
 
-
-	size_t m_endTextInteractives;
-	size_t m_endSpriteInteractives;
-
-	std::unordered_map<size_t, Button> m_interactiveTexts; 
-	std::unordered_map<size_t, Button> m_interactiveSprites; 
+	std::vector<Button> m_interactiveTextButtons; // Contains the buttons for texts
+	std::vector<Button> m_interactiveSpriteButtons; // Contains the buttons for texts
 
 	TextWrapper* m_writingText;
 	WritableFunction m_writingFunction;

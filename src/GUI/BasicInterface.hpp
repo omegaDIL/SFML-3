@@ -94,9 +94,10 @@ public:
 	 *			  - If the window is larger, the scaling factor becomes greater than 1.0, making elements appear larger.
 	 *
 	 *			  For example, if `relativeScalingDefinition` is set to 1080:
-	 *			  - A window of size 1080x1920 → factor = 1.0
-	 *			  - A window of size 540x960   → factor = 0.5
-	 *			  - A window of size 2160x3840 → factor = 2.0
+	 *			  - A window of size 1920x1080 (16/9) → factor = 1.0
+	 *			  - A window of size 540x960   (9/16) → factor = 0.5
+	 *			  - A window of size 3840x2160 (16/9) → factor = 2.0
+	 *			  - A window of size 7680x2160 (32/9) → factor = 2.0
 	 *		
 	 *			  If set to 0, no scaling is applied regardless of window size.
 	 *
@@ -106,9 +107,9 @@ public:
 	explicit BasicInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition = 1080) noexcept;
 
 	inline BasicInterface() noexcept : m_window{ nullptr }, m_texts{}, m_sprites{}, m_relativeScalingDefinition{ 1080 } {}
-	BasicInterface(BasicInterface const&) noexcept = delete;
+	BasicInterface(const BasicInterface&) noexcept = delete;
 	BasicInterface(BasicInterface&& other) noexcept;
-	BasicInterface& operator=(BasicInterface const&) noexcept = delete;
+	BasicInterface& operator=(const BasicInterface&) noexcept = delete;
 	BasicInterface& operator=(BasicInterface&& other) noexcept;
 	virtual ~BasicInterface() noexcept; /// \complexity O(N) where N is the number of elements added
 
@@ -274,6 +275,10 @@ protected:
 	/// value. Otherwise the factor is adjusted to ensure same visual proportions across different window sizes. 
 	unsigned int m_relativeScalingDefinition;
 
+
+	/// The name of the default font.
+	inline static constexpr std::string_view s_defaultFontName{ "__default" };
+
 private:
 
 	/**
@@ -301,8 +306,6 @@ private:
 
 	/// Collection of all interfaces to perform resizing. Stored by window.
 	inline static std::unordered_multimap<sf::RenderWindow*, BasicInterface*> s_allInterfaces{};
-
-	inline static constexpr std::string_view s_defaultFontName{ "__default" };
 };
 
 

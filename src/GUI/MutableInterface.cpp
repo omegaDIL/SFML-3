@@ -9,7 +9,7 @@ void MutableInterface::addDynamicSprite(std::string identifier, std::string_view
 		return;
 
 	addSprite(textureName, pos, scale, rect, rot, alignment, color);
-	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_texts.size() - 1)).first };
+	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_sprites.size() - 1)).first };
 	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = mapIterator;
 }
 
@@ -19,7 +19,7 @@ void MutableInterface::addDynamicSprite(std::string identifier, sf::Texture text
 		return;
 
 	addSprite(texture, pos, scale, rect, rot, alignment, color);
-	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_texts.size() - 1)).first };
+	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_sprites.size() - 1)).first };
 	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = mapIterator;
 }
 
