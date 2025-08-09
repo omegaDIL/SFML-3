@@ -56,7 +56,6 @@ void populateGUI(IGUI* gui) noexcept;
 
 // TODO: id -> IDENTIFIER
 // TODO: find().second -> at() + faire des reserves pour les maps et les vectors afin d'eviter les reallocations de memoire.
-// TODO: MouseMove d'abord verifier que le hovered actuel ne l 'est tjr pas avant de boucler sur le reste
 // TODO: _ + mqb + to_string -> _ + to_string + _ + mqb
 // TODO: mettre __ au lieu de _ lorsque l'utilisateur ne doit pas interagir avec l'élément (ex: __cursorEditing pour le curseur d'édition de texte)
 // TODO: ajouter aux lambdas un argument pour l'interface courante.
@@ -68,5 +67,6 @@ void populateGUI(IGUI* gui) noexcept;
 // TODO: module C++20
 // TODO: Ajouter une std::function pour les mqb
 // TODO: string_view
+//TODO: changer hash
 
 #endif // GUI_HPP
