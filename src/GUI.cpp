@@ -10,12 +10,13 @@ void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstre
 
 	gui.addDynamicText("message", errorMessage.str(), sf::Vector2f{360, 260});
 	gui.addDynamicText("close", "ok I understand - close this window", sf::Vector2f{ 360, 600 });
-	gui.addInteractive("close", [&window](IGUI*) mutable {window.close(); }); // Add a button to close the window.
+	gui.addInteractive("close", [&window](IGUI*) mutable { window.close(); }); // Add a button to close the window.
 
 	auto* text{ gui.getDynamicText("message") };
 	auto rectSize{ text->getText().getGlobalBounds() };
 
-	while (rectSize.position.x < 0 || rectSize.size.x > window.getSize().x)	{
+	while (rectSize.position.x < 0 || rectSize.size.x > window.getSize().x)	
+	{
 		text->scale(sf::Vector2f{ 0.9f, 0.9f });
 		rectSize = text->getText().getGlobalBounds();
 	} 

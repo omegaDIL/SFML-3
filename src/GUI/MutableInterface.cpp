@@ -18,7 +18,7 @@ void MutableInterface::addDynamicSprite(std::string identifier, sf::Texture text
 	if (m_dynamicSprites.find(identifier) != m_dynamicSprites.end())
 		return;
 
-	addSprite(texture, pos, scale, rect, rot, alignment, color);
+  	addSprite(texture, pos, scale, rect, rot, alignment, color);
 	auto mapIterator{ m_dynamicSprites.insert(std::make_pair(std::move(identifier), m_sprites.size() - 1)).first };
 	m_indexesForEachDynamicSprites[m_sprites.size() - 1] = mapIterator;
 }

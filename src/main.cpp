@@ -12,33 +12,13 @@ int main()
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
 	IGUI mainInterface{ &window, 1080 };
 
-	mainInterface.addDynamicText("uhg", "Hello, World", sf::Vector2f{ 200, 100 });
-	mainInterface.addDynamicText("cHrfgtz", "Bonjour", sf::Vector2f{ 200, 200 });
-	mainInterface.addDynamicText("dH(rt-hye", "Hola", sf::Vector2f{ 200, 300 });
-	mainInterface.addDynamicText("ghiurt(o", "Buongiorno", sf::Vector2f{ 200, 400 });
-	mainInterface.addDynamicText("agrpuhçea", "Guten tag", sf::Vector2f{ 200, 500 });
+	mainInterface.addDynamicText("ab", "a", { 300, 300 });
+	mainInterface.addInteractive("ab", [](IGUI* igui) {igui->setWritingText("ab"); });
 
-	mainInterface.addInteractive("dH(rt-hye");
-	mainInterface.addInteractive("agrpuhçea", nullptr, IGUI::Button::When::hovered);
-
-	mainInterface.setWritingText("cHrfgtz");
-
-	sf::RectangleShape shape{ sf::Vector2f{ 100, 100 } };
-	mainInterface.addDynamicSprite("ubyhg", gui::createTextureFromDrawables(shape), sf::Vector2f{ 500, 500 });
-	shape.setFillColor(sf::Color{ 0, 255, 0 });
-	mainInterface.addDynamicSprite("uhg", gui::createTextureFromDrawables(std::move(shape)), sf::Vector2f{ 700, 500 });
-
-	mainInterface.addInteractive("uhg", [&window](IGUI* i) {i->removeDynamicSprite("uhg"); i->removeDynamicText("uhg"); }, IGUI::Button::When::unpressed);
-	mainInterface.addInteractive("ubyhg");
-	mainInterface.addInteractive("ubyhg");
-
-	while (window.isOpen())
+  	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())
 		{ 
-			if (event->is<sf::Event::Resized>())
-				BGUI::windowResized(&window, windowSize);
-
 			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 				IGUI::updateHovered(&mainInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
 
@@ -51,13 +31,11 @@ int main()
 			if (event->is<sf::Event::TextEntered>())
 				IGUI::textEntered(&mainInterface, event->getIf<sf::Event::TextEntered>()->unicode);
 
+			if (event->is<sf::Event::Resized>())
+				BGUI::windowResized(&window, windowSize);
+
 			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 				window.close();
-
-			if (event->is<sf::Event::KeyPressed>())
-			{
-				mainInterface.removeDynamicSprite("ubyhg");
-			}
 		}
 
 		window.clear();

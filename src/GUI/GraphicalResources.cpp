@@ -98,6 +98,48 @@ void TransformableWrapper::create(sf::Transformable* transformable, sf::Vector2f
 /// A `sf::Text` wrapper.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+TextWrapper::TextWrapper(const TextWrapper& other) noexcept
+	: TransformableWrapper{}, m_wrappedText{ other.m_wrappedText }
+{
+	this->m_alignment = other.m_alignment;
+	this->hide = other.hide;
+
+	this->m_transformable = &m_wrappedText;
+}
+
+TextWrapper::TextWrapper(TextWrapper&& other) noexcept
+	: TransformableWrapper{}, m_wrappedText{ std::move(other.m_wrappedText) }
+{
+	std::swap(this->m_alignment, other.m_alignment);
+	std::swap(this->hide,		 other.hide);
+
+	other.m_transformable = nullptr;
+	this->m_transformable = &m_wrappedText;
+}
+
+TextWrapper& TextWrapper::operator=(const TextWrapper& other) noexcept
+{
+	this->m_wrappedText = other.m_wrappedText;
+	this->m_alignment =	  other.m_alignment;
+	this->hide =		  other.hide;
+
+	this->m_transformable = &m_wrappedText;
+
+	return *this;
+}
+
+TextWrapper& TextWrapper::operator=(TextWrapper&& other) noexcept
+{
+	std::swap(this->m_wrappedText, other.m_wrappedText);
+	std::swap(this->m_alignment,   other.m_alignment);
+	std::swap(this->hide,		   other.hide);
+
+	other.m_transformable = nullptr;
+	this->m_transformable = &m_wrappedText;
+
+	return *this;
+}
+
 bool TextWrapper::setFont(std::string_view name) noexcept
 {
 	sf::Font* font{ getFont(name) };
@@ -220,6 +262,31 @@ SpriteWrapper::SpriteWrapper(std::string_view textureName, sf::Vector2f pos, sf:
 	switchToNextTexture(0);
 	setColor(color);
 	setAlignment(alignment);
+}
+
+SpriteWrapper::SpriteWrapper(SpriteWrapper&& other) noexcept
+	: TransformableWrapper{}, m_wrappedSprite{ std::move(other.m_wrappedSprite) }, m_curTextureIndex{ other.m_curTextureIndex }, m_textures{ std::move(other.m_textures) }, m_uniqueTextures{ std::move(other.m_uniqueTextures) }
+{
+	std::swap(this->m_alignment, other.m_alignment);
+	std::swap(this->hide,		 other.hide);
+
+	other.m_transformable = nullptr;
+	this->m_transformable = &m_wrappedSprite;
+}
+
+SpriteWrapper& SpriteWrapper::operator=(SpriteWrapper&& other) noexcept
+{
+	std::swap(this->m_wrappedSprite,   other.m_wrappedSprite);
+	std::swap(this->m_curTextureIndex, other.m_curTextureIndex);
+	std::swap(this->m_textures,		   other.m_textures);
+	std::swap(this->m_uniqueTextures,  other.m_uniqueTextures);
+	std::swap(this->m_alignment,	   other.m_alignment);
+	std::swap(this->hide,			   other.hide);
+
+	other.m_transformable = nullptr;
+	this->m_transformable = &m_wrappedSprite;
+
+	return *this;
 }
 
 SpriteWrapper::~SpriteWrapper() noexcept

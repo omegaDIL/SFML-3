@@ -9,14 +9,14 @@ InteractiveInterface::InteractiveInterface(sf::RenderWindow* window, unsigned in
 	static constexpr std::string_view textureName{ "__plainGrey" }; 
 	if (SpriteWrapper::getTexture(textureName) == nullptr) [[unlikely]]
 	{
-		sf::Image writingCursorImage{ sf::Vector2u{ 1u, 1u }, sf::Color{20, 20, 20} };
+		sf::Image writingCursorImage{ sf::Vector2u{ 1u, 1u }, sf::Color{ 80, 80, 80 } };
 		sf::Texture writingCursorTexture{ std::move(writingCursorImage) };
 		writingCursorTexture.setRepeated(true);
 
 		SpriteWrapper::createTexture(std::string{ textureName }, std::move(writingCursorTexture), SpriteWrapper::Reserved::No);
 	}
 
-	addDynamicSprite(std::string{ writingCursorIdentifier }, textureName, { 0, 0 }, { 250.f, 50.f }, sf::IntRect{}, sf::degrees(0), Alignment::Left | Alignment::Bottom);
+	addDynamicSprite(std::string{ writingCursorIdentifier }, textureName, { 0, 0 }, { 5.f, 25.f }, sf::IntRect{}, sf::degrees(0), Alignment::Left);
 	getDynamicSprite(writingCursorIdentifier)->hide = true;
 }
 
@@ -29,7 +29,7 @@ void InteractiveInterface::removeDynamicText(std::string_view identifier) noexce
 
 	const size_t index{ mapIterator->second };
 
-	const TextWrapper const* text{ &m_texts[index] };
+	const TextWrapper* const text{ &m_texts[index] };
 	if (s_hoveredItem.igui == this 
 	&&  std::holds_alternative<TextWrapper*>(s_hoveredItem.item)
 	&&  std::get<TextWrapper*>(s_hoveredItem.item) == text) [[unlikely]]
@@ -62,7 +62,7 @@ void InteractiveInterface::removeDynamicSprite(std::string_view identifier) noex
 
 	const size_t index{ mapIterator->second };
 
-	const SpriteWrapper const* sprite{ &m_sprites[index] };
+	const SpriteWrapper* const sprite{ &m_sprites[index] };
 	if (s_hoveredItem.igui == this
 	&&  std::holds_alternative<SpriteWrapper*>(s_hoveredItem.item)
 	&&  std::get<SpriteWrapper*>(s_hoveredItem.item) == sprite) [[unlikely]]
@@ -108,15 +108,20 @@ void InteractiveInterface::setWritingText(std::string_view identifier, WritableF
 	if (m_writingText != nullptr && m_writingText->getText().getGlobalBounds().size.x == 0)
 		m_writingText->setContent(emptinessWritingCharacters); // Ensure to avoid leaving the previous text empty and not clickable.
 	
-	// Actually updates the writing text.
 	m_writingText = getDynamicText(identifier);
 	m_writingFunction = function;
-	ENSURE_VALID_PTR(m_writingText, "The identifier was not found resulting in writingText being nullptr when setWritingText was called in InteractiveInterface");
-
-	// Updates the cursor.
 	SpriteWrapper* cursor{ getDynamicSprite(writingCursorIdentifier) };
+
+	if (identifier == "")
+	{
+		cursor->hide = true;
+		return;
+	}
+
+	ENSURE_VALID_PTR(m_writingText, "Precondition violated; The identifier was not found in the function setWritingText in InteractiveInterface");
+
 	sf::FloatRect rect{ m_writingText->getText().getGlobalBounds() };
-	cursor->setPosition(sf::Vector2f{ rect.position.x + rect.size.x, rect.position.y + rect.size.y });
+	cursor->setPosition(sf::Vector2f{ rect.position.x + rect.size.x, rect.position.y + rect.size.y/2.f});
 	cursor->hide = false;
 }
 
@@ -201,7 +206,7 @@ InteractiveInterface::Item InteractiveInterface::unpressed(BasicInterface* activ
 	return s_hoveredItem;
 }
 
-void InteractiveInterface::textEntered(BasicInterface* activeGUI, char32_t unicodeValue) noexcept
+void InteractiveInterface::textEntered(BasicInterface* activeGUI, char32_t character) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when the function textEntered was called in InteractiveInterface");
 
@@ -210,33 +215,31 @@ void InteractiveInterface::textEntered(BasicInterface* activeGUI, char32_t unico
 	if (gui == nullptr || gui->m_writingText == nullptr)
 		return;
 
-	gui->updateWritingText(unicodeValue);
-}
-
-void InteractiveInterface::updateWritingText(char32_t character) noexcept
-{
-	if (character == exitWritingCharacter)
+	if (character == gui->exitWritingCharacter)
 	{
-		if (m_writingText->getText().getGlobalBounds().size.x == 0)
-			m_writingText->setContent("0"); // Ensure to avoid leaving the previous text empty and not clickable.
-		m_writingText = nullptr;
-		getDynamicSprite(writingCursorIdentifier)->hide = true;
+		gui->setWritingText("");
 		return;
 	}
 
-	std::string text{ m_writingText->getText().getString() };
-	//m_writingFunction(this, character, text);
-
+	std::string text{ gui->m_writingText->getText().getString() };
 	static constexpr char32_t backspaceCharacter{ 0x0008 };
-	if (!text.empty() && character == backspaceCharacter)
-		text.pop_back();
+	if (character == backspaceCharacter)
+	{
+		if(!text.empty())
+			text.pop_back();
+	}
 	else [[likely]]
+	{	
 		text.push_back(character);
-	m_writingText->setContent(text);
 
-	SpriteWrapper* cursor{ getDynamicSprite(writingCursorIdentifier) };
-	sf::FloatRect rect{ m_writingText->getText().getGlobalBounds() };
-	cursor->setPosition(sf::Vector2f{ rect.position.x + rect.size.x, rect.position.y + rect.size.y });
+		if (gui->m_writingFunction != nullptr)
+			gui->m_writingFunction(gui, character, text);
+	}
+	gui->m_writingText->setContent(text);
+
+	SpriteWrapper* cursor{ gui->getDynamicSprite(writingCursorIdentifier) };
+	sf::FloatRect rect{ gui->m_writingText->getText().getGlobalBounds() };
+	cursor->setPosition(sf::Vector2f{ rect.position.x + rect.size.x, rect.position.y + rect.size.y / 2.f });
 }
 
 } // gui namespace

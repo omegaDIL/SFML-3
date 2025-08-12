@@ -154,7 +154,7 @@ public:
 	 * 
 	 *  \see `InteractiveFunction`.
 	 */
-	void addInteractive(const std::string& identifier, ButtonFunction function = nullptr, Button::When when = Button::When::none) noexcept;
+	void addInteractive(const std::string& identifier, ButtonFunction function = nullptr, Button::When when = Button::When::unpressed) noexcept;
 
 	/**
 	 * \brief Sets the text that will be edited once the user types a character.
@@ -170,11 +170,6 @@ public:
 	 * \see `WritableFunction`.
 	 */
 	void setWritingText(std::string_view identifier, WritableFunction function = nullptr) noexcept;
-
-	inline void noWriting() noexcept
-	{
-		updateWritingText(exitWritingCharacter);
-	}
 
 	/**
 	 * \brief Returns the text that is being written on.
@@ -241,7 +236,7 @@ public:
 	 */
 	static void textEntered(BasicInterface* activeGUI, char32_t unicodeValue) noexcept;
 
-	inline static char32_t exitWritingCharacter{ 0x001B }; // Set by default on escape character
+	inline static char32_t exitWritingCharacter{ 0x000D }; // Set by default on escape character
 	inline static std::string emptinessWritingCharacters{ "0" }; // Set by default on escape character
 
 protected:
@@ -249,15 +244,6 @@ protected:
 	inline static Item s_hoveredItem{ };
 
 private:
-	
-	/**
-	 * \brief Enters a character into the writing text. Can remove last character if backspace is entered,
-	 *		  reset the writing text if the exit character is entered.
-	 * \complexity O(1).
-	 *
-	 * \param[in] character: The unicode value of the character entered.
-	 */
-	void updateWritingText(char32_t character) noexcept;
 
 	std::vector<Button> m_interactiveTextButtons; // Contains the buttons for texts
 	std::vector<Button> m_interactiveSpriteButtons; // Contains the buttons for texts

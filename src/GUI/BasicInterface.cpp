@@ -161,11 +161,12 @@ void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vecto
 			continue; // No scaling definition, so no need to scale.
 
 		// Updating texts.
+		sf::Vector2f pos{};
 		for (auto& text : curInterface->m_texts)
 		{
 			text.scale(minScaling2f);
 
-			const auto pos{ text.getText().getPosition() };
+			pos = text.getText().getPosition();
 			text.setPosition(sf::Vector2f{ pos.x * scaleFactor.x, pos.y * scaleFactor.y }); // Update position to match the new scale.
 		}
 
@@ -174,7 +175,7 @@ void BasicInterface::proportionKeeper(sf::RenderWindow* resizedWindow, sf::Vecto
 		{
 			sprite.scale(minScaling2f);
 
-			const auto pos{ sprite.getSprite().getPosition() };
+			pos = sprite.getSprite().getPosition();
 			sprite.setPosition(sf::Vector2f{ pos.x * scaleFactor.x, pos.y * scaleFactor.y }); // Update position to match the new scale.
 		}
 	}

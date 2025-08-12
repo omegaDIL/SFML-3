@@ -288,14 +288,11 @@ protected:
 	 */
 	void create(sf::Transformable* transformable, sf::Vector2f pos, sf::Vector2f scale, sf::Angle rot = sf::degrees(0), Alignment alignment = Alignment::Center) noexcept;
 
-
-	/// The current alignment of the `sf::Transformable`.
-	Alignment m_alignment; 
-
-private:
-
 	/// What `sf::Transformable` the wrapper is being used for.
-	sf::Transformable* m_transformable; 
+	sf::Transformable* m_transformable; 	
+	
+	/// /// The current alignment of the `sf::Transformable`.
+	Alignment m_alignment;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -365,10 +362,10 @@ public:
 	}
 
 	TextWrapper() noexcept = delete;
-	TextWrapper(const TextWrapper&) noexcept = default;
-	TextWrapper(TextWrapper&&) noexcept = default;
-	TextWrapper& operator=(const TextWrapper&) noexcept = default;
-	TextWrapper& operator=(TextWrapper&&) noexcept = default;
+	TextWrapper(const TextWrapper&) noexcept;
+	TextWrapper(TextWrapper&&) noexcept;
+	TextWrapper& operator=(const TextWrapper&) noexcept;
+	TextWrapper& operator=(TextWrapper&&) noexcept;
 	virtual ~TextWrapper() noexcept = default;
 
 
@@ -540,7 +537,7 @@ private:
  * 
  * \see `TextWrapper`, `sf::Font::openFromFile`.
  */
-std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string_view fileName, std::string_view path = "../assets/") noexcept;
+[[nodiscard]] std::optional<sf::Font> loadFontFromFile(std::ostringstream& errorMessage, std::string_view fileName, std::string_view path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Text` wrapper.
@@ -612,9 +609,9 @@ public:
 
 	SpriteWrapper() noexcept = delete;
 	SpriteWrapper(const SpriteWrapper&) noexcept = delete; // For reserved texture.
-	SpriteWrapper(SpriteWrapper&&) noexcept = default;
+	SpriteWrapper(SpriteWrapper&&) noexcept;
 	SpriteWrapper& operator=(const SpriteWrapper&) noexcept = delete; // For reserved texture.
-	SpriteWrapper& operator=(SpriteWrapper&&) noexcept = default;
+	SpriteWrapper& operator=(SpriteWrapper&&) noexcept;
 	virtual ~SpriteWrapper() noexcept; /// \complexity O(N) where N is the number of reserved texture to deallocate.
 
 
@@ -1044,7 +1041,7 @@ private:
  * 
  * \see `SpriteWrapper`, `sf::Sprite::loadFromFile`.
  */
-std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string_view fileName, std::string_view path = "../assets/") noexcept;
+[[nodiscard]] std::optional<sf::Texture> loadTextureFromFile(std::ostringstream& errorMessage, std::string_view fileName, std::string_view path = "../assets/") noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// A `sf::Sprite` wrapper.
