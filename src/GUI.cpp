@@ -4,13 +4,10 @@ void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstre
 {
 	sf::Vector2u windowSize{ sf::Vector2u{ 720, 720 } };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, errorTitle };
-	IGUI gui{ &window }; // Create the interface to use the GUI.
-
-	gui::TextWrapper textWr{ errorMessage.str(), "__default", 16, sf::Vector2f{560, 260}, {1.f, 1.f} };
+	MGUI gui{ &window }; // Create the interface to use the GUI.
 
 	gui.addDynamicText("message", errorMessage.str(), sf::Vector2f{360, 260});
-	gui.addDynamicText("close", "ok I understand - close this window", sf::Vector2f{ 360, 600 });
-	gui.addInteractive("close", [&window](IGUI*) mutable { window.close(); }); // Add a button to close the window.
+	gui.addText("ok I understand - press any key", sf::Vector2f{ 360, 600 });
 
 	auto* text{ gui.getDynamicText("message") };
 	auto rectSize{ text->getText().getGlobalBounds() };
@@ -21,15 +18,14 @@ void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstre
 		rectSize = text->getText().getGlobalBounds();
 	} 
 
-	while (window.isOpen())
-	{	// The function is blocking.
+	while (window.isOpen()) // The function is blocking.
+	{	
 		while (const std::optional event = window.pollEvent())
 		{
-			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+			if (event->is<sf::Event::Closed>() 
+			||  event->is<sf::Event::KeyPressed>()
+			||  event->is<sf::Event::TouchBegan>())
 				window.close();
-
-			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				IGUI::updateHovered(&gui, static_cast<sf::Vector2f>(event->getIf<sf::Event::MouseMoved>()->position));
 
 			if (event->is<sf::Event::Resized>())
 				BGUI::windowResized(&window, windowSize);
@@ -37,7 +33,6 @@ void showErrorsUsingWindow(const std::string& errorTitle, const std::ostringstre
 
 		window.clear();
 		gui.draw();
-		window.draw(textWr.getText());
 		window.display();
 	}
 }

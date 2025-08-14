@@ -11,25 +11,47 @@ int main()
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
 	IGUI mainInterface{ &window, 1080 };
+	IGUI otherInterface{ &window, 1080 };
+	BGUI* curInterface{ &mainInterface };
 
-	mainInterface.addDynamicText("ab", "a", { 300, 300 });
-	mainInterface.addInteractive("ab", [](IGUI* igui) {igui->setWritingText("ab"); });
 
-  	while (window.isOpen())
+	mainInterface.addText("Hi!!\nWelcome to my GUI", sf::Vector2f{ 200, 150 }, 48, sf::Color{255, 255, 255}, "__default", gui::Alignment::Left);
+
+	mainInterface.addDynamicText("text1", "entry", { 500, 400 }, 60);
+	mainInterface.addInteractive("text1", [](IGUI* igui) {igui->setWritingText("text1"); });
+
+	mainInterface.addDynamicText("text2", "entry", {500, 500});
+	mainInterface.addInteractive("text2", [](IGUI* igui) {igui->setWritingText("text2"); });
+
+	mainInterface.addDynamicText("other", "switch", { 500, 800 });
+	mainInterface.addInteractive("other", [&otherInterface, &curInterface](IGUI*) mutable {curInterface = &otherInterface; });
+
+
+	sf::RectangleShape rect{ { 50, 50 } };
+	otherInterface.addDynamicSprite("colorChanger", gui::createTextureFromDrawables(rect), sf::Vector2f{500, 850});
+	otherInterface.addInteractive("colorChanger");
+
+	otherInterface.addDynamicText("main", "switch", { 500, 500 });
+	otherInterface.addInteractive("main", [&mainInterface, &curInterface](IGUI*) mutable {curInterface = &mainInterface; });
+
+	mainInterface.getDynamicText("text1")->setRotation(sf::degrees(30));
+
+	IGUI::Item curItem{};
+	while (window.isOpen())
 	{
 		while (const std::optional event = window.pollEvent())
 		{ 
 			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				IGUI::updateHovered(&mainInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
+				curItem = IGUI::updateHovered(curInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
 
 			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				IGUI::pressed(&mainInterface);
+				IGUI::pressed(curInterface); // Is not necessary since no interactables have a pressed button.
 
 			if (event->is<sf::Event::MouseButtonReleased>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				IGUI::unpressed(&mainInterface);
+				IGUI::unpressed(curInterface);
 
 			if (event->is<sf::Event::TextEntered>())
-				IGUI::textEntered(&mainInterface, event->getIf<sf::Event::TextEntered>()->unicode);
+				IGUI::textEntered(curInterface, event->getIf<sf::Event::TextEntered>()->unicode);
 
 			if (event->is<sf::Event::Resized>())
 				BGUI::windowResized(&window, windowSize);
@@ -38,8 +60,15 @@ int main()
 				window.close();
 		}
 
+		// If you ignore this feature, you could delete the variable curItem entirely.
+		// However, this is less limited since you can use more arguments, watch for more events...
+		// Moreover, this is better for perfomance-critical functions because storing a function in a
+		// `std::function` impacts the fps.
+		if (curItem.igui == &otherInterface && curItem.identifier == "colorChanger")
+			otherInterface.getDynamicSprite("colorChanger")->rotate(sf::degrees(1));
+
 		window.clear();
-		mainInterface.draw();
+		curInterface->draw();
 		window.display();
 	}
 

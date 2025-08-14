@@ -322,13 +322,13 @@ concept Drawable = std::derived_from<std::remove_cvref_t<T>, sf::Drawable>
  * From the given drawables, the function creates a texture that visually represents what
  * they look like if drawn separatly, in order. The texture size covers the distance between
  * the pixel at the leftmost/top edge of the leftmost/top drawable and the pixel at the
- * rightmost/bottom edge of the rightmost/bottom drawable, not beginning at (0;0).
- *
+ * rightmost/bottom edge of the rightmost/bottom drawable, not beginning at (0;0). It accounts for
+ * the drawables' transformables such as rotation, position...
+ * 
  * \param[in] drawables: The drawables to create the texture from.
  *
  * \return Returns a texture created from the given drawables such as sprites, cricleShape, convexShape...
  *
- * \note This function accounts for the drawables' transformables such as rotation, position...
  * \note The drawables' origins are moved to 0;0, and their positions are adjusted; therefore the
  *       drawables passed as arguments are very likely going to be modified.
  * \note If you create a texture from shapes, keep in mind that shapes are drawn differently than
@@ -336,6 +336,7 @@ concept Drawable = std::derived_from<std::remove_cvref_t<T>, sf::Drawable>
  *		 of pixels (textures). While textures can be more detailed, they are also more pixelized. Be aware
  *		 that some sprites may have artefacts, which shapes usually don't have. For some reasons, this
  *	     seems to not be the case if the origins of such sprites are located at 0,0.
+ * \note Consider generating a mipmap.
  */
 template<Drawable... Ts>
 sf::Texture createTextureFromDrawables(Ts&&... drawables) noexcept

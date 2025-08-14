@@ -60,13 +60,10 @@ void populateGUI(IGUI* gui) noexcept;
 // TODO: mettre __ au lieu de _ lorsque l'utilisateur ne doit pas interagir avec l'élément (ex: __cursorEditing pour le curseur d'édition de texte)
 // TODO: ajouter aux lambdas un argument pour l'interface courante.
 // TODO: mettre des int a la place des unsigned int pour les MQB, car c le bordel de faire -1 et on aura jamais plus de 2 millards de boxes dans 1 mqb
-// TODO: see attribute [[assume]] for save and its wrappers
 // TODO: rendre coherent le nommage des elements dynamiques -> __ + id quand ajoute par Interface && __nom__ quand ajoute par interface + sans id
 // TODO: permettre de decocher tous les mqb.
-// TODO: remove pointer from interactable element
-// TODO: module C++20
-// TODO: Ajouter une std::function pour les mqb
 // TODO: string_view
-// TODO: changer hash
 
+// TODO: module C++20
+// TODO: changer hash
 #endif // GUI_HPP
