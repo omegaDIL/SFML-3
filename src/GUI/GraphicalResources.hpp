@@ -454,6 +454,8 @@ public:
 	 *
 	 * \param[in] name The alias under which the font will be stored.
 	 * \param[in] fileName The path to the font file within the assets folder.
+	 * 
+	 * \note Do not start a font name with an underscore.
 	 *
 	 * \pre `fileName` must refer to a valid font file in the assets directory.
 	 * \post The font is available for use via the alias `name`.
@@ -473,6 +475,8 @@ public:
 	 *
 	 * \param[in] name The alias under which the font will be stored.
 	 * \param[in] fileName The path to the font file within the assets folder.
+	 *
+	 * \note Do not start a font name with an underscore.
 	 *
 	 * \see `loadFontFromFile`, `setFont`
 	 */
@@ -705,7 +709,12 @@ public:
 
 	/**
 	 * \brief Adds a texture (with one or more sub-rectangles) to this instance's texture vector.
-	 * \complexity Amortized O(1).
+	 * 
+	 * \complexity In release mode, Amortized O(1).
+	 * \complexity In debug mode, Amortized O(1) for shared and non claimed reserved textures.
+	 * \complexity In debug mode, O(N) for claimed reserved textures where N is the number of reserved
+	 *			   textures claimed by this instance.
+	 * 
 	 * 
 	 * For each `sf::IntRect` provided, a pair of (`sf::Texture*`, `sf::IntRect`) is added to the internal
 	 * texture vector. This allows switching between different sub-regions (e.g., animation frames) or entirely
@@ -799,6 +808,7 @@ public:
 	 *
 	 * \note If loadImmediately is set to `true`, It is recommended to call this from a separate thread
 	 *		 for large textures or to avoid frame drops.
+	 * \note Do not start a texture name with an underscore.
 	 *
 	 * \pre `fileName` must refer to a valid texture file in the assets directory.
 	 * \post The texture is available for use via the alias `name`.
@@ -822,7 +832,8 @@ public:
 	 * \param[in] shared: `No` if the texture is reserved.
 	 *
 	 * \note Since no file is given, unloading the `sf::Texture` is not possible. Nothing happens it
-	 * is tried.
+	 *		 is tried.
+	 * \note Do not start a texture name with an underscore.
 	 *
 	 * \see `loadTextureFromFile`, `addTexture`.
 	 */

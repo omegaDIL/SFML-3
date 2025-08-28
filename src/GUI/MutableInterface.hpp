@@ -55,7 +55,7 @@ class MutableInterface : public BasicInterface
 public:
 
 	/**
-	 * \brief Constructs the basic graphical interface.
+	 * \brief Constructs the graphical interface.
 	 * \complexity O(1)
 	 *
 	 * \param[in,out] window A valid pointer to the SFML window where interface elements will be rendered.

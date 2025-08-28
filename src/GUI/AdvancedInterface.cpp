@@ -3,103 +3,189 @@
 namespace gui
 {
 
-AdvancedInterface::AdvancedInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition)
-	: InteractiveInterface{ window, relativeScalingDefinition }, m_sliders{}, m_mqbs{}
+AdvancedInterface::Slider::Slider(AdvancedInterface* agui, short internalIntervals, UserFunction userFunction, GrowthSliderFunction growthSliderFunction) noexcept
+	: m_agui{ agui }, m_internalIntervals{ internalIntervals }, m_userFunction{ userFunction }, m_growthSliderFunction{ growthSliderFunction }
 {
-	if (SpriteWrapper::getTexture(mqbCheckedTextureName) != nullptr)
-	{		
-		sf::Vector2f boxSize{ 20, 20 };
-		SpriteWrapper::createTexture(mqbCheckedTextureName, loadCheckBoxTexture(boxSize), SpriteWrapper::Reserved::No);
-		SpriteWrapper::createTexture(mqbUncheckedTextureName, loadSolidRectange(boxSize), SpriteWrapper::Reserved::No);
-		
-		constexpr float goldenRatio{ 1.618f };
-		SpriteWrapper::createTexture(sliderBackgroundTextureName, loadSolidRectange(sf::Vector2f{ 20 * goldenRatio, 20.f }), SpriteWrapper::Reserved::No);
-		SpriteWrapper::createTexture(sliderCursorTextureName, loadSolidRectange(sf::Vector2f{ 20.f, 200.f }), SpriteWrapper::Reserved::No);
-	}
+	ENSURE_VALID_PTR(m_agui, "Precondition violated; the interface given for the slider was nullptr in the constructor of slider");
+
+	static const std::function<float(float)> defaultGrowth{ [](float x) -> float { return x; } };
+	if (m_growthSliderFunction == nullptr)
+		m_growthSliderFunction =  defaultGrowth;
+
+	m_curValue = m_growthSliderFunction(0.5f);
 }
 
-void AdvancedInterface::addSlider(const std::string& identifier, sf::Vector2f pos, unsigned int size, short intervals, UserFunction userFunction, GrowthSliderFunction growthSliderFunction, bool showValueWithText, sf::Vector2f scale) noexcept
+void AdvancedInterface::Slider::setCursor(float curPosY, SpriteWrapper& cursor, SpriteWrapper& background, TextWrapper* text) noexcept
 {
-	if (getSlider(identifier) != nullptr)
-		removeSlider(identifier);
+	float minPos{ background.getSprite().getGlobalBounds().position.y };
+	float maxPos{ minPos + background.getSprite().getGlobalBounds().size.y };
+	float yPos{ static_cast<float>(curPosY) };
 
-	Slider newSlider{};
-	newSlider.internalIntervals = intervals;
-	newSlider.userFunction = userFunction;
-	newSlider.growthSliderFunction = growthSliderFunction;
-	m_sliders[identifier] = std::move(newSlider);
+	if (yPos < minPos)
+		yPos = minPos;
+	else if (yPos > maxPos)
+		yPos = maxPos;
 
-	scale.y *= size / 200.f;
-	addDynamicSprite("_sb_" + identifier, sliderBackgroundTextureName, pos, scale);
-	addDynamicSprite("_sc_" + identifier, sliderCursorTextureName, pos, sf::Vector2f{ scale.x, scale.x });
-	addInteractive("_sb_" + identifier);
+	if (m_internalIntervals >= 0)
+	{
+		float interval = 1.f / (m_internalIntervals + 1); // The intervals exclude the min and max positions, so we add 1 to the number of intervals.
+		float relativePos = (yPos - minPos) / (maxPos - minPos); // Between 0 and 1.
+		float intervalPos = round(relativePos / interval) * interval; // Rounding to the nearest interval position.
+		yPos = minPos + ((maxPos - minPos) * intervalPos); // Recalculating the position based on the intervals.
+	}
+
+	cursor.setPosition(sf::Vector2f{ cursor.getSprite().getPosition().x, yPos });
+	m_curValue = m_growthSliderFunction(1 - (yPos - minPos) / (maxPos - minPos)); // Get the value of the slider.
+
+	if (text != nullptr) // If the slider has a text associated with it.
+	{
+		text->setPosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
+		text->setContent(m_curValue);
+	}
+
+	if (m_userFunction != nullptr)
+		m_userFunction(m_agui, m_curValue); // Call the function associated with the slider.
+}
+
+AdvancedInterface::MultipleQuestionBoxes::MultipleQuestionBoxes(unsigned short numberOfBoxes, bool multipleChoices, bool atLeastOne, unsigned short defaultCheckedBox) noexcept
+	: m_numberOfBoxes{ numberOfBoxes }, m_multipleChoices{ multipleChoices }, m_atLeastOne{ atLeastOne }, m_checked{}
+{
+	ENSURE_NOT_ZERO(numberOfBoxes, "Precondition violated; the number of boxes is equal to 0 in the constructor of MQB");
+	assert(numberOfBoxes != 1 || atLeastOne != true && "Precondition violated; the mqb is useless as it has only one box which can't be unchecked due to the variable atLeastOne being true in the constructor of MQB");
+	assert(atLeastOne != true || defaultCheckedBox != 0 && "Preconditon violated; the mqb can't be completely unchecked and yet it has no default box checked in the constructor of MQB");
+	assert(defaultCheckedBox <= numberOfBoxes && "Precondtion violated; the default checked box is greater than the number of total box");
+
+	if (defaultCheckedBox != 0)
+		m_checked.insert(defaultCheckedBox);
+}
+
+void AdvancedInterface::MultipleQuestionBoxes::mqbPressed(unsigned short currentlyHovered) noexcept   
+{
+	bool isChecked{ m_checked.find(currentlyHovered) != m_checked.end() };
+
+	if (m_multipleChoices == false)
+		m_checked.clear();
+
+	if (!m_atLeastOne || !isChecked)
+		reverseCurrentHovered(currentlyHovered);
+}
+
+void AdvancedInterface::MultipleQuestionBoxes::reverseCurrentHovered(unsigned short currentlyHovered) noexcept
+{
+	auto iterator{ m_checked.find(currentlyHovered) };
+
+	if (iterator == m_checked.end())
+		m_checked.insert(currentlyHovered);
+	else if (!m_atLeastOne || m_checked.size() != 1)
+		m_checked.erase(iterator);
+}
+
+
+AdvancedInterface::AdvancedInterface(sf::RenderWindow* window, unsigned int relativeScalingDefinition) noexcept
+	: InteractiveInterface{ window, relativeScalingDefinition }, m_sliders{}, m_mqbs{}
+{}
+
+void AdvancedInterface::addSlider(std::string identifier, sf::Vector2f pos, unsigned int size, short intervals, UserFunction userFunction, GrowthSliderFunction growthSliderFunction, bool showValueWithText) noexcept
+{
+	static constexpr std::string_view sliderBackgroundTextureName{ "__sb" };
+	static constexpr std::string_view sliderCursorTextureName{ "__sc" };
+
+	if (SpriteWrapper::getTexture(sliderBackgroundTextureName) == nullptr)
+	{
+		constexpr float goldenRatio{ 1.618f };
+		constexpr unsigned int size{ 30 };
+		static constexpr float outlineThickness{ -5.f };
+		SpriteWrapper::createTexture(std::string{ sliderBackgroundTextureName }, loadSolidRectange(sf::Vector2f{ size, 10 * size },			 outlineThickness), SpriteWrapper::Reserved::No);
+		SpriteWrapper::createTexture(std::string{ sliderCursorTextureName },	 loadSolidRectange(sf::Vector2f{ size * goldenRatio, size }, outlineThickness), SpriteWrapper::Reserved::No);
+	}
+
+	if (m_sliders.find(identifier) != m_sliders.end()) 
+		return;
+	
+	addDynamicSprite(identifier, sliderBackgroundTextureName, pos, sf::Vector2f{1.f, size/ 300.f});
+	addDynamicSprite(sliderCursorPrefixeIdentifier + identifier, sliderCursorTextureName, pos);
+	addInteractive(identifier);
 
 	if (showValueWithText)
 	{
-		sf::Vector2f posText{ getDynamicSprite("_sb_" + identifier)->getSprite().getGlobalBounds().position };
-		addDynamicText("_ts_" + identifier, "", posText, 30u, sf::Color::White, "__default", Alignment::Right);
+		sf::Vector2f posText{ getDynamicSprite(sliderCursorPrefixeIdentifier + identifier)->getSprite().getGlobalBounds().position };
+		addDynamicText(sliderTextPrefixeIdentifier + identifier, "", posText, 30, sf::Color::White, "__default", Alignment::Right);
 	}
-}
 
-void AdvancedInterface::removeSlider(const std::string& identifier) noexcept
+	m_sliders.insert(std::make_pair(identifier, Slider{ this, intervals, std::move(userFunction), std::move(growthSliderFunction)}));
+	m_sliders.at(identifier).setCursor(0.f, *getDynamicSprite(sliderCursorPrefixeIdentifier + identifier), *getDynamicSprite(identifier), getDynamicText(sliderTextPrefixeIdentifier + identifier));
+} 
+
+void AdvancedInterface::removeSlider(const std::string& identifier) noexcept 
 {
-	ENSURE_VALID_PTR(getSlider(identifier), "Slider was nullptr when removeSlider function was called in AdvancedInterface");
+	if (m_sliders.find(identifier) == m_sliders.end())
+		return;
 
 	m_sliders.erase(identifier);
-	removeDynamicSprite("_sb_" + identifier);
-	removeDynamicSprite("_sc_" + identifier);
-	removeDynamicText("_ts_" + identifier); // Nothing happens if not there.
+	removeDynamicSprite(sliderCursorPrefixeIdentifier + identifier);
+	removeDynamicSprite(identifier);
+	removeDynamicText(sliderTextPrefixeIdentifier + identifier); // Nothing happens if not there.
 }
 
-AdvancedInterface::Slider* AdvancedInterface::getSlider(const std::string& identifier) noexcept
+const AdvancedInterface::Slider* const AdvancedInterface::getSlider(const std::string& identifier) const noexcept
 {
-	auto mapIterator{ m_sliders.find(identifier) };
+	auto itSlider{ m_sliders.find(identifier) };
 
-	if (mapIterator == m_sliders.end())
-		return nullptr;
+	if (itSlider == m_sliders.end())
+	return nullptr;
 
-	return &mapIterator->second;
+	return &itSlider->second;
 }
 
-void AdvancedInterface::addMQB(const std::string& identifier, unsigned short numberOfBoxes, sf::Vector2f posInit, sf::Vector2f posDelta, bool multipleChoices, bool atLeastOne, sf::Vector2f scale) noexcept
+void AdvancedInterface::addMQB(std::string identifier, sf::Vector2f posInit, sf::Vector2f posDelta, unsigned short numberOfBoxes, bool multipleChoices, bool atLeastOne, unsigned short defaultCheckedBox) noexcept
 {
+	static constexpr std::string_view uncheckedMqbTextureName{ "__ub" };
+	static constexpr std::string_view checkedMqbTextureName{ "__cb" };
+
+	if (SpriteWrapper::getTexture(uncheckedMqbTextureName) == nullptr)
+	{
+		static constexpr sf::Vector2f boxSize{ 25, 25 };
+		static constexpr float outlineThickness{ -3.f };
+		SpriteWrapper::createTexture(std::string{ uncheckedMqbTextureName }, loadSolidRectange(boxSize,   outlineThickness), SpriteWrapper::Reserved::No);
+		SpriteWrapper::createTexture(std::string{ checkedMqbTextureName },   loadCheckBoxTexture(boxSize, outlineThickness), SpriteWrapper::Reserved::No);
+	}
+
 	if (getMQB(identifier) != nullptr)
-		removeMQB(identifier);
+		return;
 
-	MQB newMqb{};
-	newMqb.numberOfBoxes = numberOfBoxes;
-	newMqb.multipleChoices = multipleChoices;
-	newMqb.atLeastOne = atLeastOne;
-	newMqb.currentlyHovered = 0;
-	m_mqbs[identifier] = std::move(newMqb);
+	m_mqbs.insert(std::make_pair(identifier, MultipleQuestionBoxes{ numberOfBoxes, multipleChoices, atLeastOne, defaultCheckedBox }));
 
 	for (unsigned int i{ 0 }; i < numberOfBoxes; ++i)
 	{
 		const sf::Vector2f curPos{ posInit.x + posDelta.x * i, posInit.y + posDelta.y * i }; // Calculate the position of the checkbox.
-		const std::string identifier{ "_" + std::to_string(i+1) + "_" + identifier }; // Create the id for the checkbox.
+		const std::string identifierForEachBox{ "_" + std::to_string(i+1) + "_" + identifier }; // Create the id for the checkbox.
 	
-		addDynamicSprite(identifier, mqbUncheckedTextureName, curPos, scale);
-		getDynamicSprite(identifier)->addTexture(mqbCheckedTextureName);
-		addInteractive(identifier);
+		addDynamicSprite(identifierForEachBox, uncheckedMqbTextureName, curPos);
+		getDynamicSprite(identifierForEachBox)->addTexture(checkedMqbTextureName);
+		addInteractive(identifierForEachBox, [&hover = this->m_mqbs[identifier], i](InteractiveInterface*) { hover.mqbPressed(i+1); }, Button::When::pressed);
+
+		if (i + 1 == defaultCheckedBox) 
+			getDynamicSprite(identifierForEachBox)->switchToNextTexture();
 	}
 }
 
 void AdvancedInterface::removeMQB(const std::string& identifier) noexcept
 {
-	auto mqbToRemove{ getMQB(identifier) };
+	auto* mqb{ getMQB(identifier) };
 
-	ENSURE_VALID_PTR(mqbToRemove, "MQB was nullptr when removeMQB function was called in AdvancedInterface");
+	if (mqb == nullptr)
+		return;
 
-	for (unsigned int i{ 0 }; i < mqbToRemove->numberOfBoxes; ++i)
+	for (unsigned int i{ 0 }; i < mqb->m_numberOfBoxes; ++i)
 	{
-		const std::string identifier{ "_" + std::to_string(i) + "_" + identifier }; // Create the id for the checkbox.
-		removeDynamicSprite(identifier);
+		const std::string identifierForEachBox{ "_" + std::to_string(i) + "_" + identifier }; // Create the id for the checkbox.
+		removeDynamicSprite(identifierForEachBox);
 	}
 
 	m_mqbs.erase(identifier);
 }
 
-AdvancedInterface::MQB* AdvancedInterface::getMQB(const std::string& identifier) noexcept
+AdvancedInterface::MultipleQuestionBoxes* AdvancedInterface::getMQB(const std::string& identifier) noexcept
 {
 	auto mapIterator{ m_mqbs.find(identifier) };
 
@@ -109,103 +195,55 @@ AdvancedInterface::MQB* AdvancedInterface::getMQB(const std::string& identifier)
 	return &mapIterator->second;
 }
 
-InteractiveInterface::Item AdvancedInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2i cursorPos) noexcept
+InteractiveInterface::Item AdvancedInterface::pressed(BasicInterface* activeGUI, sf::Vector2f cursorPos) noexcept
 {
+	AdvancedInterface* agui{dynamic_cast<AdvancedInterface*>(activeGUI)};
+	if (agui == nullptr || s_hoveredItem.identifier == "" || s_hoveredItem.igui != agui)
+		return s_hoveredItem;
+
+	auto sliderIterator{ agui->m_sliders.find(s_hoveredItem.identifier) };
+	if (sliderIterator == agui->m_sliders.end())
+		return s_hoveredItem;
+
+	std::string const& identifier{ sliderIterator->first };
+	sliderIterator->second.setCursor(cursorPos.y, *agui->getDynamicSprite(sliderCursorPrefixeIdentifier + identifier), *agui->getDynamicSprite(identifier), agui->getDynamicText(sliderTextPrefixeIdentifier + identifier));
+
 	return s_hoveredItem;
-
-}
-
-InteractiveInterface::Item AdvancedInterface::pressed(BasicInterface* activeGUI) noexcept
-{
-	return s_hoveredItem;
-}
-
-InteractiveInterface::Item AdvancedInterface::unpressed(BasicInterface* activeGUI) noexcept
-{
-	return s_hoveredItem;
-}
-
-float AdvancedInterface::calculateValueOfSlider(const std::string& identifier) noexcept
-{
-	Slider* slider{ getSlider(identifier) }; // Throws an exception if not there.
-	sf::Sprite const& cursor{ getDynamicSprite("_sc_" + identifier)->getSprite() };
-	sf::Sprite const& background{ getDynamicSprite("_sb_" + identifier)->getSprite() };
-
-	const float minPos{ background.getGlobalBounds().position.y };
-	const float maxPos{ minPos + background.getGlobalBounds().size.y };
-	const float curPos{ cursor.getPosition().y };
-
-	return slider->growthSliderFunction(1 - (curPos - minPos) / (maxPos - minPos));
-}
-
-void AdvancedInterface::setCursorOfSlider(const std::string& identifier, unsigned int curPosY) noexcept
-{
-	Slider& slider{ m_sliders.at(identifier) }; // Throws an exception if not there.
-	SpriteWrapper* cursor{ getDynamicSprite("_sc_" + identifier) };
-	SpriteWrapper* background{ getDynamicSprite("_sb_" + identifier) };
-
-	float minPos{ background->getSprite().getGlobalBounds().position.y };
-	float maxPos{ minPos + background->getSprite().getGlobalBounds().size.y };
-	float yPos{ static_cast<float>(curPosY) };
-
-	if (yPos < minPos)
-		yPos = minPos;
-	else if (yPos > maxPos)
-		yPos = maxPos;
-
-	if (slider.internalIntervals >= 0)
-	{
-		float interval = 1.f / (slider.internalIntervals + 1); // The intervals exclude the min and max positions, so we add 1 to the number of intervals.
-		float relativePos = (yPos - minPos) / (maxPos - minPos); // Between 0 and 1.
-		float intervalPos = round(relativePos / interval) * interval; // Rounding to the nearest interval position.
-		yPos = minPos + ((maxPos - minPos) * intervalPos); // Recalculating the position based on the intervals.
-	}
-
-	cursor->setPosition(sf::Vector2f{ cursor->getSprite().getPosition().x, yPos });
-	float value{ slider.growthSliderFunction(1 - (yPos - minPos) / (maxPos - minPos)) }; // Get the value of the slider.
-
-	auto text{ getDynamicText("_ts_" + identifier) }; // Get the text associated with the slider, if it exists.
-	if (text != nullptr) // If the slider has a text associated with it.
-	{
-		text->setPosition(sf::Vector2f{ text->getText().getPosition().x, yPos }); // Aligning the text with the cursor.
-		text->setContent(value);
-	}
-
-	slider.userFunction(this, value); // Call the function associated with the slider.
 }
 
 
-sf::Texture AdvancedInterface::loadSolidRectange(sf::Vector2f scale, sf::Color fill, sf::Color outline, unsigned int thickness) noexcept
+sf::Texture AdvancedInterface::loadSolidRectange(sf::Vector2f scale, float outlineThickness) noexcept
 {
+	static constexpr sf::Color fillColor{ 20, 20, 20 };
+	static constexpr sf::Color outlineColor{ 80, 80, 80 };
+
 	sf::RectangleShape shape{ scale };
-	shape.setFillColor(fill);
-	shape.setOutlineColor(outline);
-	shape.setOutlineThickness(std::min(scale.x, scale.y) / thickness);
+	shape.setFillColor(fillColor);
+	shape.setOutlineColor(outlineColor);
+	shape.setOutlineThickness(outlineThickness);
 
 	return createTextureFromDrawables(shape);
 }
 
-sf::Texture AdvancedInterface::loadCheckBoxTexture(sf::Vector2f scale) noexcept
+sf::Texture AdvancedInterface::loadCheckBoxTexture(sf::Vector2f scale, float outlineThickness) noexcept
 {
-	sf::Color fillColor{ 20, 20, 20 };
-	sf::Color outlineColor{ 80, 80, 80 };
-
-	auto texture{ loadSolidRectange(scale) };
+	static constexpr sf::Color outlineColor{ 80, 80, 80 };
+	
+	auto texture{ loadSolidRectange(scale, outlineThickness) };
 	sf::Image image{ texture.copyToImage() };
 
-	unsigned int checkThickness{ static_cast<unsigned int>(std::min(scale.x, scale.y) / 5) };
 	for (unsigned int i{ 0 }; i < image.getSize().x; ++i)
 	{
 		for (unsigned int j{ 0 }; j < image.getSize().y; ++j)
 		{
-			if (std::abs(static_cast<int>(i) - static_cast<int>(j)) < checkThickness)
+			if (std::abs(static_cast<int>(i) - static_cast<int>(j)) < std::abs(outlineThickness))
 				image.setPixel(sf::Vector2u{ i, j }, outlineColor);
-			else if (std::abs(static_cast<int>(image.getSize().x) - static_cast<int>(i) - static_cast<int>(j)) < checkThickness)
+			else if (std::abs(static_cast<int>(image.getSize().x) - static_cast<int>(i) - static_cast<int>(j)) < std::abs(outlineThickness))
 				image.setPixel(sf::Vector2u{ i, j }, outlineColor);
 		}
 	}
 
-	if (texture.loadFromImage(image))
+	if (!texture.loadFromImage(image))
 		texture = sf::Texture{};
 	return texture;
 }

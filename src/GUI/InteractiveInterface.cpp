@@ -80,7 +80,7 @@ void InteractiveInterface::removeDynamicSprite(std::string_view identifier) noex
 		s_hoveredItem = Item{}; // Checks if the hovered sprite was not the removed sprite.
 }
  
-void InteractiveInterface::addInteractive(const std::string& identifier, ButtonFunction function, Button::When when) noexcept
+void InteractiveInterface::addInteractive(std::string_view identifier, ButtonFunction function, Button::When when) noexcept
 {
 	if (function == nullptr) [[unlikely]]
 		when = Button::When::none; // If no function is provided, the button will not be interactive.
@@ -132,7 +132,7 @@ void InteractiveInterface::setWritingText(std::string_view identifier, WritableF
 	cursor->hide = false;
 }
 
-InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* activeGUI, sf::Vector2f cursorPos) noexcept
+InteractiveInterface::Item InteractiveInterface::eventUpdateHovered(BasicInterface* activeGUI, sf::Vector2f cursorPos) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when the function updateHovered was called in InteractiveInterface");
 
@@ -157,7 +157,8 @@ InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* a
 	const size_t m_endSpriteInteractives{ igui->m_interactiveSpriteButtons.size() };
 	for (size_t i{ 0 }; i < m_endSpriteInteractives; ++i)
 	{
-		if (igui->m_sprites[i].getSprite().getGlobalBounds().contains(cursorPos))
+		SpriteWrapper& sprite{ igui->m_sprites[i] };
+		if (!sprite.hide && sprite.getSprite().getGlobalBounds().contains(cursorPos))
 		{
 			s_hoveredItem = Item{ igui, igui->m_indexesForEachDynamicSprites.at(i)->first, Item::Type::Sprite, &igui->m_interactiveSpriteButtons[i] };
 
@@ -171,21 +172,22 @@ InteractiveInterface::Item InteractiveInterface::updateHovered(BasicInterface* a
 	const size_t m_endTextInteractives{ igui->m_interactiveTextButtons.size() };
 	for (size_t i{ 0 }; i < m_endTextInteractives; ++i)
 	{
-		if (igui->m_texts[i].getText().getGlobalBounds().contains(cursorPos))
+		TextWrapper& text{ igui->m_texts[i] };
+		if (!text.hide && text.getText().getGlobalBounds().contains(cursorPos))
 		{
 			s_hoveredItem = Item{ igui, igui->m_indexesForEachDynamicTexts.at(i)->first, Item::Type::Text, &igui->m_interactiveTextButtons[i]};
 
 			if (s_hoveredItem.m_button->when == InteractiveInterface::Button::When::hovered)
 				s_hoveredItem.m_button->function(igui);
 
-			break; // A text might be on top of the sprite, so we need to check it too.
+			break;
 		}
 	}
 
 	return s_hoveredItem;
 }
 
-InteractiveInterface::Item InteractiveInterface::pressed(BasicInterface* activeGUI) noexcept
+InteractiveInterface::Item InteractiveInterface::eventPressed(BasicInterface* activeGUI) noexcept
 {
 	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when the function pressed was called in InteractiveInterface");
 
@@ -195,21 +197,7 @@ InteractiveInterface::Item InteractiveInterface::pressed(BasicInterface* activeG
 	&&  igui == s_hoveredItem.igui // This checks also ensure there is a hovered item.
 	&&  s_hoveredItem.m_button->when == Button::When::pressed)
 		s_hoveredItem.m_button->function(igui);
-
-	return s_hoveredItem;
-}
-
-InteractiveInterface::Item InteractiveInterface::unpressed(BasicInterface* activeGUI) noexcept
-{
-	ENSURE_VALID_PTR(activeGUI, "The gui was nullptr when the function unpressed was called in InteractiveInterface");
-
-	InteractiveInterface* const igui{ dynamic_cast<InteractiveInterface*>(activeGUI) };
-
-	if (igui != nullptr
-	&&  igui == s_hoveredItem.igui // This checks also ensure there is a hovered item.
-	&&  s_hoveredItem.m_button->when == Button::When::unpressed)
-		s_hoveredItem.m_button->function(igui);
-
+	 
 	return s_hoveredItem;
 }
 

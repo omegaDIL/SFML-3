@@ -26,9 +26,9 @@ namespace gui
  * \brief  Manages an interface with changeable contents: texts and shapes.
  * 
  * Interactive elements are designed to respond to mouse hover events. When an element is hovered,
- * the `updateHovered` function returns a pointer to it. 
+ * the `eventUpdateHovered` function returns a pointer to it. 
  * Buttons are a special type of interactive element with an attached function. This function can be
- * triggered when the button is hovered, pressed, or released.
+ * triggered when the button is hovered or pressed.
  * For writing texts, you can access `exitWritingCharacter` which tells what character stops the 
  * writing (enter by default), or `emptinessWritingCharacters` which enters a string if the writing 
  * text is empty when the user exits it ("0" by default).
@@ -60,7 +60,6 @@ public:
 		{
 			hovered,
 			pressed,
-			unpressed,
 			none
 		} when; // When to execute the function
 
@@ -93,7 +92,7 @@ public:
 			: igui{ iguiPtr }, identifier{ id }, type{ tp }, m_button{ button } {}
 
 		Item() noexcept 
-			: igui{ nullptr }, identifier{ "" }, type{ Type::None }, m_button{nullptr} {}
+			: igui{ nullptr }, identifier{ "" }, type{ Type::None }, m_button{ nullptr } {}
 
 		Item(const Item& item) noexcept = default;
 		Item(Item&& item) noexcept = default;
@@ -106,7 +105,7 @@ public:
 
 
 	/**
-	 * \brief Constructs the basic graphical interface.
+	 * \brief Constructs the graphical interface.
 	 * \complexity O(1)
 	 *
 	 * \param[in,out] window A valid pointer to the SFML window where interface elements will be rendered.
@@ -180,13 +179,13 @@ public:
 	 * \param[in] when		 When to execute the lambda above.
 	 *
 	 * \note Creating a button is not recommended for performance-critical code or for complex functions
-	 *		 requiring many arguments. Check for the return value of `updateHovered` instead.
+	 *		 requiring many arguments. Check for the return value of `eventUpdateHovered` instead.
 	 * \note If either the function is set to nullptr, or when to none, the interactive will not be
 	 *		 a button.
 	 * 
 	 * \warning May invalidate any pointers of any TransformableWrapper in this gui.
 	 */
-	void addInteractive(const std::string& identifier, ButtonFunction function = nullptr, Button::When when = Button::When::unpressed) noexcept;
+	void addInteractive(std::string_view identifier, ButtonFunction function = nullptr, Button::When when = Button::When::pressed) noexcept;
 
 	/**
 	 * \brief Sets the dynamic text that will be edited when the user types a character.
@@ -228,6 +227,7 @@ public:
 	 * only when the mouse button is not pressed as well.
 	 * If `when` is set to `hovered`, the element's associated function is executed
 	 * each time the hovered element changes.
+	 * Does not check elements that are hiden.
 	 *
 	 * \param[out] activeGUI: The current GUI. No effect if not interactive
 	 * \param[in]  cursorPos: The position of the cursor/touch event WITHIN the window's view.
@@ -236,7 +236,7 @@ public:
 	 * 
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static Item updateHovered(BasicInterface* activeGUI, sf::Vector2f cursorPos) noexcept;
+	static Item eventUpdateHovered(BasicInterface* activeGUI, sf::Vector2f cursorPos) noexcept;
 
 	/**
 	 * \brief Tells the active GUI that the cursor is pressed.
@@ -249,20 +249,7 @@ public:
 	 * \note You do not need to call this function if no buttons are executed when pressed.
 	 * \warning Asserts if activeGUI is nullptr.
 	 */
-	static Item pressed(BasicInterface* activeGUI) noexcept;
-
-	/**
-	 * \brief Tells the active GUI that the cursor is released.
-	 * \complexity O(1).
-	 * 
-	 * \param[out] activeGUI: The current GUI. No effect if not interactive
-	 *
-	 * \return The item that is currently hovered.
-	 *
-	 * \note You do not need to call this function if no buttons are executed when unpressed.
-	 * \warning Asserts if activeGUI is nullptr.
-	 */
-	static Item unpressed(BasicInterface* activeGUI) noexcept;
+	static Item eventPressed(BasicInterface* activeGUI) noexcept;
 
 	/**
 	 * \brief Enters a character into the writing text. Can remove last character if backspace is entered,
@@ -330,13 +317,10 @@ private:
  *     while (const std::optional event = window.pollEvent())
  *     { 
  *	       if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
- *		       curItem = IGUI::updateHovered(curInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
+ *		       curItem = IGUI::eventUpdateHovered(curInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
  *
  *		   if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
- *			   IGUI::pressed(curInterface); // Is not necessary since no interactables have a pressed button.
- *
- *		   if (event->is<sf::Event::MouseButtonReleased>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
- *			   IGUI::unpressed(curInterface);
+ *			   IGUI::eventPressed(curInterface); // If removed, would disable the pressed buttons
  *
  *		   if (event->is<sf::Event::TextEntered>())
  *			   IGUI::textEntered(curInterface, event->getIf<sf::Event::TextEntered>()->unicode);

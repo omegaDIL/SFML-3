@@ -1,6 +1,7 @@
 ﻿#include <SFML/Graphics.hpp> 
 #include <string>
 #include <optional>
+#include <iostream>
 #include "GUI.hpp"
 #include "Save.hpp"
 
@@ -10,8 +11,8 @@ int main()
 {
 	sf::Vector2u windowSize{ 1000, 1000 };
 	sf::RenderWindow window{ sf::VideoMode{ windowSize }, "Template sfml 3" };
-	IGUI mainInterface{ &window, 1080 };
-	IGUI otherInterface{ &window, 1080 };
+	AGUI mainInterface{ &window, 1080 };
+	AGUI otherInterface{ &window, 1080 };
 	BGUI* curInterface{ &mainInterface };
 
 
@@ -26,6 +27,8 @@ int main()
 	mainInterface.addDynamicText("other", "switch", { 500, 800 });
 	mainInterface.addInteractive("other", [&otherInterface, &curInterface](IGUI*) mutable {curInterface = &otherInterface; });
 
+	mainInterface.addSlider("azer", { 200, 500 });
+	mainInterface.addSlider("azerr", { 500, 500 }, 600, 30, nullptr, [](float x) {return 3 + 5 * x; });
 
 	sf::RectangleShape rect{ { 50, 50 } };
 	otherInterface.addDynamicSprite("colorChanger", gui::createTextureFromDrawables(rect), sf::Vector2f{500, 850});
@@ -33,6 +36,8 @@ int main()
 
 	otherInterface.addDynamicText("main", "switch", { 500, 500 });
 	otherInterface.addInteractive("main", [&mainInterface, &curInterface](IGUI*) mutable {curInterface = &mainInterface; });
+
+	otherInterface.addMQB("myMQB", { 201, 200 }, { 0, 30 }, 5, false);
 
 	mainInterface.getDynamicText("text1")->setRotation(sf::degrees(30));
 
@@ -42,13 +47,18 @@ int main()
 		while (const std::optional event = window.pollEvent())
 		{ 
 			if (event->is<sf::Event::MouseMoved>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				curItem = IGUI::updateHovered(curInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
+				curItem = IGUI::eventUpdateHovered(curInterface, window.mapPixelToCoords(event->getIf<sf::Event::MouseMoved>()->position));
 
-			if (event->is<sf::Event::MouseButtonPressed>() && sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				IGUI::pressed(curInterface); // Is not necessary since no interactables have a pressed button.
-
-			if (event->is<sf::Event::MouseButtonReleased>() && !sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
-				IGUI::unpressed(curInterface);
+			if (event->is<sf::Event::MouseButtonPressed>())
+			{
+				IGUI::eventPressed(curInterface); // Is not necessary since no interactables have a pressed button.
+				auto* a = otherInterface.getMQB("myMQB");
+				for (auto elem : a->getChecked())
+				{
+					std::cout << elem << '\n';
+				}
+				std::cout << "\n\n\n";
+			}
 
 			if (event->is<sf::Event::TextEntered>())
 				IGUI::textEntered(curInterface, event->getIf<sf::Event::TextEntered>()->unicode);
@@ -59,6 +69,9 @@ int main()
 			if (event->is<sf::Event::Closed>() || sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
 				window.close();
 		}
+
+		if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+			AGUI::pressed(curInterface, window.mapPixelToCoords(sf::Mouse::getPosition(window)));
 
 		// If you ignore this feature, you could delete the variable curItem entirely.
 		// However, this is less limited since you can use more arguments, watch for more events...
